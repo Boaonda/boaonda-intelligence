@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Vendas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --coral:#ed6842;--cinza:#71706f;--verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#f8f5f1;--card:#fff;--card2:#f3f0eb;--line:#e2ddd8;--line2:#ccc8c2;
+  --txt:#26361e;--txt-s:#71706f;--txt-m:#9b9895;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+
+/* HEADER */
+.header{background:#fff;border-bottom:1px solid var(--line);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;box-shadow:0 1px 6px rgba(38,54,30,.05)}
+.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
+.hmeta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.9}
+.hmeta strong{color:var(--txt-s)}
+
+/* FILTROS BAR */
+.filtros{background:#fff;border-bottom:1px solid var(--line);padding:12px 32px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.filtro-hint{font-size:9px;color:var(--txt-m);margin-left:auto;font-style:italic}
+
+/* DROPDOWN */
+.dd-wrap{position:relative}
+.dd-btn{
+  display:flex;align-items:center;gap:8px;padding:7px 14px;
+  background:#fff;border:1.5px solid var(--line2);border-radius:8px;
+  cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;
+  font-weight:600;color:var(--txt);transition:.15s;white-space:nowrap;
+  min-width:160px;justify-content:space-between
+}
+.dd-btn:hover{border-color:var(--coral)}
+.dd-btn.open{border-color:var(--coral);border-bottom-left-radius:0;border-bottom-right-radius:0}
+.dd-btn .dd-arrow{font-size:9px;color:var(--txt-m);transition:.2s}
+.dd-btn.open .dd-arrow{transform:rotate(180deg)}
+.dd-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-right:2px}
+
+.dd-menu{
+  position:absolute;top:100%;left:0;z-index:200;
+  background:#fff;border:1.5px solid var(--coral);
+  border-top:none;border-radius:0 0 8px 8px;
+  min-width:220px;box-shadow:0 8px 24px rgba(38,54,30,.1);
+  display:none;max-height:300px;overflow-y:auto
+}
+.dd-menu.open{display:block}
+.dd-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;cursor:pointer;transition:.1s;
+  font-size:11px;color:var(--txt)
+}
+.dd-item:hover{background:var(--card2)}
+.dd-item.all{font-weight:700;border-bottom:1px solid var(--line)}
+.dd-cb{
+  width:16px;height:16px;border:2px solid var(--line2);border-radius:3px;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:.15s;background:#fff
+}
+.dd-cb.checked{background:var(--coral);border-color:var(--coral)}
+.dd-cb.checked::after{content:'✓';color:#fff;font-size:10px;font-weight:700}
+.dd-sep{height:1px;background:var(--line);margin:4px 0}
+
+/* MAIN */
+.main{padding:24px 32px;max-width:1400px;margin:0 auto}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.stitle-info{font-size:10px;color:var(--txt-m);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px}
+
+/* KPIs */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:#fff;border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
+.kpi.verde{border-top-color:var(--verde)}
+.kpi.azul{border-top-color:var(--azul)}
+.kpi.cinza{border-top-color:var(--cinza)}
+.kpi.laranja{border-top-color:#f59e0b}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.kpi-v{font-size:1.75rem;font-weight:800;color:var(--coral);line-height:1}
+.kpi-v.verde{color:var(--verde)}
+.kpi-v.azul{color:var(--azul)}
+.kpi-v.cinza{color:var(--cinza)}
+.kpi-v.laranja{color:#f59e0b}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px}
+
+/* Charts */
+.crow{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
+.ccard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px}
+.ctitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-m);margin-bottom:14px}
+.ctitle-badge{font-size:9px;background:rgba(237,104,66,.1);color:var(--coral);padding:2px 8px;border-radius:4px;font-weight:700;margin-left:6px;text-transform:none;letter-spacing:0}
+
+/* Tabela */
+.tcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line)}
+td{padding:8px 12px;border-bottom:1px solid rgba(226,221,216,.5);color:var(--txt-s)}
+tr:last-child td{border:none}
+tr:hover td{background:var(--card2);color:var(--txt)}
+.td-ref{font-weight:700;color:var(--txt)}
+.td-num{font-size:13px;font-weight:800;color:var(--coral)}
+.mbar{height:3px;border-radius:2px;opacity:.7}
+
+@media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">BOAONDA <span>· Vendas</span></div>
+  <div class="hmeta">Base: 3YS · Jan/2025–Jun/2026<br>Atualizado: <strong id="hdr-data">–</strong></div>
+</div>
+
+<!-- FILTROS -->
+<div class="filtros">
+
+  <!-- Canal -->
+  <div class="dd-wrap" id="ddw-canal">
+    <div class="dd-btn" id="ddb-canal" onclick="toggleDD('canal')">
+      <span><span class="dd-label">Canal </span><span id="dd-canal-txt">Todos</span></span>
+      <span class="dd-arrow">▼</span>
+    </div>
+    <div class="dd-menu" id="ddm-canal">
+      <div class="dd-item all" onclick="ddSelectAll('canal')">
+        <div class="dd-cb checked" id="cb-canal-all"></div>
+        <span>Todos os canais</span>
+      </div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="ddToggle('canal','MI')">
+        <div class="dd-cb" id="cb-canal-MI"></div>
+        <span>Mercado Interno</span>
+      </div>
+      <div class="dd-item" onclick="ddToggle('canal','ME')">
+        <div class="dd-cb" id="cb-canal-ME"></div>
+        <span>Mercado Externo</span>
+      </div>
+      <div class="dd-item" onclick="ddToggle('canal','EC')">
+        <div class="dd-cb" id="cb-canal-EC"></div>
+        <span>E-commerce</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tipo MI (sempre visível mas opções inativas se MI não selecionado) -->
+  <div class="dd-wrap" id="ddw-tipo">
+    <div class="dd-btn" id="ddb-tipo" onclick="toggleDD('tipo')">
+      <span><span class="dd-label">Tipo MI </span><span id="dd-tipo-txt">Todos os tipos</span></span>
+      <span class="dd-arrow">▼</span>
+    </div>
+    <div class="dd-menu" id="ddm-tipo">
+      <div class="dd-item all" onclick="ddSelectAll('tipo')">
+        <div class="dd-cb checked" id="cb-tipo-all"></div>
+        <span>Todos os tipos</span>
+      </div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="ddToggle('tipo','PROG')">
+        <div class="dd-cb" id="cb-tipo-PROG"></div>
+        <span>Programação (cod 1)</span>
+      </div>
+      <div class="dd-item" onclick="ddToggle('tipo','PE')">
+        <div class="dd-cb" id="cb-tipo-PE"></div>
+        <span>Pronta Entrega (cod 22/31)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Período -->
+  <div class="dd-wrap" id="ddw-periodo">
+    <div class="dd-btn" id="ddb-periodo" onclick="toggleDD('periodo')">
+      <span><span class="dd-label">Período </span><span id="dd-periodo-txt">Todos os meses</span></span>
+      <span class="dd-arrow">▼</span>
+    </div>
+    <div class="dd-menu" id="ddm-periodo" style="min-width:200px">
+      <div class="dd-item all" onclick="ddSelectAll('periodo')">
+        <div class="dd-cb checked" id="cb-periodo-all"></div>
+        <span>Todos os meses</span>
+      </div>
+      <div class="dd-sep"></div>
+      <div id="dd-meses-lista"></div>
+    </div>
+  </div>
+
+  <span class="filtro-hint">Gráfico de evolução respeita canal · KPIs e tabela respeitam todos os filtros</span>
+</div>
+
+<div class="main">
+  <div class="stitle" id="stitle-kpi">Resumo — <span id="stitle-desc" style="font-weight:400;text-transform:none;letter-spacing:0">Todos os canais · Todos os meses</span></div>
+  <div class="kpi-grid" id="kpi-area"></div>
+
+  <div class="crow">
+    <div class="ccard">
+      <div class="ctitle">Evolução mensal de vendas <span class="ctitle-badge" id="ev-badge">todos os meses</span></div>
+      <div style="position:relative;height:280px"><canvas id="c-ev"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Participação por canal</div>
+      <div style="position:relative;height:280px"><canvas id="c-mix"></canvas></div>
+    </div>
+  </div>
+
+  <div class="stitle">Top referências — <span id="stitle-refs" style="font-weight:400;text-transform:none;letter-spacing:0">período selecionado</span></div>
+  <div class="tcard">
+    <table>
+      <thead><tr><th>#</th><th>Referência</th><th>Pares</th><th>Volume</th></tr></thead>
+      <tbody id="tb-refs"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const f=n=>(Math.round(n)||0).toLocaleString('pt-BR');
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+Chart.defaults.color='#9b9895';Chart.defaults.borderColor='#e2ddd8';
+Chart.defaults.font.family="'Montserrat',sans-serif";
+const TIP={backgroundColor:'#fff',borderColor:'#e2ddd8',borderWidth:1,titleColor:'#26361e',bodyColor:'#71706f',padding:12,cornerRadius:8};
+
+// ── DADOS ──────────────────────────────────────────────────────────
+const MESES_ALL=['202501','202502','202503','202504','202505','202506','202507','202508','202509','202510','202511','202512','202601','202602','202603','202604','202605','202606'];
+let DADOS={}, REFS_MI=[], REFS_ME=[], REFS_EC=[];
+
+// Carregar JSON externo — gerado pelo atualizar.py
+fetch('dados_vendas.json?_='+Date.now())
+  .then(r=>r.ok?r.json():null)
+  .then(d=>{
+    if(!d) return; // usa dados vazios
+    // Adapta o formato gerado pelo atualizar.py (chave "mensal", canais
+    // MI/PE/ME/ECOM/GRUPO_MOULD) para a estrutura usada pelo dashboard
+    // (MI.PROG, MI.PE, ME.ME, EC.EC)
+    DADOS = {};
+    const mensal = d.mensal || {};
+    for(const m in mensal){
+      const v = mensal[m] || {};
+      DADOS[m] = {
+        MI: {PROG: v.MI||0, PE: v.PE||0},
+        ME: {ME: v.ME||0},
+        EC: {EC: v.ECOM||0}
+      };
+    }
+    REFS_MI = d.refs_top20?.MI || [];
+    REFS_ME = d.refs_top20?.ME || [];
+    REFS_EC = d.refs_top20?.EC || [];
+    // Atualizar header
+    const hdr=document.getElementById('hdr-data');
+    if(hdr) hdr.textContent=d.gerado_em||'–';
+    render();
+  })
+  .catch(()=>render());
+
+// ── ESTADO ──────────────────────────────────────────────────────────
+const estado = {
+  canal: new Set(['MI','ME','EC']),  // todos
+  tipo:  new Set(['PROG','PE']),      // todos
+  meses: new Set(MESES_ALL),         // todos
+};
+
+let chartEv=null, chartMix=null;
+
+// ── DROPDOWN ENGINE ──────────────────────────────────────────────────
+function toggleDD(id){
+  const menu=document.getElementById('ddm-'+id);
+  const btn=document.getElementById('ddb-'+id);
+  const isOpen=menu.classList.contains('open');
+  // Fechar todos
+  document.querySelectorAll('.dd-menu').forEach(m=>m.classList.remove('open'));
+  document.querySelectorAll('.dd-btn').forEach(b=>b.classList.remove('open'));
+  if(!isOpen){ menu.classList.add('open'); btn.classList.add('open'); }
+}
+
+// Fechar ao clicar fora
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.dd-wrap')){
+    document.querySelectorAll('.dd-menu').forEach(m=>m.classList.remove('open'));
+    document.querySelectorAll('.dd-btn').forEach(b=>b.classList.remove('open'));
+  }
+});
+
+function ddToggle(grupo, val){
+  const set = estado[grupo==='periodo'?'meses':grupo];
+  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?['PROG','PE']:MESES_ALL;
+  if(set.has(val)){ if(set.size>1) set.delete(val); }
+  else set.add(val);
+  updateDDUI(grupo);
+  render();
+}
+
+function ddSelectAll(grupo){
+  const set = grupo==='periodo'?estado.meses:estado[grupo];
+  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?['PROG','PE']:MESES_ALL;
+  const isAll = set.size===allVals.length;
+  if(isAll){ set.clear(); set.add(allVals[0]); }
+  else { allVals.forEach(v=>set.add(v)); }
+  updateDDUI(grupo);
+  render();
+}
+
+function updateDDUI(grupo){
+  const set = grupo==='periodo'?estado.meses:estado[grupo];
+  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?['PROG','PE']:MESES_ALL;
+  const isAll = set.size===allVals.length;
+
+  // All checkbox
+  const cbAll=document.getElementById('cb-'+grupo+'-all');
+  if(cbAll) cbAll.classList.toggle('checked',isAll);
+
+  // Individual checkboxes
+  if(grupo==='periodo'){
+    document.querySelectorAll('#dd-meses-lista .dd-cb').forEach(cb=>{
+      cb.classList.toggle('checked',set.has(cb.dataset.val));
+    });
+  } else {
+    allVals.forEach(v=>{
+      const cb=document.getElementById('cb-'+grupo+'-'+v);
+      if(cb) cb.classList.toggle('checked',set.has(v));
+    });
+  }
+
+  // Botão label
+  const txt=document.getElementById('dd-'+grupo+'-txt');
+  if(txt){
+    if(isAll) txt.textContent=grupo==='canal'?'Todos':grupo==='tipo'?'Todos os tipos':'Todos os meses';
+    else if(set.size===1){
+      const v=[...set][0];
+      const nomes={MI:'Merc. Interno',ME:'Merc. Externo',EC:'E-commerce',
+                   PROG:'Programação',PE:'Pronta Entrega'};
+      txt.textContent=nomes[v]||mesLabel(v);
+    } else txt.textContent=set.size+' selecionados';
+  }
+}
+
+// ── INIT MESES ──────────────────────────────────────────────────────
+function mesLabel(m){
+  const mn=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return mn[parseInt(m.slice(4))-1]+'/'+m.slice(2,4);
+}
+
+function initMeses(){
+  const cont=document.getElementById('dd-meses-lista');
+  MESES_ALL.forEach(m=>{
+    const div=document.createElement('div');
+    div.className='dd-item';
+    div.onclick=()=>ddToggle('periodo',m);
+    div.innerHTML='<div class="dd-cb checked" data-val="'+m+'"></div><span>'+mesLabel(m)+'</span>';
+    cont.appendChild(div);
+  });
+}
+
+// ── CALCULAR ────────────────────────────────────────────────────────
+function calcValMes(m, canais, tipos){
+  const d=DADOS[m]||{};
+  let tot=0;
+  if(canais.has('MI')){
+    if(tipos.has('PROG')) tot+=(d.MI||{}).PROG||0;
+    if(tipos.has('PE'))   tot+=(d.MI||{}).PE||0;
+  }
+  if(canais.has('ME')) tot+=(d.ME||{}).ME||0;
+  if(canais.has('EC')) tot+=(d.EC||{}).EC||0;
+  return tot;
+}
+
+// ── RENDER ──────────────────────────────────────────────────────────
+function render(){
+  const canais=estado.canal, tipos=estado.tipo, meses=estado.meses;
+
+  // Totais para KPIs (respeitam todos os filtros)
+  let mi_prog=0,mi_pe=0,me=0,ec=0;
+  [...meses].sort().forEach(m=>{
+    const d=DADOS[m]||{};
+    if(canais.has('MI')){ 
+      if(tipos.has('PROG')) mi_prog+=(d.MI||{}).PROG||0;
+      if(tipos.has('PE'))   mi_pe+=(d.MI||{}).PE||0;
+    }
+    if(canais.has('ME')) me+=(d.ME||{}).ME||0;
+    if(canais.has('EC')) ec+=(d.EC||{}).EC||0;
+  });
+  const total=mi_prog+mi_pe+me+ec;
+
+  // KPIs
+  let kpiHTML='';
+  kpiHTML+=kpi('','Total selecionado',f(total),'pares no período');
+  if(canais.has('MI') && tipos.has('PROG')) kpiHTML+=kpi('azul','MI — Programação',f(mi_prog),pct(mi_prog,total)+'% do total');
+  if(canais.has('MI') && tipos.has('PE'))   kpiHTML+=kpi('cinza','MI — Pronta Entrega',f(mi_pe),pct(mi_pe,total)+'% do total');
+  if(canais.has('ME')) kpiHTML+=kpi('cinza','Mercado Externo',f(me),pct(me,total)+'% do total');
+  if(canais.has('EC')) kpiHTML+=kpi('verde','E-commerce',f(ec),pct(ec,total)+'% do total');
+  kpiHTML+=kpi('laranja','Meses',meses.size,meses.size===MESES_ALL.length?'todos':'de '+MESES_ALL.length);
+  document.getElementById('kpi-area').innerHTML=kpiHTML;
+
+  // Descrição
+  const cNomes={MI:'MI',ME:'ME',EC:'E-com'};
+  const cDesc=[...canais].map(c=>cNomes[c]).join('+') + (canais.has('MI')&&tipos.size<2?' ('+([...tipos][0]==='PROG'?'Prog':'PE')+')':'');
+  document.getElementById('stitle-desc').textContent=cDesc+' · '+meses.size+' meses';
+  document.getElementById('stitle-refs').textContent=cDesc+' · '+meses.size+' meses';
+
+  renderCharts(canais, tipos);
+  renderRefs(canais, tipos, meses);
+}
+
+function kpi(cls,label,val,sub){
+  return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v '+cls+'">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';
+}
+
+// ── CHARTS ──────────────────────────────────────────────────────────
+function renderCharts(canais, tipos){
+  if(chartEv){chartEv.destroy();chartEv=null;}
+  if(chartMix){chartMix.destroy();chartMix=null;}
+
+  // Evolução — TODOS os meses, filtra canal
+  const labels=MESES_ALL.map(mesLabel);
+  const datasets=[];
+
+  if(canais.has('MI')){
+    if(tipos.has('PROG'))
+      datasets.push({label:'MI Programação',data:MESES_ALL.map(m=>(DADOS[m]?.MI?.PROG||0)),backgroundColor:'#4994c7cc',borderRadius:3});
+    if(tipos.has('PE'))
+      datasets.push({label:'MI Pronta Entrega',data:MESES_ALL.map(m=>(DADOS[m]?.MI?.PE||0)),backgroundColor:'#4994c744',borderRadius:3,borderColor:'#4994c7',borderWidth:1});
+  }
+  if(canais.has('ME'))
+    datasets.push({label:'Mercado Externo',data:MESES_ALL.map(m=>(DADOS[m]?.ME?.ME||0)),backgroundColor:'#71706fcc',borderRadius:3});
+  if(canais.has('EC'))
+    datasets.push({label:'E-commerce',data:MESES_ALL.map(m=>(DADOS[m]?.EC?.EC||0)),backgroundColor:'#6c9c37cc',borderRadius:3});
+
+  chartEv=new Chart(document.getElementById('c-ev'),{type:'bar',data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},tooltip:{...TIP,mode:'index'}},
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:v=>f(v)}}}}});
+
+  // Mix — usa totais de todos os meses filtrados pelo canal
+  let totMI_P=0,totMI_PE=0,totME=0,totEC=0;
+  MESES_ALL.forEach(m=>{
+    const d=DADOS[m]||{};
+    if(canais.has('MI')){ 
+      if(tipos.has('PROG')) totMI_P+=(d.MI||{}).PROG||0;
+      if(tipos.has('PE'))   totMI_PE+=(d.MI||{}).PE||0;
+    }
+    if(canais.has('ME')) totME+=(d.ME||{}).ME||0;
+    if(canais.has('EC')) totEC+=(d.EC||{}).EC||0;
+  });
+  const mixTotal=totMI_P+totMI_PE+totME+totEC;
+  const mixLabels=[],mixData=[],mixColors=[];
+  if(totMI_P){mixLabels.push('MI Programação');mixData.push(totMI_P);mixColors.push('#4994c7');}
+  if(totMI_PE){mixLabels.push('MI Pronta Entrega');mixData.push(totMI_PE);mixColors.push('#4994c755');}
+  if(totME){mixLabels.push('Merc. Externo');mixData.push(totME);mixColors.push('#71706f');}
+  if(totEC){mixLabels.push('E-commerce');mixData.push(totEC);mixColors.push('#6c9c37');}
+
+  chartMix=new Chart(document.getElementById('c-mix'),{type:'doughnut',
+    data:{labels:mixLabels,datasets:[{data:mixData,backgroundColor:mixColors,borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{boxWidth:10,font:{size:10}}},
+        tooltip:{callbacks:{label:ctx=>ctx.label+': '+f(ctx.raw)+' ('+pct(ctx.raw,mixTotal)+'%)'}}}}}); 
+}
+
+// ── REFS ─────────────────────────────────────────────────────────────
+function renderRefs(canais, tipos, meses){
+  const all={};
+  if(canais.has('MI')) REFS_MI.forEach(([r,q])=>all[r]=(all[r]||0)+q);
+  if(canais.has('ME')) REFS_ME.forEach(([r,q])=>all[r]=(all[r]||0)+q);
+  if(canais.has('EC')) REFS_EC.forEach(([r,q])=>all[r]=(all[r]||0)+q);
+  const refs=Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const mx=refs.length?refs[0][1]:1;
+  const tb=document.getElementById('tb-refs');
+  tb.innerHTML='';
+  refs.forEach(([ref,qtd],i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td style="color:var(--txt-m);font-size:10px">'+(i+1)+'</td>'+
+      '<td class="td-ref">'+ref+'</td>'+
+      '<td class="td-num">'+f(qtd)+'</td>'+
+      '<td style="min-width:100px"><div class="mbar" style="width:'+Math.round(qtd/mx*100)+'%;background:'+(i<3?'var(--coral)':'var(--azul)')+'"></div></td>';
+    tb.appendChild(tr);
+  });
+}
+
+// INIT
+initMeses();
+// render() é chamado após fetch carregar os dados
+</script>
+</body>
+</html>

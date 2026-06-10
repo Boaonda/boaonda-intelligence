@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#71706f;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#f8f5f1;--card:#ffffff;--card2:#f3f0eb;
+  --line:#e2ddd8;--line2:#ccc8c2;
+  --txt:#26361e;--txt-s:#71706f;--txt-m:#9b9895;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
+
+/* HEADER */
+.header{
+  background:#fff;border-bottom:1px solid var(--line);
+  padding:13px 40px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(38,54,30,.05)
+}
+.logo{font-size:20px;font-weight:800;color:var(--coral);letter-spacing:3px}
+.logo span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:10px;letter-spacing:1px}
+.hright{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.9}
+.hright strong{color:var(--txt-s)}
+.bc{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--txt-m)}
+.crumb{cursor:pointer;font-weight:500;transition:.15s}
+.crumb:hover{color:var(--coral)}
+.crumb.active{color:var(--txt);font-weight:700}
+.sep{color:var(--line2)}
+.btn-back{
+  display:none;background:none;border:1px solid var(--line2);color:var(--txt-s);
+  padding:5px 14px;border-radius:6px;font-size:11px;cursor:pointer;
+  font-family:'Montserrat',sans-serif;transition:.15s
+}
+.btn-back:hover{border-color:var(--coral);color:var(--coral)}
+
+/* PÁGINAS */
+.page{display:none;min-height:100vh}
+.page.active{display:block}
+
+/* HERO */
+.hero{text-align:center;padding:36px 32px 8px}
+.hero-title{font-size:36px;font-weight:800;color:var(--verde-dark);line-height:1.1;margin-bottom:6px}
+.hero-title em{color:var(--coral);font-style:normal}
+.hero-sub{font-size:12px;color:var(--txt-s);margin-bottom:8px}
+.hero-slogan{font-size:10px;color:var(--txt-m);letter-spacing:2px;text-transform:uppercase}
+.hero-slogan b{color:var(--coral);font-weight:800}
+
+/* ORGANISMO — canvas SVG + nós posicionados */
+.org-stage{
+  position:relative;
+  width:100%;max-width:1100px;
+  margin:0 auto;
+  height:620px;
+  padding:0 40px;
+}
+.org-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+
+/* NÓS */
+.nó{
+  position:absolute;z-index:10;
+  background:var(--card);border:1.5px solid var(--line);border-radius:14px;
+  padding:16px 18px;cursor:pointer;transition:.2s;
+  box-shadow:0 2px 12px rgba(38,54,30,.05);
+  width:210px;
+}
+.nó:hover{transform:translateY(-3px) scale(1.02);border-color:var(--coral);box-shadow:0 8px 24px rgba(237,104,66,.12)}
+.nó.info{cursor:default;opacity:.75}
+.nó.info:hover{transform:none;border-color:var(--line);box-shadow:0 2px 12px rgba(38,54,30,.05)}
+
+/* Borda lateral colorida */
+.nó::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px}
+.nó.verde::before{background:var(--verde)}
+.nó.azul::before{background:var(--azul)}
+.nó.coral::before{background:var(--coral)}
+.nó.cinza::before{background:var(--cinza);opacity:.5}
+.nó:hover::before{background:var(--coral)!important}
+
+.nó-icon{font-size:20px;margin-bottom:6px;display:block}
+.nó-title{font-size:12px;font-weight:800;color:var(--txt);margin-bottom:3px}
+.nó-desc{font-size:9.5px;color:var(--txt-s);line-height:1.6;margin-bottom:8px}
+.nó-kpi{font-size:22px;font-weight:800;line-height:1;margin-bottom:2px}
+.nó-kpi.verde{color:var(--verde)}
+.nó-kpi.azul{color:var(--azul)}
+.nó-kpi.coral{color:var(--coral)}
+.nó-kpi-label{font-size:8.5px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.nó-cta{font-size:9px;color:var(--coral);font-weight:700;margin-top:8px;opacity:.8}
+
+/* Tags de canal */
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tag{padding:2px 7px;border-radius:3px;font-size:8.5px;font-weight:700}
+.tag.mi{background:rgba(108,156,55,.1);color:var(--verde)}
+.tag.me{background:rgba(73,148,199,.1);color:var(--azul)}
+.tag.ec{background:rgba(237,104,66,.1);color:var(--coral)}
+.tag.pe{background:rgba(113,112,111,.1);color:var(--cinza)}
+
+/* Semanas mini */
+.sems{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px}
+.sem{background:var(--card2);border-radius:5px;padding:5px 6px;text-align:center}
+.sem.ok{background:rgba(108,156,55,.08);border:1px solid rgba(108,156,55,.2)}
+.sem.warn{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2)}
+.sem-n{font-size:7.5px;color:var(--txt-m);font-weight:700}
+.sem-v{font-size:12px;font-weight:800;color:var(--txt)}
+.sem-r{font-size:7px;color:var(--txt-m);margin-top:1px}
+
+/* NÓ CENTRAL — ESTOQUE */
+.nó-central{
+  position:absolute;z-index:10;
+  background:var(--card);border:2px solid var(--coral);border-radius:16px;
+  padding:20px 24px;cursor:pointer;transition:.2s;
+  box-shadow:0 4px 24px rgba(237,104,66,.1);
+  width:240px;text-align:center;
+}
+.nó-central:hover{transform:translateY(-3px);box-shadow:0 10px 32px rgba(237,104,66,.18)}
+.nó-central-icon{font-size:28px;margin-bottom:8px}
+.nó-central-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:4px}
+.nó-central-kpi{font-size:36px;font-weight:800;color:var(--coral);line-height:1;margin-bottom:3px}
+.nó-central-sub{font-size:10px;color:var(--txt-s);margin-bottom:8px}
+.nó-central-bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.nó-central-fill{height:100%;background:var(--verde);border-radius:2px}
+.nó-central-stats{display:flex;justify-content:space-between;font-size:9px;color:var(--txt-m)}
+.nó-central-stats span{font-weight:600}
+.nó-central-cta{font-size:9px;color:var(--coral);font-weight:700;margin-top:8px;opacity:.8}
+
+/* NÓ IA */
+.nó-ia{
+  position:absolute;z-index:10;
+  background:linear-gradient(135deg,var(--verde-dark),#1a2a14);
+  border-radius:50%;width:160px;height:160px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;transition:.25s;
+  box-shadow:0 4px 24px rgba(38,54,30,.2);
+  animation:pulse-ia 3s ease-in-out infinite
+}
+.nó-ia:hover{transform:scale(1.06);box-shadow:0 8px 36px rgba(38,54,30,.35)}
+@keyframes pulse-ia{
+  0%,100%{box-shadow:0 4px 24px rgba(38,54,30,.2),0 0 0 0 rgba(237,104,66,.15)}
+  50%{box-shadow:0 4px 24px rgba(38,54,30,.2),0 0 0 16px rgba(237,104,66,0)}
+}
+.ia-main{font-size:30px;font-weight:800;color:var(--coral);line-height:1}
+.ia-sub{font-size:8px;color:rgba(243,240,235,.5);letter-spacing:1.5px;text-transform:uppercase;margin-top:3px}
+.ia-label{font-size:8px;color:rgba(243,240,235,.3);margin-top:6px;font-weight:600;letter-spacing:.08em}
+.ia-dots{display:flex;gap:4px;margin-top:6px}
+.ia-dot{width:5px;height:5px;border-radius:50%;animation:blink 2s ease-in-out infinite}
+.ia-dot:nth-child(1){background:var(--coral);animation-delay:0s}
+.ia-dot:nth-child(2){background:var(--azul);animation-delay:.4s}
+.ia-dot:nth-child(3){background:var(--verde);animation-delay:.8s}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* OUTPUTS */
+.nó-output{
+  position:absolute;z-index:10;
+  background:var(--verde-dark);border-radius:10px;
+  padding:12px 16px;cursor:pointer;transition:.2s;
+  box-shadow:0 2px 12px rgba(38,54,30,.15);
+  width:160px;
+}
+.nó-output:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(38,54,30,.25)}
+.nó-output-title{font-size:11px;font-weight:700;color:#f3f0eb;margin-bottom:3px}
+.nó-output-desc{font-size:9px;color:rgba(243,240,235,.5);line-height:1.5}
+
+/* LABELS SECÃO */
+.sec-label{
+  position:absolute;z-index:2;
+  font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:2.5px;
+  color:var(--txt-m);opacity:.6
+}
+
+/* FASES */
+.fases{
+  max-width:1100px;margin:0 auto;padding:8px 40px 48px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px
+}
+.fase{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;position:relative;overflow:hidden}
+.fase::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.fase.f1::before{background:var(--verde)}
+.fase.f2::before{background:var(--coral)}
+.fase.f3::before{background:var(--azul)}
+.fn{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-m);margin-bottom:4px}
+.ft{font-size:12px;font-weight:700;color:var(--txt);margin-bottom:5px}
+.fd{font-size:10.5px;color:var(--txt-s);line-height:1.6}
+.fs{display:inline-block;margin-top:8px;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700}
+.done{background:rgba(108,156,55,.1);color:var(--verde)}
+.prog{background:rgba(237,104,66,.1);color:var(--coral)}
+.pend{background:rgba(113,112,111,.1);color:var(--cinza)}
+
+/* MÓDULOS */
+.mod-header{background:#fff;border-bottom:1px solid var(--line);padding:12px 32px;display:flex;align-items:center;gap:14px}
+.mod-icon{font-size:18px}
+.mod-title{font-size:15px;font-weight:700;color:var(--txt)}
+.mod-sub{font-size:10px;color:var(--txt-s)}
+.mod-frame{width:100%;border:none;min-height:calc(100vh - 110px)}
+
+/* alerta */
+.alerta-val{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2);border-radius:5px;padding:4px 9px;font-size:8.5px;color:var(--coral);font-weight:600;margin-top:6px;display:inline-block}
+
+@media(max-width:900px){
+  .org-stage{height:auto;min-height:500px}
+  .fases{grid-template-columns:1fr;padding:8px 16px 40px}
+  .hero-title{font-size:26px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="logo">BOAONDA <span>Intelligence</span></div>
+    <div class="bc" id="bc">
+      <span class="crumb active" onclick="goHome()">Home</span>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn-back" id="btn-back" onclick="goHome()">← Início</button>
+    <a href="/upload" style="font-size:11px;color:var(--txt-s);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:6px 10px" title="Atualizar dados (3YS/ESQT)">⟳ Atualizar dados</a>
+    <div class="hright">Base: 3YS · ESQT<br>Atualizado: <strong id="hdr-data">–</strong></div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+
+  <div class="hero">
+    <div class="hero-title">Boaonda <em>Intelligence</em></div>
+    <div class="hero-sub">Sistema de equilíbrio entre mercado e indústria</div>
+    <div class="hero-slogan">VAI COM TUDO, <b>VAI DE BOA!</b></div>
+  </div>
+
+  <!-- ORGANISMO -->
+  <div class="org-stage" id="stage">
+
+    <!-- Labels de seção -->
+    <span class="sec-label" style="left:48px;top:24px">Mercado</span>
+    <span class="sec-label" style="right:48px;top:24px;text-align:right">Indústria</span>
+    <span class="sec-label" style="left:50%;transform:translateX(-50%);bottom:8px">Equilíbrio</span>
+
+    <!-- SVG CONEXÕES -->
+    <svg class="org-svg" viewBox="0 0 1020 620" preserveAspectRatio="none">
+      <defs>
+        <marker id="ac" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M1 2L8 5L1 8" fill="none" stroke="#ed6842" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+        <marker id="av" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M1 2L8 5L1 8" fill="none" stroke="#6c9c37" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+        <marker id="aa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M1 2L8 5L1 8" fill="none" stroke="#4994c7" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+      </defs>
+
+      <!-- Vendas → Estoque -->
+      <path d="M 225 150 Q 340 150 388 290" stroke="#6c9c37" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#av)"/>
+      <!-- Programação → Estoque -->
+      <path d="M 795 180 Q 670 180 632 290" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
+
+      <!-- Estoque → IA -->
+      <path d="M 510 420 L 510 450" stroke="#ed6842" stroke-width="2" fill="none" stroke-dasharray="6 4" opacity=".6" marker-end="url(#ac)"/>
+      <!-- Vendas → IA (secundária) -->
+      <path d="M 225 200 Q 225 490 430 510" stroke="#6c9c37" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#av)"/>
+      <!-- Programação → IA (secundária) -->
+      <path d="M 795 240 Q 795 490 590 510" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
+
+      <!-- IA → Output Comercial -->
+      <path d="M 460 540 Q 350 540 320 555" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
+      <!-- IA → Output PCP -->
+      <path d="M 560 540 Q 670 540 700 555" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
+    </svg>
+
+    <!-- NÓ: VENDAS (esq topo) -->
+    <div class="nó verde" style="left:40px;top:60px" onclick="abrirModulo('vendas')">
+      <span class="nó-icon">📊</span>
+      <div class="nó-title">Vendas</div>
+      <div class="nó-desc">MI · ME · E-commerce · PE</div>
+      <div class="nó-kpi verde" id="kpi-v-total">–</div>
+      <div class="nó-kpi-label">pares · <span id="kpi-v-mes">Jun/2026</span></div>
+      <div class="tags" id="tags-canais"></div>
+      <div id="alerta-v"></div>
+      <div class="nó-cta">Analisar vendas →</div>
+    </div>
+
+    <!-- NÓ: PROGRAMAÇÃO (dir topo) -->
+    <div class="nó azul" style="right:40px;top:80px" onclick="abrirModulo('programacao')">
+      <span class="nó-icon">🏭</span>
+      <div class="nó-title">Programação</div>
+      <div class="nó-desc">PCP · dt_plano · 30k/sem</div>
+      <div class="nó-kpi azul" id="kpi-p-total">–</div>
+      <div class="nó-kpi-label">pares · <span id="kpi-p-mes">Jun/2026</span></div>
+      <div class="sems" id="sems-mini"></div>
+      <div class="nó-cta">Analisar programação →</div>
+    </div>
+
+    <!-- NÓ: CATÁLOGO (dir meio) -->
+    <div class="nó cinza info" style="right:40px;top:340px">
+      <span class="nó-icon">📋</span>
+      <div class="nó-title">Catálogo</div>
+      <div class="nó-desc">271 referências · 2.932 SKUs</div>
+      <div class="nó-kpi azul">3</div>
+      <div class="nó-kpi-label">níveis hierárquicos</div>
+    </div>
+
+    <!-- NÓ CENTRAL: ESTOQUE -->
+    <div class="nó-central" style="left:50%;top:230px;transform:translateX(-50%)" onclick="abrirModulo('estoque')">
+      <div class="nó-central-icon">📦</div>
+      <div class="nó-central-label">Estoque PA — Disponível</div>
+      <div class="nó-central-kpi" id="kpi-e-livre">–</div>
+      <div class="nó-central-sub">pares livres para venda</div>
+      <div class="nó-central-bar"><div class="nó-central-fill" id="e-pct" style="width:0%"></div></div>
+      <div class="nó-central-stats">
+        <div>Físico <span id="kpi-e-fisico" style="color:var(--azul)">–</span></div>
+        <div>Reservas <span id="kpi-e-reservas" style="color:var(--cinza)">–</span></div>
+      </div>
+      <div class="nó-central-cta">Analisar estoque →</div>
+    </div>
+
+    <!-- NÓ IA (centro baixo) -->
+    <div class="nó-ia" style="left:50%;top:450px;transform:translateX(-50%)" onclick="abrirModulo('equilibrio')">
+      <div class="ia-main">IA</div>
+      <div class="ia-sub">Intelligence</div>
+      <div class="ia-label">Motor de equilíbrio</div>
+      <div class="ia-dots">
+        <div class="ia-dot"></div>
+        <div class="ia-dot"></div>
+        <div class="ia-dot"></div>
+      </div>
+    </div>
+
+    <!-- OUTPUT: COMERCIAL (esq baixo) -->
+    <div class="nó-output" style="left:120px;top:543px" onclick="abrirModulo('vendas')">
+      <div class="nó-output-title">Para Comercial</div>
+      <div class="nó-output-desc">O que vender · quando · para quem</div>
+    </div>
+
+    <!-- OUTPUT: PCP (dir baixo) -->
+    <div class="nó-output" style="right:120px;top:543px" onclick="abrirModulo('programacao')">
+      <div class="nó-output-title">Para PCP</div>
+      <div class="nó-output-desc">O que produzir · ordem · semana</div>
+    </div>
+
+  </div><!-- /stage -->
+
+  <!-- FASES -->
+  <div class="fases">
+    <div class="fase f1">
+      <div class="fn">Fase 1 — Base</div>
+      <div class="ft">Dados & Catálogo</div>
+      <div class="fd">Vendas, programação e estoque PA conectados à base 3YS e ESQT.</div>
+      <div class="fs done">✅ Concluída</div>
+    </div>
+    <div class="fase f2">
+      <div class="fn">Fase 2 — Motor</div>
+      <div class="ft">Simulador de Equilíbrio</div>
+      <div class="fd">Cruzar carteira aberta com capacidade e estoque. Gaps e folgas por semana.</div>
+      <div class="fs prog">⚙️ Em construção</div>
+    </div>
+    <div class="fase f3">
+      <div class="fn">Fase 3 — IA</div>
+      <div class="ft">Pedido Extra Ideal</div>
+      <div class="fd">Recomendação automática que maximiza eficiência sem comprometer capacidade.</div>
+      <div class="fs pend">⏳ Próxima fase</div>
+    </div>
+  </div>
+
+</div><!-- /home -->
+
+<!-- MÓDULOS -->
+<div class="page" id="page-vendas">
+  <div class="mod-header">
+    <div class="mod-icon">📊</div>
+    <div><div class="mod-title">Vendas & Catálogo</div><div class="mod-sub">MI · ME · E-commerce · Pronta Entrega · jan/2025–jun/2026</div></div>
+  </div>
+  <iframe class="mod-frame" id="frame-vendas" src="" title="Vendas"></iframe>
+</div>
+
+<div class="page" id="page-programacao">
+  <div class="mod-header">
+    <div class="mod-icon">🏭</div>
+    <div><div class="mod-title">Programação de Produção</div><div class="mod-sub">Semanas por dt_plano · Meta 30.000 pares/semana</div></div>
+  </div>
+  <iframe class="mod-frame" id="frame-programacao" src="" title="Programação"></iframe>
+</div>
+
+<div class="page" id="page-estoque">
+  <div class="mod-header">
+    <div class="mod-icon">📦</div>
+    <div><div class="mod-title">Estoque Disponível</div><div class="mod-sub">Locais 30·156·157·158·159·160·234·VI · físico · reservas · livre</div></div>
+  </div>
+  <iframe class="mod-frame" id="frame-estoque" src="" title="Estoque"></iframe>
+</div>
+
+<div class="page" id="page-equilibrio">
+  <div class="mod-header">
+    <div class="mod-icon">⚖️</div>
+    <div><div class="mod-title">Motor de Equilíbrio</div><div class="mod-sub">Cruzamento carteira × programação × estoque — Fase 2</div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:14px;background:var(--bg)">
+    <div style="font-size:44px">⚙️</div>
+    <div style="font-size:18px;font-weight:800;color:var(--coral)">Em construção — Fase 2</div>
+    <div style="font-size:12px;color:var(--txt-s);text-align:center;max-width:420px;line-height:1.8">O motor vai cruzar carteira aberta, capacidade produtiva e estoque disponível para identificar gaps e recomendar o pedido extra ideal semana a semana.</div>
+  </div>
+</div>
+
+<script>
+const MODS={
+  vendas:{file:'boaonda_vendas_catalogo.html',label:'Vendas & Catálogo'},
+  programacao:{file:'boaonda_programacao_v3.html',label:'Programação'},
+  estoque:{file:'boaonda_estoque.html',label:'Estoque'},
+  equilibrio:{file:null,label:'Equilíbrio'},
+};
+function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
+
+// Carregar JSON
+fetch('dados_portal.json?_='+Date.now())
+  .then(r=>r.json()).then(render)
+  .catch(()=>render(fallback()));
+
+function fallback(){return{
+  gerado_em:'–',
+  vendas:{mes_label:'Jun/2026',canais_mes:{MI:14759,ME:0,ECOM:547,PE:8616},total_mes:23922,pendente_validacao:true},
+  programacao:{mes_label:'Jun/2026',total_mes:124605,semanas:{
+    '2026-S23':{total:32244,range:'01–07/Jun',ok:true},
+    '2026-S24':{total:27330,range:'08–14/Jun',ok:false},
+    '2026-S25':{total:31569,range:'15–21/Jun',ok:true},
+    '2026-S26':{total:33462,range:'22–28/Jun',ok:true},
+  }},
+  estoque:{fisico:147378,reservas:29890,livre:117488}
+};}
+
+function render(d){
+  document.getElementById('hdr-data').textContent = d.gerado_em||'–';
+
+  // VENDAS
+  const v=d.vendas;
+  document.getElementById('kpi-v-total').textContent=f(v.total_mes);
+  document.getElementById('kpi-v-mes').textContent=v.mes_label;
+  const cm=v.canais_mes||{};
+  document.getElementById('tags-canais').innerHTML=`
+    <span class="tag mi">MI ${f(cm.MI)}</span>
+    <span class="tag me">ME ${f(cm.ME)}</span>
+    <span class="tag ec">E-com ${f(cm.ECOM)}</span>
+    <span class="tag pe">PE ${f(cm.PE)}</span>`;
+  if(v.pendente_validacao)
+    document.getElementById('alerta-v').innerHTML='<div class="alerta-val">⚠️ MI em validação</div>';
+
+  // PROGRAMAÇÃO
+  const p=d.programacao;
+  document.getElementById('kpi-p-total').textContent=f(p.total_mes);
+  document.getElementById('kpi-p-mes').textContent=p.mes_label;
+  const sm=document.getElementById('sems-mini');
+  Object.entries(p.semanas||{}).forEach(([k,s])=>{
+    const n=k.replace('2026-S','S');
+    sm.innerHTML+=`<div class="sem ${s.ok?'ok':'warn'}">
+      <div class="sem-n">${n}</div>
+      <div class="sem-v">${f(s.total)}</div>
+      <div class="sem-r">${s.range}</div>
+    </div>`;
+  });
+
+  // ESTOQUE
+  const e=d.estoque;
+  document.getElementById('kpi-e-livre').textContent=f(e.livre);
+  document.getElementById('kpi-e-fisico').textContent=f(e.fisico);
+  document.getElementById('kpi-e-reservas').textContent=f(e.reservas);
+  const pct=e.fisico?Math.round(e.livre/e.fisico*100):0;
+  document.getElementById('e-pct').style.width=pct+'%';
+}
+
+function goHome(){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-home').classList.add('active');
+  document.getElementById('btn-back').style.display='none';
+  document.getElementById('bc').innerHTML='<span class="crumb active" onclick="goHome()">Home</span>';
+}
+
+function abrirModulo(id){
+  if(!MODS[id]) return;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.getElementById('btn-back').style.display='block';
+  document.getElementById('bc').innerHTML=`
+    <span class="crumb" onclick="goHome()">Home</span>
+    <span class="sep">›</span>
+    <span class="crumb active">${MODS[id].label}</span>`;
+  const fr=document.getElementById('frame-'+id);
+  if(fr&&MODS[id].file&&!fr.src.includes(MODS[id].file)) fr.src=MODS[id].file+'?_='+Date.now();
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>

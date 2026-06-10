@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Estoque Disponível</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0D0F14;--card:#161B25;--card2:#1E2535;--border:#2A3347;
+  --gold:#C9A84C;--gold-l:#E8C97A;
+  --blue:#3B82F6;--green:#10B981;--red:#EF4444;--amber:#F59E0B;
+  --txt:#F1F5F9;--txt-s:#94A3B8;--txt-m:#64748B;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-height:100vh}
+
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.brand{font-family:'Playfair Display',serif;font-size:18px;color:var(--gold-l)}
+.brand span{color:var(--txt-s);font-family:'DM Sans',sans-serif;font-size:12px;margin-left:10px}
+.hmeta{font-size:11px;color:var(--txt-m);text-align:right;line-height:1.9}
+.hmeta strong{color:var(--txt-s)}
+
+.filtros{background:var(--card2);border-bottom:1px solid var(--border);padding:9px 32px;font-size:10px;color:var(--txt-m);display:flex;gap:18px;flex-wrap:wrap}
+.fi{display:flex;align-items:center;gap:5px}
+.fl{text-transform:uppercase;letter-spacing:.08em}
+.fv{color:var(--gold);font-weight:600}
+
+.main{padding:24px 32px;max-width:1440px;margin:0 auto}
+.stitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--gold);border-radius:10px;padding:16px}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
+.kpi-v{font-family:'Playfair Display',serif;font-size:2rem;color:var(--gold-l);line-height:1}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;margin-top:4px}
+.ok{background:rgba(16,185,129,.12);color:var(--green)}
+.warn{background:rgba(245,158,11,.12);color:var(--amber)}
+.crit{background:rgba(239,68,68,.12);color:var(--red)}
+.info{background:rgba(59,130,246,.12);color:var(--blue)}
+
+.crow{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
+.ccard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.ctitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-m);margin-bottom:14px}
+
+/* TABELA PRINCIPAL */
+.tcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:18px;overflow-x:auto}
+.search-bar{display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.search-inp{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--txt);font-size:12px;flex:1;min-width:160px;outline:none}
+.search-inp:focus{border-color:var(--gold)}
+.cnt{font-size:11px;color:var(--txt-m);white-space:nowrap}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap}
+th:hover{color:var(--txt-s)}
+td{padding:8px 12px;border-bottom:1px solid rgba(42,51,71,.4);color:var(--txt-s);vertical-align:top}
+tr:last-child td{border:none}
+tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
+.td-ref{font-weight:600;color:var(--txt)}
+.tn{font-family:'Playfair Display',serif;font-size:13px}
+.tl{color:var(--gold-l)}
+.tr2{color:var(--amber)}
+.tg{color:var(--green)}
+.mbar-wrap{min-width:80px}
+.mbar{height:4px;border-radius:2px;opacity:.7}
+
+/* DETALHAMENTO */
+.det-row{display:none;background:var(--card2)}
+.det-row.open{display:table-row}
+.det-inner{padding:12px 16px 16px}
+.det-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:10px}
+.combs-grid{display:flex;flex-wrap:wrap;gap:6px}
+.comb-pill{background:var(--card);border:1px solid var(--border);border-radius:5px;padding:5px 10px;font-size:10px}
+.comb-ref{color:var(--txt-s)}
+.comb-livre{color:var(--green);font-weight:600;margin-left:6px}
+.comb-res{color:var(--amber);font-size:9px;margin-left:4px}
+.comb-zero{opacity:.4}
+
+/* STATUS */
+.tag{display:inline-block;padding:1px 7px;border-radius:3px;font-size:9px;font-weight:600}
+.tag-ok{background:rgba(16,185,129,.12);color:var(--green)}
+.tag-res{background:rgba(245,158,11,.12);color:var(--amber)}
+.tag-zer{background:rgba(100,116,139,.1);color:var(--txt-m)}
+
+@media(max-width:800px){.crow{grid-template-columns:1fr}.main{padding:14px}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">Boaonda Intelligence <span>· Estoque Disponível</span></div>
+  <div class="hmeta">Base: ESQT · Atualizado: <strong id="hdr-data">10/Jun/2026</strong></div>
+</div>
+
+<div class="filtros">
+  <div class="fi"><span class="fl">Locais</span><span class="fv">30 · 156 · 157 · 158 · 159 · 160 · 234 · VI</span></div>
+  <div class="fi"><span class="fl">Livre</span><span class="fv">físico − reservas = disponível real para venda</span></div>
+</div>
+
+<div class="main">
+
+<div class="stitle">Resumo do estoque</div>
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-l">Total físico</div>
+    <div class="kpi-v" id="k-fisico">143.970</div>
+    <div class="kpi-s">Pares em estoque físico</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">Reservas</div>
+    <div class="kpi-v" id="k-reservas">29.260</div>
+    <div class="kpi-s">Comprometido — não disponível</div>
+    <div class="badge warn" id="k-pct-reservas">20,3% do físico</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">Livre — disponível</div>
+    <div class="kpi-v" id="k-livre">114.710</div>
+    <div class="kpi-s">Pares para venda imediata</div>
+    <div class="badge ok" id="k-pct-livre">79,7% do físico</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">Valor livre</div>
+    <div class="kpi-v">R$ 5,8M</div>
+    <div class="kpi-s">Estoque disponível em R$</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">Referências com estoque</div>
+    <div class="kpi-v" id="k-refs">38</div>
+    <div class="kpi-s">Produtos nos locais filtrados</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">100% reservado</div>
+    <div class="kpi-v">4</div>
+    <div class="kpi-s">ICARAI · CAREN · ZEN · CAPRI</div>
+    <div class="badge crit">livre = 0</div>
+  </div>
+</div>
+
+<div class="crow">
+  <div class="ccard">
+    <div class="ctitle">Top 15 referências — pares livres</div>
+    <div style="position:relative;height:280px"><canvas id="c-top"></canvas></div>
+  </div>
+  <div class="ccard">
+    <div class="ctitle">Físico × Reservas × Livre</div>
+    <div style="position:relative;height:280px"><canvas id="c-stk"></canvas></div>
+  </div>
+</div>
+
+<div class="stitle">Estoque por referência — clique para ver combinações</div>
+<div class="tcard">
+  <div class="search-bar">
+    <input class="search-inp" id="srch" type="text" placeholder="Buscar referência ou descrição..." oninput="filtrar()">
+    <div class="cnt" id="cnt">38 referências</div>
+  </div>
+  <table id="tbl">
+    <thead><tr>
+      <th onclick="sort('ref')">Referência</th>
+      <th onclick="sort('descr')">Descrição</th>
+      <th onclick="sort('fisico')">Físico</th>
+      <th onclick="sort('reservas')">Reservas</th>
+      <th onclick="sort('livre')" style="color:var(--gold)">Livre ↓</th>
+      <th>% Livre</th>
+      <th>Volume</th>
+      <th>Status</th>
+    </tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+let DATA = {};
+let currentData = {};
+let chartTop=null, chartStk=null;
+
+Chart.defaults.color='#64748B';Chart.defaults.borderColor='#2A3347';
+Chart.defaults.font.family="'DM Sans',sans-serif";
+const TIP={backgroundColor:'#1E2535',borderColor:'#2A3347',borderWidth:1,titleColor:'#F1F5F9',bodyColor:'#94A3B8',padding:12,cornerRadius:8};
+function f(n){return(n||0).toLocaleString('pt-BR')}
+function pct(a,b){return b?Math.round(a/b*100):0}
+
+// Carregar dados do JSON externo
+fetch('dados_estoque.json?_=' + Date.now())
+  .then(r => { if(!r.ok) throw new Error(); return r.json(); })
+  .then(d => {
+    DATA = d.refs || {};
+    currentData = {...DATA};
+    // Atualizar KPIs com dados novos
+    const t = d.totais || {};
+    document.getElementById('k-livre').textContent = f(t.livre);
+    document.getElementById('k-fisico').textContent = f(t.fisico);
+    document.getElementById('k-reservas').textContent = f(t.reservas);
+    document.getElementById('k-pct-reservas').textContent = pct(t.reservas,t.fisico) + '% do físico';
+    document.getElementById('k-pct-livre').textContent = pct(t.livre,t.fisico) + '% do físico';
+    document.getElementById('k-refs').textContent = Object.keys(DATA).length;
+    document.getElementById('hdr-data').textContent = d.gerado_em || '–';
+    renderCharts(t);
+    render();
+  })
+  .catch(() => {
+    // Fallback: usar dados embutidos
+    render();
+  })
+
+function renderCharts(t){
+  t = t || {};
+  // Top 15 chart
+  const refs = Object.keys(DATA);
+  const top15 = refs.slice(0,15);
+  if(chartTop) chartTop.destroy();
+  chartTop = new Chart(document.getElementById('c-top'),{type:'bar',data:{
+    labels:top15.map(r=>r.split(' ').slice(0,2).join(' ')),
+    datasets:[
+      {label:'Livre',data:top15.map(r=>DATA[r].livre),backgroundColor:'#10B98188',borderRadius:3},
+      {label:'Reservas',data:top15.map(r=>DATA[r].reservas),backgroundColor:'#F59E0B55',borderRadius:3},
+    ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},tooltip:{...TIP,mode:'index'}},
+      scales:{x:{stacked:true,ticks:{callback:v=>f(v)}},y:{stacked:true,grid:{display:false},ticks:{font:{size:10}}}}}
+  });
+
+  // Físico x Reservas x Livre totais
+  if(chartStk) chartStk.destroy();
+  chartStk = new Chart(document.getElementById('c-stk'),{type:'doughnut',data:{
+    labels:['Livre','Reservas'],
+    datasets:[{data:[t.livre||0,t.reservas||0],backgroundColor:['#10B981','#F59E0B'],borderWidth:0,hoverOffset:6}]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'right',labels:{boxWidth:10,font:{size:10}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${f(ctx.raw)} pares (${pct(ctx.raw,t.fisico)}%)`}}}}
+  });
+}
+
+// Tabela
+let sortKey = 'livre';
+let sortDir = -1;
+
+function sort(key){
+  if(sortKey===key) sortDir*=-1; else{sortKey=key;sortDir=-1;}
+  render();
+}
+
+function filtrar(){
+  const q = document.getElementById('srch').value.toLowerCase();
+  currentData = {};
+  Object.entries(DATA).forEach(([ref,d])=>{
+    if(!q||ref.toLowerCase().includes(q)||d.descricaoCompleta.toLowerCase().includes(q))
+      currentData[ref]=d;
+  });
+  render();
+}
+
+function render(){
+  const maxL = Math.max(...Object.values(DATA).map(d=>d.livre));
+  let entries = Object.entries(currentData);
+  entries.sort(([ra,a],[rb,b])=>{
+    const va = sortKey==='ref'?ra:sortKey==='descr'?a.descricaoCompleta:a[sortKey]||0;
+    const vb = sortKey==='ref'?rb:sortKey==='descr'?b.descricaoCompleta:b[sortKey]||0;
+    return sortDir*(typeof va==='string'?va.localeCompare(vb):vb-va);
+  });
+  document.getElementById('cnt').textContent = entries.length+' referências';
+  const tb = document.getElementById('tbody');
+  tb.innerHTML='';
+  entries.forEach(([ref,d],i)=>{
+    const pL = d.fisico?Math.round(d.livre/d.fisico*100):0;
+    const barW = Math.round(d.livre/maxL*100);
+    const status = d.livre===0?`<span class="tag tag-zer">ZERADO</span>`:
+                   pL<30?`<span class="tag tag-res">CRÍTICO</span>`:
+                   `<span class="tag tag-ok">OK</span>`;
+    const tr = document.createElement('tr');
+    tr.className='expandable';
+    tr.onclick=()=>toggleDet(ref);
+    tr.innerHTML=`
+      <td><div class="td-ref">${ref}</div></td>
+      <td style="color:var(--txt-s);font-size:11px">${d.descricaoCompleta}</td>
+      <td class="tn">${f(d.fisico)}</td>
+      <td class="tn tr2">${f(d.reservas)}</td>
+      <td class="tn tl">${f(d.livre)}</td>
+      <td style="font-size:11px;color:${pL<30?'var(--red)':pL<60?'var(--amber)':'var(--green)'}">${pL}%</td>
+      <td class="mbar-wrap"><div class="mbar" style="width:${barW}%;background:${d.livre>5000?'var(--green)':d.livre>1000?'var(--amber)':'var(--red)'}"></div></td>
+      <td>${status}</td>`;
+    tb.appendChild(tr);
+
+    // Linha de detalhe
+    const det = document.createElement('tr');
+    det.className='det-row';
+    det.id='det-'+ref.replace(/\s/g,'_');
+    const combs = d.combinacoes || {};
+    const combHtml = Object.entries(combs).map(([comb,cv])=>`
+      <span class="comb-pill ${cv.livre===0?'comb-zero':''}">
+        <span class="comb-ref">${comb}</span>
+        <span class="comb-livre">${f(cv.livre)}</span>
+        ${cv.reservas?`<span class="comb-res">res:${f(cv.reservas)}</span>`:''}
+      </span>`).join('');
+    det.innerHTML=`<td colspan="8"><div class="det-inner">
+      <div class="det-title">Nível 3 — Combinações (${d.qtd_combinacoes} total) · Locais: ${(d.locais||[]).join(', ')}</div>
+      <div class="combs-grid">${combHtml||'<span style="font-size:11px;color:var(--txt-m)">Detalhamento não disponível</span>'}</div>
+    </div></td>`;
+    tb.appendChild(det);
+  });
+}
+
+function toggleDet(ref){
+  const el = document.getElementById('det-'+ref.replace(/\s/g,'_'));
+  if(el) el.classList.toggle('open');
+}
+
+render();
+</script>
+</body>
+</html>

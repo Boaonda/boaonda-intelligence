@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Programação de Produção</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#71706f;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#f8f5f1;--card:#ffffff;--card2:#f3f0eb;
+  --line:#e2ddd8;--line2:#ccc8c2;
+  --txt:#26361e;--txt-s:#71706f;--txt-m:#9b9895;
+  --cl:#3B82F6;--ev:#10B981;--wk:#F59E0B;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+.header{background:#fff;border-bottom:1px solid var(--line);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;box-shadow:0 1px 6px rgba(38,54,30,.05)}
+.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
+.hmeta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.9}
+.hmeta strong{color:var(--txt-s)}
+.filtros{background:#fff;border-bottom:1px solid var(--line);padding:10px 32px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.fl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
+.modo-sel{display:flex;background:var(--card2);border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.modo-btn{padding:7px 20px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:none;font-family:'Montserrat',sans-serif;color:var(--txt-m);transition:.15s}
+.modo-btn.active{background:var(--coral);color:#fff}
+.modo-btn:hover:not(.active){background:var(--line);color:var(--txt)}
+.periodo-sel{display:flex;align-items:center;gap:8px}
+.periodo-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--line2);background:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.15s;color:var(--txt-s)}
+.periodo-btn:hover{border-color:var(--coral);color:var(--coral)}
+.periodo-label{font-size:13px;font-weight:700;color:var(--txt);min-width:140px;text-align:center}
+.main{padding:24px 32px;max-width:1400px;margin:0 auto}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+/* KPIs */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:#fff;border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
+.kpi.verde{border-top-color:var(--verde)}
+.kpi.azul{border-top-color:var(--azul)}
+.kpi.cinza{border-top-color:var(--cinza)}
+.kpi.laranja{border-top-color:#f59e0b}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.kpi-v{font-size:1.75rem;font-weight:800;color:var(--coral);line-height:1}
+.kpi-v.verde{color:var(--verde)}
+.kpi-v.azul{color:var(--azul)}
+.kpi-v.cinza{color:var(--cinza)}
+.kpi-v.laranja{color:#f59e0b}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px;line-height:1.4}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;margin-top:4px}
+.ok{background:rgba(108,156,55,.1);color:var(--verde)}
+.warn{background:rgba(237,104,66,.1);color:var(--coral)}
+.crit{background:rgba(239,68,68,.1);color:#ef4444}
+/* Cards semana */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-bottom:24px}
+.sem-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;position:relative;overflow:hidden}
+.sem-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.sem-card.ok::before{background:var(--verde)}
+.sem-card.warn::before{background:var(--coral)}
+.sem-card.crit::before{background:#ef4444}
+.sem-card.atual{border-color:var(--coral);border-width:2px}
+.sem-card.atual::after{content:'ATUAL';position:absolute;top:8px;right:9px;font-size:7px;color:var(--coral);font-weight:800;letter-spacing:.1em}
+.sc-num{font-size:9px;color:var(--txt-m);font-weight:700;text-transform:uppercase;margin-bottom:2px}
+.sc-range{font-size:9.5px;color:var(--txt-s);margin-bottom:8px}
+.sc-total{font-size:1.6rem;font-weight:800;color:var(--txt);line-height:1}
+.sc-delta{font-size:9.5px;font-weight:700;margin-top:4px}
+.sc-delta.ok{color:var(--verde)}.sc-delta.warn{color:var(--coral)}.sc-delta.crit{color:#ef4444}
+.sc-bar{margin-top:8px;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+.sc-fill{height:100%;border-radius:2px}
+.sc-linhas{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.sc-lt{display:flex;align-items:center;gap:3px;font-size:8.5px;color:var(--txt-m)}
+.sc-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sc-tags{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
+.sc-tag{padding:2px 7px;border-radius:3px;font-size:8px;font-weight:700}
+.sc-tag.mi{background:rgba(73,148,199,.12);color:var(--azul)}
+.sc-tag.ex{background:rgba(113,112,111,.12);color:var(--cinza)}
+.sc-tag.pe{background:rgba(113,112,111,.12);color:var(--cinza)}
+.sc-tag.conv{background:rgba(108,156,55,.12);color:var(--verde)}
+.sc-tag.mont{background:rgba(237,104,66,.12);color:var(--coral)}
+.sc-info{font-size:8.5px;color:var(--txt-m);margin-top:5px}
+/* Cards mês */
+.mes-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:12px;position:relative;overflow:hidden}
+.mes-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.mes-card.ok::before{background:var(--verde)}
+.mes-card.warn::before{background:var(--coral)}
+.mes-card.atual{border-left:3px solid var(--coral)}
+.mc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.mc-label{font-size:14px;font-weight:800;color:var(--txt)}
+.mc-total{font-size:1.8rem;font-weight:800;color:var(--coral);line-height:1}
+.mc-meta{font-size:9px;color:var(--txt-m);margin-top:2px}
+.mc-bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:10px}
+.mc-fill{height:100%;border-radius:4px}
+.mc-linhas{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.mc-lt{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--txt-s)}
+.mc-dot{width:8px;height:8px;border-radius:50%}
+.mc-subtags{display:flex;gap:8px;flex-wrap:wrap}
+.mc-subtag{background:var(--card2);border-radius:6px;padding:6px 12px}
+.mc-subtag-label{font-size:9px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.mc-subtag-val{font-weight:800;font-size:14px}
+.mc-subtag-val.mi{color:var(--azul)}
+.mc-subtag-val.ex{color:var(--cinza)}
+.mc-subtag-val.pe{color:var(--cinza)}
+.mc-subtag-val.conv{color:var(--verde)}
+.mc-subtag-val.mont{color:var(--coral)}
+/* Charts */
+.crow{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
+.ccard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px}
+.ctitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-m);margin-bottom:14px}
+.mont-legend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap}
+.mont-leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--txt-s)}
+.mont-leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.mont-totals{display:flex;gap:20px;margin-top:12px}
+.mont-total-item{font-size:11px}
+.mont-total-val{font-weight:800;font-size:16px}
+.mont-total-val.conv{color:var(--verde)}
+.mont-total-val.mont{color:var(--coral)}
+.mont-total-label{font-size:9px;color:var(--txt-m);text-transform:uppercase;letter-spacing:.08em}
+/* Tabela refs período */
+.refs-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:20px;overflow-x:auto}
+.rp-controls{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.rp-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m)}
+.rp-sort{display:flex;gap:6px}
+.rp-sort-btn{padding:4px 12px;border-radius:5px;border:1px solid var(--line2);background:#fff;font-size:10px;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;color:var(--txt-m);transition:.15s}
+.rp-sort-btn.active{background:var(--coral);color:#fff;border-color:var(--coral)}
+.rp-table{width:100%;border-collapse:collapse;font-size:11px;min-width:500px}
+.rp-table th{padding:7px 10px;text-align:right;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid var(--line);white-space:nowrap;cursor:pointer}
+.rp-table th:first-child{text-align:left}
+.rp-table td{padding:7px 10px;text-align:right;border-bottom:1px solid rgba(226,221,216,.4);color:var(--txt-s);white-space:nowrap}
+.rp-table td:first-child{text-align:left;font-weight:700;color:var(--txt)}
+.rp-table .rp-foot td{font-weight:800;color:var(--txt);background:var(--card2);border-top:1px solid var(--line)}
+.rp-table tr:hover:not(.rp-foot) td{background:var(--card2)}
+.rp-empty{color:var(--line2)}
+.rp-total{font-weight:800;color:var(--coral)!important}
+/* Top refs */
+.tcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;overflow-x:auto}
+table.top-refs{width:100%;border-collapse:collapse;font-size:12px}
+table.top-refs th{padding:7px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line)}
+table.top-refs td{padding:8px 12px;border-bottom:1px solid rgba(226,221,216,.5);color:var(--txt-s)}
+table.top-refs tr:last-child td{border:none}
+table.top-refs tr:hover td{background:var(--card2);color:var(--txt)}
+.td-ref{font-weight:700;color:var(--txt)}
+.td-num{font-size:13px;font-weight:800;color:var(--coral)}
+.mbar{height:3px;border-radius:2px;opacity:.7}
+.loading{text-align:center;padding:60px;color:var(--txt-m);font-size:13px;grid-column:1/-1}
+@media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">BOAONDA <span>· Programação de Produção</span></div>
+  <div class="hmeta">Base: 3YS · Seg–Sex · Meta: <strong>30.000 pares/semana</strong><br>Atualizado: <strong id="hdr-data">–</strong></div>
+</div>
+<div class="filtros">
+  <span class="fl">Visualizar por</span>
+  <div class="modo-sel">
+    <button class="modo-btn active" id="btn-semana" onclick="setModo('semana')">Semana</button>
+    <button class="modo-btn" id="btn-mes" onclick="setModo('mes')">Mês</button>
+  </div>
+  <div class="periodo-sel">
+    <button class="periodo-btn" onclick="navPeriodo(-1)">‹</button>
+    <div class="periodo-label" id="periodo-label">–</div>
+    <button class="periodo-btn" onclick="navPeriodo(1)">›</button>
+  </div>
+  <span style="font-size:9px;color:var(--txt-m)">Semanas: seg–sex · fins de semana excluídos</span>
+</div>
+
+<div class="main">
+  <div class="stitle" id="stitle">Semanas de produção</div>
+  <div class="kpi-grid" id="kpi-area"><div class="loading">Carregando dados...</div></div>
+  <div id="view-semana"><div class="cards-grid" id="cards-semana"></div></div>
+  <div id="view-mes" style="display:none"><div id="cards-mes"></div></div>
+  <div class="crow">
+    <div class="ccard"><div class="ctitle" id="chart-title">Evolução semanal por linha de produção</div><div style="position:relative;height:260px"><canvas id="c-ev"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Mix de linhas — período atual</div><div style="position:relative;height:260px"><canvas id="c-mix"></canvas></div></div>
+  </div>
+  <div class="stitle">Montagem — Convencional vs Montado</div>
+  <div class="crow">
+    <div class="ccard">
+      <div class="ctitle">Convencional vs Montado por semana</div>
+      <div style="position:relative;height:240px"><canvas id="c-mont-bar"></canvas></div>
+      <div class="mont-legend">
+        <span class="mont-leg-item"><span class="mont-leg-dot" style="background:var(--verde)"></span>Convencional</span>
+        <span class="mont-leg-item"><span class="mont-leg-dot" style="background:var(--coral)"></span>Montado</span>
+      </div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Volume por tipo de montagem</div>
+      <div style="position:relative;height:200px"><canvas id="c-mont-donut"></canvas></div>
+      <div class="mont-totals" id="mont-totals"></div>
+    </div>
+  </div>
+  <div class="refs-card">
+    <div class="rp-controls">
+      <div class="rp-title" id="rp-title">Referências por período</div>
+      <div class="rp-sort">
+        <button class="rp-sort-btn active" id="sort-vol" onclick="sortRp('total')">Por volume</button>
+        <button class="rp-sort-btn" id="sort-nome" onclick="sortRp('nome')">Por nome</button>
+      </div>
+    </div>
+    <div id="rp-container"><div style="color:var(--txt-m);font-size:12px;padding:10px">Carregando...</div></div>
+  </div>
+  <div class="stitle">Top referências em programação</div>
+  <div class="tcard">
+    <table class="top-refs">
+      <thead><tr><th>#</th><th>Referência</th><th>Pares</th><th>Volume</th></tr></thead>
+      <tbody id="tb-refs"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const META = 30000;
+// DADOS EMBUTIDOS — atualizados em 09/06/2026 18:48
+const _DADOS = {"gerado_em":"09/06/2026 18:48","semanas":{"2026-05-04":{"CLASSIC":18148,"EVA":11928,"WORKS":18,"FIT":0,"DAY BY DAY":660,"OUTROS":12,"total":30766,"label":"04/Mai-08/Mai","pedidos":110,"clientes":92,"top_refs":[["2523 CLOE",5936],["1317 NELLIE",5905],["1319 LILY",4347]],"ok":true,"pct_meta":103,"export":660,"pct_export":2.1,"pe":9168,"pct_pe":29.8,"mi":19302,"pct_mi":62.7,"convencional":26846,"pct_conv":87.3,"montado":3908,"pct_mont":12.7},"2026-05-11":{"CLASSIC":18947,"EVA":14052,"WORKS":516,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":33515,"label":"11/Mai-15/Mai","pedidos":185,"clientes":139,"top_refs":[["2422 ADVENTURE",6144],["1317 NELLIE",5280],["1319 LILY",4931]],"ok":true,"pct_meta":112,"export":864,"pct_export":2.6,"pe":0,"pct_pe":0.0,"mi":32651,"pct_mi":97.4,"convencional":30095,"pct_conv":89.8,"montado":3420,"pct_mont":10.2},"2026-05-18":{"CLASSIC":19032,"EVA":12924,"WORKS":1500,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":33456,"label":"18/Mai-22/Mai","pedidos":14,"clientes":2,"top_refs":[["1319 LILY",5088],["1317 NELLIE",5040],["2225 MOBI",3420]],"ok":true,"pct_meta":112,"export":0,"pct_export":0.0,"pe":33336,"pct_pe":99.6,"mi":120,"pct_mi":0.4,"convencional":28356,"pct_conv":84.8,"montado":5100,"pct_mont":15.2},"2026-05-25":{"CLASSIC":23346,"EVA":10470,"WORKS":144,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":33960,"label":"25/Mai-29/Mai","pedidos":119,"clientes":90,"top_refs":[["1319 LILY",7032],["1317 NELLIE",4044],["2043 SAFE",3732]],"ok":true,"pct_meta":113,"export":2604,"pct_export":7.7,"pe":10920,"pct_pe":32.2,"mi":20220,"pct_mi":59.5,"convencional":29934,"pct_conv":88.1,"montado":4026,"pct_mont":11.9},"2026-06-01":{"CLASSIC":12918,"EVA":18864,"WORKS":462,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":32244,"label":"01/Jun-05/Jun","pedidos":129,"clientes":94,"top_refs":[["1317 NELLIE",6552],["2309 MAXXI",3528],["2422 ADVENTURE",3120]],"ok":true,"pct_meta":107,"export":0,"pct_export":0.0,"pe":17760,"pct_pe":55.1,"mi":14436,"pct_mi":44.8,"convencional":26766,"pct_conv":83.0,"montado":5478,"pct_mont":17.0},"2026-06-08":{"CLASSIC":15870,"EVA":11394,"WORKS":66,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":27330,"label":"08/Jun-12/Jun","pedidos":48,"clientes":32,"top_refs":[["1317 NELLIE",6390],["1319 LILY",5826],["2520 PULSE",5256]],"ok":false,"pct_meta":91,"export":798,"pct_export":2.9,"pe":14760,"pct_pe":54.0,"mi":11772,"pct_mi":43.1,"convencional":26460,"pct_conv":96.8,"montado":870,"pct_mont":3.2},"2026-06-15":{"CLASSIC":13161,"EVA":18048,"WORKS":360,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":31569,"label":"15/Jun-19/Jun","pedidos":15,"clientes":2,"top_refs":[["2601 DUNA",6180],["1319 LILY",5028],["1317 NELLIE",4944]],"ok":true,"pct_meta":105,"export":0,"pct_export":0.0,"pe":30900,"pct_pe":97.9,"mi":0,"pct_mi":0.0,"convencional":27672,"pct_conv":87.7,"montado":3897,"pct_mont":12.3},"2026-06-22":{"CLASSIC":19490,"EVA":12042,"WORKS":1314,"FIT":0,"DAY BY DAY":616,"OUTROS":0,"total":33462,"label":"22/Jun-26/Jun","pedidos":57,"clientes":53,"top_refs":[["1317 NELLIE",8194],["1319 LILY",3446],["2422 ADVENTURE",2782]],"ok":true,"pct_meta":112,"export":24284,"pct_export":72.6,"pe":0,"pct_pe":0.0,"mi":8742,"pct_mi":26.1,"convencional":30044,"pct_conv":89.8,"montado":3418,"pct_mont":10.2},"2026-06-29":{"CLASSIC":18912,"EVA":16050,"WORKS":282,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":35244,"label":"29/Jun-03/Jul","pedidos":155,"clientes":131,"top_refs":[["1317 NELLIE",6396],["1319 LILY",3660],["2309 MAXXI",3156]],"ok":true,"pct_meta":117,"export":7818,"pct_export":22.2,"pe":0,"pct_pe":0.0,"mi":27198,"pct_mi":77.2,"convencional":30126,"pct_conv":85.5,"montado":5118,"pct_mont":14.5},"2026-07-06":{"CLASSIC":18486,"EVA":12096,"WORKS":72,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":30654,"label":"06/Jul-10/Jul","pedidos":115,"clientes":97,"top_refs":[["1319 LILY",5460],["1317 NELLIE",4398],["2422 ADVENTURE",4386]],"ok":true,"pct_meta":102,"export":4122,"pct_export":13.4,"pe":10920,"pct_pe":35.6,"mi":15612,"pct_mi":50.9,"convencional":24480,"pct_conv":79.9,"montado":6174,"pct_mont":20.1},"2026-07-13":{"CLASSIC":3987,"EVA":0,"WORKS":0,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":3987,"label":"13/Jul-17/Jul","pedidos":2,"clientes":2,"top_refs":[["2140 FLOW (INT/EXT)",3915],["2519 RIO",72]],"ok":false,"pct_meta":13,"export":3915,"pct_export":98.2,"pe":0,"pct_pe":0.0,"mi":0,"pct_mi":0.0,"convencional":72,"pct_conv":1.8,"montado":3915,"pct_mont":98.2},"2026-07-20":{"CLASSIC":9648,"EVA":6690,"WORKS":0,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":16338,"label":"20/Jul-24/Jul","pedidos":5,"clientes":3,"top_refs":[["1317 NELLIE",3930],["2422 ADVENTURE",2316],["2225 MOBI",1416]],"ok":false,"pct_meta":54,"export":2784,"pct_export":17.0,"pe":0,"pct_pe":0.0,"mi":13554,"pct_mi":83.0,"convencional":15012,"pct_conv":91.9,"montado":1326,"pct_mont":8.1},"2026-07-27":{"CLASSIC":5202,"EVA":9142,"WORKS":0,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":14344,"label":"27/Jul-31/Jul","pedidos":48,"clientes":47,"top_refs":[["2601 DUNA",2812],["1319 LILY",2358],["2243 BOLT",2064]],"ok":false,"pct_meta":48,"export":10144,"pct_export":70.7,"pe":0,"pct_pe":0.0,"mi":4200,"pct_mi":29.3,"convencional":12308,"pct_conv":85.8,"montado":2036,"pct_mont":14.2},"2026-08-03":{"CLASSIC":540,"EVA":0,"WORKS":0,"FIT":0,"DAY BY DAY":0,"OUTROS":0,"total":540,"label":"03/Ago-07/Ago","pedidos":1,"clientes":1,"top_refs":[["2602 IVY",360],["2521 FLOW 2",180]],"ok":false,"pct_meta":2,"export":0,"pct_export":0.0,"pe":0,"pct_pe":0.0,"mi":540,"pct_mi":100.0,"convencional":360,"pct_conv":66.7,"montado":180,"pct_mont":33.3}},"meses":{"2026-01":{"CLASSIC":61930,"EVA":59570,"WORKS":804,"FIT":0,"OUTROS":0,"total":122304,"label":"Janeiro/2026","pedidos":313,"top_refs":[["1319 LILY",18420],["1317 NELLIE",17796],["2402 EASY",11784]],"meta_mes":120000,"num_semanas":4,"ok":true,"pct_meta":102,"export":19356,"pct_export":15.8,"pe":63822,"pct_pe":52.2,"mi":37422,"pct_mi":30.6,"convencional":93422,"pct_conv":76.4,"montado":28882,"pct_mont":23.6},"2026-02":{"CLASSIC":64454,"EVA":64608,"WORKS":1572,"FIT":0,"OUTROS":1398,"total":132656,"label":"Fevereiro/2026","pedidos":451,"top_refs":[["1319 LILY",19096],["2422 ADVENTURE",15030],["1317 NELLIE",13783]],"meta_mes":120000,"num_semanas":4,"ok":true,"pct_meta":111,"export":27584,"pct_export":20.8,"pe":54744,"pct_pe":41.3,"mi":49104,"pct_mi":37.0,"convencional":107244,"pct_conv":80.8,"montado":24014,"pct_mont":18.1},"2026-03":{"CLASSIC":62213,"EVA":61015,"WORKS":837,"FIT":0,"OUTROS":285,"total":125094,"label":"Março/2026","pedidos":661,"top_refs":[["2422 ADVENTURE",20947],["1319 LILY",20816],["1317 NELLIE",12836]],"meta_mes":150000,"num_semanas":5,"ok":false,"pct_meta":83,"export":7670,"pct_export":6.1,"pe":27708,"pct_pe":22.1,"mi":87732,"pct_mi":70.1,"convencional":101217,"pct_conv":80.9,"montado":23592,"pct_mont":18.9},"2026-04":{"CLASSIC":69671,"EVA":51792,"WORKS":3180,"FIT":0,"OUTROS":436,"total":125079,"label":"Abril/2026","pedidos":556,"top_refs":[["1317 NELLIE",26386],["1319 LILY",16563],["2422 ADVENTURE",12468]],"meta_mes":150000,"num_semanas":5,"ok":false,"pct_meta":83,"export":5040,"pct_export":4.0,"pe":46488,"pct_pe":37.2,"mi":71919,"pct_mi":57.5,"convencional":104095,"pct_conv":83.2,"montado":20508,"pct_mont":16.4},"2026-05":{"CLASSIC":79473,"EVA":49374,"WORKS":2178,"FIT":0,"OUTROS":12,"total":131697,"label":"Maio/2026","pedidos":428,"top_refs":[["1319 LILY",21398],["1317 NELLIE",20269],["2422 ADVENTURE",14128]],"meta_mes":120000,"num_semanas":4,"ok":true,"pct_meta":110,"export":4128,"pct_export":3.1,"pe":53424,"pct_pe":40.6,"mi":72293,"pct_mi":54.9,"convencional":115231,"pct_conv":87.5,"montado":16454,"pct_mont":12.5},"2026-06":{"CLASSIC":67769,"EVA":68676,"WORKS":2472,"FIT":0,"OUTROS":0,"total":139533,"label":"Junho/2026","pedidos":328,"top_refs":[["1317 NELLIE",27682],["1319 LILY",17816],["2422 ADVENTURE",13876]],"meta_mes":150000,"num_semanas":5,"ok":false,"pct_meta":93,"export":32900,"pct_export":23.6,"pe":63420,"pct_pe":45.5,"mi":42060,"pct_mi":30.1,"convencional":122186,"pct_conv":87.6,"montado":17347,"pct_mont":12.4},"2026-07":{"CLASSIC":49905,"EVA":35650,"WORKS":84,"FIT":0,"OUTROS":0,"total":85639,"label":"Julho/2026","pedidos":245,"top_refs":[["1317 NELLIE",13254],["1319 LILY",10956],["2422 ADVENTURE",9090]],"meta_mes":150000,"num_semanas":5,"ok":false,"pct_meta":57,"export":20965,"pct_export":24.5,"pe":10920,"pct_pe":12.8,"mi":53454,"pct_mi":62.4,"convencional":70754,"pct_conv":82.6,"montado":14885,"pct_mont":17.4},"2026-08":{"CLASSIC":540,"EVA":0,"WORKS":0,"FIT":0,"OUTROS":0,"total":540,"label":"Agosto/2026","pedidos":1,"top_refs":[["2602 IVY",360],["2521 FLOW 2",180]],"meta_mes":30000,"num_semanas":1,"ok":false,"pct_meta":2,"export":0,"pct_export":0.0,"pe":0,"pct_pe":0.0,"mi":540,"pct_mi":100.0,"convencional":360,"pct_conv":66.7,"montado":180,"pct_mont":33.3}},"refs_top15":[["1317 NELLIE",380213],["1319 LILY",317069],["2402 EASY",263487],["2422 ADVENTURE",194923],["2309 MAXXI",132514],["2140 FLOW (INT/EXT)",130490],["2225 MOBI",111381],["2402 EASY KIDS",110264],["2043 SAFE",95940],["1944 BRAVE",71390],["1913 KIN",60641],["2445 STAR FEM",60413],["1949 HARMONY (N)",45952],["2160 URBAN",45050],["2439 STAR MASC",43215]]};
+const _REFS  = {"semanas":{"2026-05-04":{"label":"04/Mai-08/Mai","refs":{"2523 CLOE":5936,"1317 NELLIE":5905,"1319 LILY":4347,"2422 ADVENTURE":1222,"2225 MOBI":1222,"1947 HAPPY (N)":1008,"2402 EASY":966,"2246 RAVI":900,"2043 SAFE":894,"1949 HARMONY (N)":893,"1913 KIN":856,"2402 EASY KIDS":807,"2140 FLOW (INT/EXT)":792,"2160 URBAN":782,"1185 ICARAI":660,"1944 BRAVE":651,"2522 BELLA":614,"2309 MAXXI":534,"2519 RIO":398,"1952 COLT":354,"2601 DUNA":186,"2602 IVY":182,"2445 STAR FEM":127,"2439 STAR MASC":125,"2243 BOLT":72,"2604 EVO 2":68,"2521 FLOW 2":68,"2502 VIBE":54,"2603 BAGGY":50,"2520 PULSE":33,"2514 ULTRA":30,"1441 SUSI":18,"ANIA":12}},"2026-05-11":{"label":"11/Mai-15/Mai","refs":{"2422 ADVENTURE":6144,"1317 NELLIE":5280,"1319 LILY":4931,"2043 SAFE":3216,"2523 CLOE":1824,"2225 MOBI":1746,"2140 FLOW (INT/EXT)":1536,"1949 HARMONY (N)":1338,"2309 MAXXI":1128,"2243 BOLT":1032,"2402 EASY":948,"1441 SUSI":516,"1944 BRAVE":510,"2160 URBAN":510,"1913 KIN":498,"2522 BELLA":444,"2402 EASY KIDS":432,"1402 FANTASY":348,"1716 JOHN":252,"2519 RIO":228,"1952 COLT":198,"2439 STAR MASC":186,"2445 STAR FEM":168,"2246 RAVI":102}},"2026-05-18":{"label":"18/Mai-22/Mai","refs":{"1319 LILY":5088,"1317 NELLIE":5040,"2225 MOBI":3420,"2422 ADVENTURE":3420,"2523 CLOE":3084,"2309 MAXXI":3000,"1944 BRAVE":2100,"1913 KIN":1884,"1441 SUSI":1500,"1949 HARMONY (N)":1440,"2160 URBAN":1380,"1947 HAPPY (N)":1200,"1952 COLT":900}},"2026-05-25":{"label":"25/Mai-29/Mai","refs":{"1319 LILY":7032,"1317 NELLIE":4044,"2043 SAFE":3732,"2422 ADVENTURE":3342,"2140 FLOW (INT/EXT)":2124,"2246 RAVI":1650,"2225 MOBI":1476,"2519 RIO":1320,"2601 DUNA":1302,"2520 PULSE":954,"2160 URBAN":948,"2309 MAXXI":918,"1949 HARMONY (N)":912,"1913 KIN":720,"2402 EASY":672,"2523 CLOE":504,"1944 BRAVE":456,"2522 BELLA":366,"2402 EASY KIDS":324,"2445 STAR FEM":312,"1837 BALI":240,"2439 STAR MASC":168,"1952 COLT":168,"1441 SUSI":144,"2243 BOLT":132}},"2026-06-01":{"label":"01/Jun-05/Jun","refs":{"1317 NELLIE":6552,"2309 MAXXI":3528,"2422 ADVENTURE":3120,"2225 MOBI":2970,"2520 PULSE":2754,"2601 DUNA":2622,"1319 LILY":1878,"2523 CLOE":1494,"2402 EASY":1386,"2140 FLOW (INT/EXT)":1344,"2043 SAFE":1218,"2402 EASY KIDS":798,"1949 HARMONY (N)":648,"1944 BRAVE":618,"1441 SUSI":462,"1952 COLT":450,"2160 URBAN":114,"2445 STAR FEM":78,"2522 BELLA":72,"2246 RAVI":36,"2519 RIO":30,"1913 KIN":30,"2439 STAR MASC":30,"2243 BOLT":12}},"2026-06-08":{"label":"08/Jun-12/Jun","refs":{"1317 NELLIE":6390,"1319 LILY":5826,"2520 PULSE":5256,"2422 ADVENTURE":3000,"1949 HARMONY (N)":1050,"2043 SAFE":990,"2243 BOLT":744,"2601 DUNA":648,"2309 MAXXI":624,"2519 RIO":468,"2402 EASY":420,"2160 URBAN":372,"2523 CLOE":354,"1944 BRAVE":294,"1913 KIN":276,"2522 BELLA":204,"2140 FLOW (INT/EXT)":156,"1441 SUSI":66,"2402 EASY KIDS":66,"2225 MOBI":42,"2246 RAVI":36,"2439 STAR MASC":24,"1952 COLT":12,"2445 STAR FEM":12}},"2026-06-15":{"label":"15/Jun-19/Jun","refs":{"2601 DUNA":6180,"1319 LILY":5028,"1317 NELLIE":4944,"2422 ADVENTURE":4188,"2309 MAXXI":2604,"2225 MOBI":2400,"2523 CLOE":1920,"2043 SAFE":1284,"1952 COLT":1020,"2402 EASY":660,"1913 KIN":540,"1441 SUSI":360,"2603 BAGGY":225,"1949 HARMONY (N)":120,"2522 BELLA":96}},"2026-06-22":{"label":"22/Jun-26/Jun","refs":{"1317 NELLIE":8194,"1319 LILY":3446,"2422 ADVENTURE":2782,"2601 DUNA":2476,"2140 FLOW (INT/EXT)":2024,"1913 KIN":1394,"2225 MOBI":1198,"1944 BRAVE":1166,"2522 BELLA":1056,"1949 HARMONY (N)":984,"2523 CLOE":930,"2402 EASY":900,"2043 SAFE":828,"1180 BIO":756,"2520 PULSE":668,"2309 MAXXI":654,"1505 CAREN":616,"1441 SUSI":558,"2160 URBAN":552,"2502 VIBE":496,"2402 EASY KIDS":490,"1952 COLT":398,"2519 RIO":348,"2243 BOLT":206,"2246 RAVI":156,"2439 STAR MASC":96,"2445 STAR FEM":90}},"2026-06-29":{"label":"29/Jun-03/Jul","refs":{"1317 NELLIE":6396,"1319 LILY":3660,"2309 MAXXI":3156,"2422 ADVENTURE":3018,"2043 SAFE":3012,"2225 MOBI":2490,"2402 EASY":1764,"2160 URBAN":1410,"2601 DUNA":1254,"1913 KIN":960,"2246 RAVI":936,"1944 BRAVE":900,"2522 BELLA":888,"2520 PULSE":888,"1949 HARMONY (N)":840,"2523 CLOE":798,"2402 EASY KIDS":552,"2439 STAR MASC":462,"2445 STAR FEM":426,"2140 FLOW (INT/EXT)":408,"2243 BOLT":306,"1180 BIO":258,"1952 COLT":138,"2519 RIO":120,"2521 FLOW 2":60,"2604 EVO 2":60,"2514 ULTRA":48,"1441 SUSI":24,"2602 IVY":12}},"2026-07-06":{"label":"06/Jul-10/Jul","refs":{"1319 LILY":5460,"1317 NELLIE":4398,"2422 ADVENTURE":4386,"2140 FLOW (INT/EXT)":3534,"2402 EASY":1956,"1944 BRAVE":1314,"1949 HARMONY (N)":990,"2601 DUNA":984,"2309 MAXXI":906,"2520 PULSE":894,"1952 COLT":756,"2243 BOLT":708,"2160 URBAN":684,"2523 CLOE":672,"2043 SAFE":594,"2225 MOBI":462,"2402 EASY KIDS":432,"1913 KIN":300,"2445 STAR FEM":288,"2522 BELLA":222,"2521 FLOW 2":216,"2439 STAR MASC":186,"2519 RIO":108,"2604 EVO 2":108,"1441 SUSI":72,"2246 RAVI":24}},"2026-07-13":{"label":"13/Jul-17/Jul","refs":{"2140 FLOW (INT/EXT)":3915,"2519 RIO":72}},"2026-07-20":{"label":"20/Jul-24/Jul","refs":{"1317 NELLIE":3930,"2422 ADVENTURE":2316,"2225 MOBI":1416,"2520 PULSE":1224,"1319 LILY":1116,"2160 URBAN":1104,"2246 RAVI":840,"1913 KIN":822,"2402 EASY":606,"2522 BELLA":516,"1949 HARMONY (N)":438,"2140 FLOW (INT/EXT)":432,"2523 CLOE":312,"2043 SAFE":312,"1944 BRAVE":276,"2521 FLOW 2":252,"2445 STAR FEM":228,"1952 COLT":126,"2439 STAR MASC":72}},"2026-07-27":{"label":"27/Jul-31/Jul","refs":{"2601 DUNA":2812,"1319 LILY":2358,"2243 BOLT":2064,"2602 IVY":1548,"2520 PULSE":1534,"2225 MOBI":1386,"2521 FLOW 2":708,"2514 ULTRA":512,"1952 COLT":300,"2445 STAR FEM":192,"2523 CLOE":168,"2422 ADVENTURE":156,"1317 NELLIE":132,"2402 EASY":114,"2604 EVO 2":72,"2402 EASY KIDS":60,"2519 RIO":54,"2522 BELLA":48,"2439 STAR MASC":48,"2309 MAXXI":48,"1913 KIN":12,"2140 FLOW (INT/EXT)":12,"2043 SAFE":6}},"2026-08-03":{"label":"03/Ago-07/Ago","refs":{"2602 IVY":360,"2521 FLOW 2":180}}},"meses":{"2026-01":{"label":"Jan/2026","refs":{"1319 LILY":18420,"1317 NELLIE":17796,"2402 EASY":11784,"2140 FLOW (INT/EXT)":8916,"2522 BELLA":8328,"2445 STAR FEM":7566,"2422 ADVENTURE":6516,"2502 VIBE":4974,"2439 STAR MASC":4698,"2043 SAFE":4568,"2243 BOLT":3762,"2225 MOBI":3360,"2514 ULTRA":3132,"2309 MAXXI":2768,"2402 EASY KIDS":2556,"2246 RAVI":2100,"1913 KIN":1896,"1949 HARMONY (N)":1842,"2519 RIO":1524,"1952 COLT":1496,"1944 BRAVE":1476,"2160 URBAN":1116,"1441 SUSI":804,"2518 LUNA":780,"2348 DROP":126}},"2026-02":{"label":"Fev/2026","refs":{"1319 LILY":19096,"2422 ADVENTURE":15030,"1317 NELLIE":13783,"2309 MAXXI":10242,"2523 CLOE":9048,"2225 MOBI":8160,"2522 BELLA":8124,"2402 EASY":6102,"2043 SAFE":5994,"2140 FLOW (INT/EXT)":5718,"2402 EASY KIDS":3894,"2519 RIO":3510,"1944 BRAVE":3144,"1952 COLT":2780,"1336 KELLY":2520,"1913 KIN":2191,"2160 URBAN":1992,"2246 RAVI":1944,"1949 HARMONY (N)":1782,"1441 SUSI":1572,"2445 STAR FEM":1218,"2439 STAR MASC":1134,"TRONTO":894,"2243 BOLT":678,"1185 ICARAI":624,"2514 ULTRA":510,"NEW PORTO":504,"2502 VIBE":468}},"2026-03":{"label":"Mar/2026","refs":{"2422 ADVENTURE":20947,"1319 LILY":20816,"1317 NELLIE":12836,"2402 EASY":7902,"2140 FLOW (INT/EXT)":7376,"2523 CLOE":6492,"2043 SAFE":5687,"2309 MAXXI":5322,"2402 EASY KIDS":4482,"2225 MOBI":4350,"2522 BELLA":3876,"1947 HAPPY (N)":3684,"1949 HARMONY (N)":2934,"2337 DALLAS":2520,"1944 BRAVE":2411,"1913 KIN":1866,"2519 RIO":1862,"2445 STAR FEM":1650,"2243 BOLT":1320,"1952 COLT":1246,"2439 STAR MASC":1242,"2160 URBAN":1165,"1441 SUSI":837,"1185 ICARAI":744,"119":285,"2601 DUNA":260,"2246 RAVI":246,"2514 ULTRA":240,"2502 VIBE":222,"2520 PULSE":190,"1709 CAPRI":60,"2518 LUNA":24}},"2026-04":{"label":"Abr/2026","refs":{"1317 NELLIE":26386,"1319 LILY":16563,"2422 ADVENTURE":12468,"2309 MAXXI":8580,"2225 MOBI":8034,"2402 EASY":7596,"2043 SAFE":6778,"2140 FLOW (INT/EXT)":4842,"1944 BRAVE":4309,"1913 KIN":3565,"1949 HARMONY (N)":3084,"2402 EASY KIDS":3078,"2522 BELLA":3066,"2523 CLOE":3018,"1441 SUSI":2388,"2445 STAR FEM":2244,"2246 RAVI":1692,"2243 BOLT":1518,"2502 VIBE":1140,"2160 URBAN":1020,"2519 RIO":846,"2439 STAR MASC":822,"1180 BIO":792,"1952 COLT":546,"2514 ULTRA":228,"CUNHO":144,"1317 NELLIE (RECICL)":96,"1319 LILY (RECICL)":96,"2519 RIO (HARMONY)":60,"2321 (F�MEA)":20,"2323 (MACHO)":20,"2606 PIN COFFEE":10,"2607 PIN FRUITS":10,"2608 PIN LOVERS":10,"2609 PIN TROPICAL":10}},"2026-05":{"label":"Mai/2026","refs":{"1319 LILY":21398,"1317 NELLIE":20269,"2422 ADVENTURE":14128,"2523 CLOE":11348,"2225 MOBI":7864,"2043 SAFE":7842,"2309 MAXXI":5580,"1949 HARMONY (N)":4583,"2140 FLOW (INT/EXT)":4452,"1913 KIN":3958,"1944 BRAVE":3717,"2160 URBAN":3620,"2246 RAVI":2652,"2402 EASY":2586,"1947 HAPPY (N)":2208,"1441 SUSI":2178,"2519 RIO":1946,"1952 COLT":1620,"2402 EASY KIDS":1563,"2601 DUNA":1488,"2522 BELLA":1424,"2243 BOLT":1236,"2520 PULSE":987,"1185 ICARAI":660,"2445 STAR FEM":607,"2439 STAR MASC":479,"1402 FANTASY":348,"1716 JOHN":252,"1837 BALI":240,"2602 IVY":182,"2604 EVO 2":68,"2521 FLOW 2":68,"2502 VIBE":54,"2603 BAGGY":50,"2514 ULTRA":30,"ANIA":12}},"2026-06":{"label":"Jun/2026","refs":{"1317 NELLIE":27682,"1319 LILY":17816,"2422 ADVENTURE":13876,"2601 DUNA":12418,"2309 MAXXI":10032,"2520 PULSE":8978,"2225 MOBI":7486,"2043 SAFE":6024,"2523 CLOE":5040,"2402 EASY":4476,"2140 FLOW (INT/EXT)":3770,"1949 HARMONY (N)":3348,"1944 BRAVE":2414,"1913 KIN":2342,"2522 BELLA":1980,"1952 COLT":1928,"2402 EASY KIDS":1624,"1441 SUSI":1458,"2243 BOLT":1268,"2160 URBAN":1038,"1180 BIO":1014,"2519 RIO":918,"1505 CAREN":616,"2439 STAR MASC":516,"2502 VIBE":496,"2445 STAR FEM":438,"2246 RAVI":264,"2603 BAGGY":225,"2514 ULTRA":48}},"2026-07":{"label":"Jul/2026","refs":{"1317 NELLIE":13254,"1319 LILY":10956,"2422 ADVENTURE":9090,"2140 FLOW (INT/EXT)":8055,"2225 MOBI":4878,"2601 DUNA":4558,"2520 PULSE":4240,"2402 EASY":3330,"2160 URBAN":3198,"2243 BOLT":2772,"2043 SAFE":2220,"1944 BRAVE":2154,"1913 KIN":1992,"2246 RAVI":1764,"1949 HARMONY (N)":1722,"2523 CLOE":1608,"2602 IVY":1560,"2309 MAXXI":1488,"1952 COLT":1272,"2521 FLOW 2":1236,"2522 BELLA":1122,"2445 STAR FEM":876,"2402 EASY KIDS":774,"2514 ULTRA":512,"2439 STAR MASC":402,"2519 RIO":282,"2604 EVO 2":240,"1441 SUSI":84}},"2026-08":{"label":"Ago/2026","refs":{"2602 IVY":360,"2521 FLOW 2":180}}}};
+
+let SEMANAS={}, MESES={}, REFS=[], REFS_TABELA={semanas:{},meses:{}};
+let modo='semana', periodoAtual='', rpSort='total';
+let chartEv=null, chartMix=null, chartMontBar=null, chartMontDonut=null;
+
+Chart.defaults.color='#9b9895';Chart.defaults.borderColor='#e2ddd8';
+Chart.defaults.font.family="'Montserrat',sans-serif";
+const TIP={backgroundColor:'#fff',borderColor:'#e2ddd8',borderWidth:1,titleColor:'#26361e',bodyColor:'#71706f',padding:12,cornerRadius:8};
+const f=n=>(Math.round(n)||0).toLocaleString('pt-BR');
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+
+function inicializar(d, rt) {
+    SEMANAS=d.semanas||{};MESES=d.meses||{};REFS=d.refs_top15||[];
+    REFS_TABELA=rt||{semanas:{},meses:{}};
+    document.getElementById('hdr-data').textContent=d.gerado_em||'–';
+    const hoje=new Date();
+    const mesHoje=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+    const ps=[...new Set(Object.keys(SEMANAS).map(k=>k.slice(0,7)))].sort();
+    periodoAtual=ps.includes(mesHoje)?mesHoje:(ps[ps.length-1]||mesHoje);
+    renderTudo();
+}
+
+// Tentar carregar JSON externo (atualizado pelo atualizar.bat)
+// Se não encontrar, usa dados embutidos
+fetch('dados_programacao.json?_='+Date.now())
+  .then(r=>{if(!r.ok)throw new Error();return r.json();})
+  .then(d=>{
+    fetch('dados_refs_tabela.json?_='+Date.now())
+      .then(r=>r.ok?r.json():_REFS)
+      .then(rt=>inicializar(d,rt))
+      .catch(()=>inicializar(d,_REFS));
+  })
+  .catch(()=>inicializar(_DADOS,_REFS));
+
+const periodosSem=()=>[...new Set(Object.keys(SEMANAS).map(k=>k.slice(0,7)))].sort();
+const periodosMes=()=>Object.keys(MESES).sort();
+
+function setModo(m){
+  modo=m;
+  document.getElementById('btn-semana').classList.toggle('active',m==='semana');
+  document.getElementById('btn-mes').classList.toggle('active',m==='mes');
+  document.getElementById('view-semana').style.display=m==='semana'?'block':'none';
+  document.getElementById('view-mes').style.display=m==='mes'?'block':'none';
+  document.getElementById('stitle').textContent=m==='semana'?'Semanas de produção':'Meses de produção';
+  document.getElementById('chart-title').textContent=m==='semana'?'Evolução semanal por linha':'Evolução mensal por linha';
+  renderTudo();
+}
+
+function navPeriodo(dir){
+  const arr=modo==='semana'?periodosSem():periodosMes();
+  const idx=arr.indexOf(periodoAtual);
+  const n=arr[Math.max(0,Math.min(arr.length-1,idx+dir))];
+  if(n!==periodoAtual){periodoAtual=n;renderTudo();}
+}
+
+function renderTudo(){
+  if(modo==='semana') renderSemanas(); else renderMeses();
+  renderCharts(); renderMontagem(); renderRefsPeriodo(); renderRefs();
+}
+
+// SEMANAS
+function renderSemanas(){
+  const sems=Object.entries(SEMANAS).filter(([k])=>k.startsWith(periodoAtual));
+  const [ano,mesN]=periodoAtual.split('-');
+  const mn=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  document.getElementById('periodo-label').textContent=mn[parseInt(mesN)-1]+'/'+ano;
+
+  const totP=sems.reduce((s,[,v])=>s+v.total,0);
+  const metaP=sems.length*META;
+  const totMI=sems.reduce((s,[,v])=>s+(v.mi||0),0);
+  const totEx=sems.reduce((s,[,v])=>s+(v.export||0),0);
+  const totPE=sems.reduce((s,[,v])=>s+(v.pe||0),0);
+  const totCV=sems.reduce((s,[,v])=>s+(v.convencional||0),0);
+  const totMT=sems.reduce((s,[,v])=>s+(v.montado||0),0);
+  const semsOk=sems.filter(([,v])=>v.ok).length;
+
+  document.getElementById('kpi-area').innerHTML=
+    kpiBox('','Total no período',f(totP),'pares programados')+
+    kpiBox('azul','Meta do período',f(metaP),sems.length+' semanas × 30k')+
+    kpiBox('verde','% da meta',(metaP?Math.round(totP/metaP*100):0)+'%',semsOk+'/'+sems.length+' semanas OK')+
+    kpiBox('azul','Mercado Interno',f(totMI),pct(totMI,totP)+'% do total')+
+    kpiBox('cinza','Exportação',f(totEx),pct(totEx,totP)+'% do total')+
+    kpiBox('cinza','Armazém / PE',f(totPE),pct(totPE,totP)+'% do total')+
+    kpiBox('verde','Convencional',f(totCV),pct(totCV,totP)+'% do total')+
+    kpiBox('laranja','Montado',f(totMT),pct(totMT,totP)+'% do total');
+
+  const hoje=new Date();
+  const mon=new Date(hoje); mon.setDate(hoje.getDate()-hoje.getDay()+1);
+  const hojeKey=mon.toISOString().slice(0,10);
+  const grid=document.getElementById('cards-semana');
+  grid.innerHTML='';
+  if(!sems.length){grid.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:20px">Nenhuma semana para este período.</div>';return;}
+  sems.forEach(([k,d])=>{
+    const diff=d.total-META;
+    const cor=d.ok?'var(--verde)':d.pct_meta>=85?'var(--coral)':'#ef4444';
+    const cls=d.ok?'ok':d.pct_meta>=85?'warn':'crit';
+    const top=d.top_refs&&d.top_refs[0]?d.top_refs[0][0].split(' ').slice(0,2).join(' '):'–';
+    const el=document.createElement('div');
+    el.className='sem-card '+cls+(k===hojeKey?' atual':'');
+    el.innerHTML=
+      '<div class="sc-num">Semana</div>'+
+      '<div class="sc-range">'+d.label+'</div>'+
+      '<div class="sc-total">'+f(d.total)+'</div>'+
+      '<div class="sc-delta '+cls+'">'+(diff>=0?'▲ +':'▼ ')+f(Math.abs(diff))+'</div>'+
+      '<div class="sc-bar"><div class="sc-fill" style="width:'+Math.min(d.pct_meta,130)+'%;background:'+cor+'"></div></div>'+
+      '<div class="sc-linhas">'+
+        (d.CLASSIC?'<span class="sc-lt"><span class="sc-dot" style="background:var(--cl)"></span>'+f(d.CLASSIC)+'</span>':'')+
+        (d.EVA?'<span class="sc-lt"><span class="sc-dot" style="background:var(--ev)"></span>'+f(d.EVA)+'</span>':'')+
+        (d.WORKS?'<span class="sc-lt"><span class="sc-dot" style="background:var(--wk)"></span>'+f(d.WORKS)+'</span>':'')+
+      '</div>'+
+      '<div class="sc-tags">'+
+        (d.mi?'<span class="sc-tag mi">MI '+f(d.mi)+' ('+d.pct_mi+'%)</span>':'')+
+        (d.export?'<span class="sc-tag ex">EX '+f(d.export)+' ('+d.pct_export+'%)</span>':'')+
+        (d.pe?'<span class="sc-tag pe">PE '+f(d.pe)+' ('+d.pct_pe+'%)</span>':'')+
+        (d.convencional?'<span class="sc-tag conv">CV '+f(d.convencional)+' ('+d.pct_conv+'%)</span>':'')+
+        (d.montado?'<span class="sc-tag mont">MT '+f(d.montado)+' ('+d.pct_mont+'%)</span>':'')+
+      '</div>'+
+      '<div class="sc-info">'+d.pedidos+' ped · top: '+top+'</div>';
+    grid.appendChild(el);
+  });
+}
+
+function kpiBox(cls,label,val,sub){
+  return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div>'+
+    '<div class="kpi-v '+cls+'">'+val+'</div>'+
+    '<div class="kpi-s">'+sub+'</div></div>';
+}
+
+// MESES
+function renderMeses(){
+  const ms=Object.entries(MESES);
+  const ano=periodoAtual.split('-')[0];
+  document.getElementById('periodo-label').textContent='Ano '+ano;
+  const totA=ms.reduce((s,[,v])=>s+v.total,0);
+  const metaA=ms.reduce((s,[,v])=>s+(v.meta_mes||0),0);
+  const totMIA=ms.reduce((s,[,v])=>s+(v.mi||0),0);
+  const totEx=ms.reduce((s,[,v])=>s+(v.export||0),0);
+  const totPE=ms.reduce((s,[,v])=>s+(v.pe||0),0);
+  const totCV=ms.reduce((s,[,v])=>s+(v.convencional||0),0);
+  const totMT=ms.reduce((s,[,v])=>s+(v.montado||0),0);
+
+  document.getElementById('kpi-area').innerHTML=
+    kpiBox('','Total no ano',f(totA),'pares programados')+
+    kpiBox('azul','Meta do ano',f(metaA),'proporcional às semanas')+
+    kpiBox('verde','% da meta',(metaA?Math.round(totA/metaA*100):0)+'%',ms.filter(([,v])=>v.ok).length+'/'+ms.length+' meses OK')+
+    kpiBox('azul','Mercado Interno',f(totMIA),pct(totMIA,totA)+'% do total')+
+    kpiBox('cinza','Exportação',f(totEx),pct(totEx,totA)+'% do total')+
+    kpiBox('cinza','Armazém / PE',f(totPE),pct(totPE,totA)+'% do total')+
+    kpiBox('verde','Convencional',f(totCV),pct(totCV,totA)+'% do total')+
+    kpiBox('laranja','Montado',f(totMT),pct(totMT,totA)+'% do total');
+
+  const hoje=new Date();
+  const mesAtual=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+  const cont=document.getElementById('cards-mes');
+  cont.innerHTML='';
+  ms.forEach(([k,d])=>{
+    const cor=d.ok?'var(--verde)':d.pct_meta>=85?'var(--coral)':'#ef4444';
+    const cls=d.ok?'ok':'warn';
+    const el=document.createElement('div');
+    el.className='mes-card '+cls+(k===mesAtual?' atual':'');
+    el.innerHTML=
+      '<div class="mc-header">'+
+        '<div>'+
+          '<div class="mc-label">'+d.label+'</div>'+
+          '<div class="mc-linhas" style="margin-top:6px">'+
+            (d.CLASSIC?'<span class="mc-lt"><span class="mc-dot" style="background:var(--cl)"></span>CL '+f(d.CLASSIC)+'</span>':'')+
+            (d.EVA?'<span class="mc-lt"><span class="mc-dot" style="background:var(--ev)"></span>EVA '+f(d.EVA)+'</span>':'')+
+            (d.WORKS?'<span class="mc-lt"><span class="mc-dot" style="background:var(--wk)"></span>WK '+f(d.WORKS)+'</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<div style="text-align:right">'+
+          '<div class="mc-total">'+f(d.total)+'</div>'+
+          '<div class="mc-meta">'+d.num_semanas+' semanas · meta '+f(d.meta_mes)+'</div>'+
+          '<span class="badge '+cls+'" style="margin-top:4px">'+d.pct_meta+'% da meta</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="mc-bar"><div class="mc-fill" style="width:'+Math.min(d.pct_meta,100)+'%;background:'+cor+'"></div></div>'+
+      '<div class="mc-subtags">'+
+        (d.mi?mcSub('mi','Merc. Interno',d.mi,d.pct_mi):'')+
+        (d.export?mcSub('ex','Exportação',d.export,d.pct_export):'')+
+        (d.pe?mcSub('pe','Armazém / PE',d.pe,d.pct_pe):'')+
+        (d.convencional?mcSub('conv','Convencional',d.convencional,d.pct_conv):'')+
+        (d.montado?mcSub('mont','Montado',d.montado,d.pct_mont):'')+
+      '</div>';
+    cont.appendChild(el);
+  });
+}
+
+function mcSub(cls,label,val,p){
+  return '<div class="mc-subtag"><div class="mc-subtag-label">'+label+'</div>'+
+    '<div class="mc-subtag-val '+cls+'">'+f(val)+' <span style="font-size:11px">('+p+'%)</span></div></div>';
+}
+
+// CHARTS
+function renderCharts(){
+  if(chartEv){chartEv.destroy();chartEv=null;}
+  if(chartMix){chartMix.destroy();chartMix=null;}
+  let labels,clD,evD,wkD,metaD,mixD;
+  if(modo==='semana'){
+    const sems=Object.entries(SEMANAS).filter(([k])=>k.startsWith(periodoAtual));
+    labels=sems.map(([,v])=>v.label.split('-')[0]);
+    clD=sems.map(([,v])=>v.CLASSIC||0);evD=sems.map(([,v])=>v.EVA||0);wkD=sems.map(([,v])=>v.WORKS||0);
+    metaD=sems.map(()=>META);
+    const t=sems.reduce((a,[,v])=>({c:a.c+(v.CLASSIC||0),e:a.e+(v.EVA||0),w:a.w+(v.WORKS||0)}),{c:0,e:0,w:0});
+    mixD=[t.c,t.e,t.w];
+  } else {
+    const ms=Object.entries(MESES);
+    labels=ms.map(([,v])=>v.label.split('/')[0].slice(0,3));
+    clD=ms.map(([,v])=>v.CLASSIC||0);evD=ms.map(([,v])=>v.EVA||0);wkD=ms.map(([,v])=>v.WORKS||0);
+    metaD=ms.map(([,v])=>v.meta_mes||0);
+    const t=ms.reduce((a,[,v])=>({c:a.c+(v.CLASSIC||0),e:a.e+(v.EVA||0),w:a.w+(v.WORKS||0)}),{c:0,e:0,w:0});
+    mixD=[t.c,t.e,t.w];
+  }
+  chartEv=new Chart(document.getElementById('c-ev'),{type:'bar',data:{labels,datasets:[
+    {label:'CLASSIC',data:clD,backgroundColor:'#3B82F688',borderRadius:3},
+    {label:'EVA',data:evD,backgroundColor:'#10B98188',borderRadius:3},
+    {label:'WORKS',data:wkD,backgroundColor:'#F59E0B88',borderRadius:3},
+    {label:'Meta',data:metaD,type:'line',borderColor:'#ed6842',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},tooltip:TIP},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>f(v)}}}}});
+  const lt=mixD.reduce((a,b)=>a+b,0);
+  chartMix=new Chart(document.getElementById('c-mix'),{type:'doughnut',data:{
+    labels:['CLASSIC','EVA','WORKS'],
+    datasets:[{data:mixD,backgroundColor:['#3B82F6','#10B981','#F59E0B'],borderWidth:0,hoverOffset:6}]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'right',labels:{boxWidth:10,font:{size:10}}},
+      tooltip:{callbacks:{label:ctx=>ctx.label+': '+f(ctx.raw)+' ('+pct(ctx.raw,lt)+'%)'}}}}}); 
+}
+
+// MONTAGEM
+function renderMontagem(){
+  if(chartMontBar){chartMontBar.destroy();chartMontBar=null;}
+  if(chartMontDonut){chartMontDonut.destroy();chartMontDonut=null;}
+  let labels,convD,montD,totCV,totMT;
+  if(modo==='semana'){
+    const sems=Object.entries(SEMANAS).filter(([k])=>k.startsWith(periodoAtual));
+    labels=sems.map(([,v])=>v.label.split('-')[0]);
+    convD=sems.map(([,v])=>v.convencional||0);montD=sems.map(([,v])=>v.montado||0);
+    totCV=sems.reduce((s,[,v])=>s+(v.convencional||0),0);
+    totMT=sems.reduce((s,[,v])=>s+(v.montado||0),0);
+  } else {
+    const ms=Object.entries(MESES);
+    labels=ms.map(([,v])=>v.label.split('/')[0].slice(0,3));
+    convD=ms.map(([,v])=>v.convencional||0);montD=ms.map(([,v])=>v.montado||0);
+    totCV=ms.reduce((s,[,v])=>s+(v.convencional||0),0);
+    totMT=ms.reduce((s,[,v])=>s+(v.montado||0),0);
+  }
+  const total=totCV+totMT;
+  chartMontBar=new Chart(document.getElementById('c-mont-bar'),{type:'bar',data:{labels,datasets:[
+    {label:'Convencional',data:convD,backgroundColor:'#6c9c37bb',borderRadius:4},
+    {label:'Montado',data:montD,backgroundColor:'#ed6842bb',borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{...TIP,mode:'index'}},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>f(v)}}}}});
+  chartMontDonut=new Chart(document.getElementById('c-mont-donut'),{type:'doughnut',data:{
+    labels:['Convencional','Montado'],
+    datasets:[{data:[totCV,totMT],backgroundColor:['#6c9c37','#ed6842'],borderWidth:0,hoverOffset:6}]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}},
+      tooltip:{callbacks:{label:ctx=>ctx.label+': '+f(ctx.raw)+' ('+(total?Math.round(ctx.raw/total*100):0)+'%)'}}}}}); 
+  document.getElementById('mont-totals').innerHTML=
+    '<div class="mont-total-item"><div class="mont-total-val conv">'+f(totCV)+'</div><div class="mont-total-label">pares convencionais ('+(total?Math.round(totCV/total*100):0)+'%)</div></div>'+
+    '<div class="mont-total-item"><div class="mont-total-val mont">'+f(totMT)+'</div><div class="mont-total-label">pares montados ('+(total?Math.round(totMT/total*100):0)+'%)</div></div>';
+}
+
+// REFS PERÍODO
+function sortRp(key){
+  rpSort=key;
+  document.getElementById('sort-vol').classList.toggle('active',key==='total');
+  document.getElementById('sort-nome').classList.toggle('active',key==='nome');
+  renderRefsPeriodo();
+}
+
+function renderRefsPeriodo(){
+  let periodos,periodLabels;
+  if(modo==='semana'){
+    periodos=Object.entries(REFS_TABELA.semanas||{}).filter(([k])=>k.startsWith(periodoAtual));
+    periodLabels=periodos.map(([,v])=>v.label?v.label.split('-')[0]:'');
+    const [ano,mesN]=periodoAtual.split('-');
+    const mn=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    document.getElementById('rp-title').textContent='Referências por semana — '+mn[parseInt(mesN)-1]+'/'+ano;
+  } else {
+    periodos=Object.entries(REFS_TABELA.meses||{});
+    periodLabels=periodos.map(([,v])=>v.label||'');
+    document.getElementById('rp-title').textContent='Referências por mês — 2026';
+  }
+  if(!periodos.length){document.getElementById('rp-container').innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">Sem dados para este período.</div>';return;}
+  const allRefs=new Map();
+  periodos.forEach(([,pd])=>Object.entries(pd.refs||{}).forEach(([r,q])=>allRefs.set(r,(allRefs.get(r)||0)+q)));
+  let arr=[...allRefs.entries()];
+  if(rpSort==='total') arr.sort((a,b)=>b[1]-a[1]);
+  else arr.sort((a,b)=>a[0].localeCompare(b[0]));
+  let html='<table class="rp-table"><thead><tr><th>Produto</th>';
+  periodLabels.forEach(l=>html+='<th>'+l+'</th>');
+  html+='<th>Total</th></tr></thead><tbody>';
+  arr.forEach(([ref,total])=>{
+    html+='<tr><td>'+ref+'</td>';
+    periodos.forEach(([,pd])=>{
+      const q=(pd.refs||{})[ref]||0;
+      html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
+    });
+    html+='<td class="rp-total">'+f(total)+'</td></tr>';
+  });
+  html+='<tr class="rp-foot"><td>TOTAL</td>';
+  periodos.forEach(([,pd])=>html+='<td class="rp-total">'+f(Object.values(pd.refs||{}).reduce((a,b)=>a+b,0))+'</td>');
+  html+='<td class="rp-total">'+f(arr.reduce((s,[,v])=>s+v,0))+'</td></tr>';
+  html+='</tbody></table>';
+  document.getElementById('rp-container').innerHTML=html;
+}
+
+// TOP REFS
+function renderRefs(){
+  const mx=REFS.length?REFS[0][1]:1;
+  const tb=document.getElementById('tb-refs');
+  tb.innerHTML='';
+  REFS.forEach(([ref,qtd],i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td style="color:var(--txt-m);font-size:10px">'+(i+1)+'</td>'+
+      '<td class="td-ref">'+ref+'</td>'+
+      '<td class="td-num">'+f(qtd)+'</td>'+
+      '<td style="min-width:100px"><div class="mbar" style="width:'+Math.round(qtd/mx*100)+'%;background:'+(i<3?'var(--coral)':'var(--azul)')+'"></div></td>';
+    tb.appendChild(tr);
+  });
+}
+</script>
+</body>
+</html>

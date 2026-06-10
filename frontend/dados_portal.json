@@ -1,0 +1,220 @@
+{
+  "gerado_em": "10/06/2026 13:58",
+  "meta_semanal": 30000,
+  "vendas": {
+    "mes_atual": "202606",
+    "mes_label": "Jun/2026",
+    "canais_mes": {
+      "MI": 26112,
+      "ME": 0,
+      "ECOM": 1268,
+      "PE": 14958,
+      "GRUPO_MOULD": 10920
+    },
+    "total_mes": 53258,
+    "pendente_validacao": false
+  },
+  "programacao": {
+    "mes_label": "Jun/2026",
+    "total_mes": 160114,
+    "semanas": {
+      "2026-06-01": {
+        "CLASSIC": 12918,
+        "EVA": 18864,
+        "WORKS": 462,
+        "FIT": 0,
+        "DAY BY DAY": 0,
+        "OUTROS": 0,
+        "total": 32244,
+        "label": "01/Jun-05/Jun",
+        "pedidos": 129,
+        "clientes": 94,
+        "top_refs": [
+          [
+            "1317 NELLIE",
+            6552
+          ],
+          [
+            "2309 MAXXI",
+            3528
+          ],
+          [
+            "2422 ADVENTURE",
+            3120
+          ]
+        ],
+        "ok": true,
+        "pct_meta": 107,
+        "export": 0,
+        "pe": 17760,
+        "mi": 14436,
+        "pct_mi": 44.8,
+        "convencional": 26766,
+        "montado": 5478,
+        "pct_conv": 83.0,
+        "pct_mont": 17.0,
+        "pct_export": 0.0,
+        "pct_pe": 55.1
+      },
+      "2026-06-08": {
+        "CLASSIC": 15870,
+        "EVA": 11394,
+        "WORKS": 66,
+        "FIT": 0,
+        "DAY BY DAY": 0,
+        "OUTROS": 0,
+        "total": 27330,
+        "label": "08/Jun-12/Jun",
+        "pedidos": 48,
+        "clientes": 32,
+        "top_refs": [
+          [
+            "1317 NELLIE",
+            6390
+          ],
+          [
+            "1319 LILY",
+            5826
+          ],
+          [
+            "2520 PULSE",
+            5256
+          ]
+        ],
+        "ok": false,
+        "pct_meta": 91,
+        "export": 798,
+        "pe": 14760,
+        "mi": 11772,
+        "pct_mi": 43.1,
+        "convencional": 26460,
+        "montado": 870,
+        "pct_conv": 96.8,
+        "pct_mont": 3.2,
+        "pct_export": 2.9,
+        "pct_pe": 54.0
+      },
+      "2026-06-15": {
+        "CLASSIC": 13161,
+        "EVA": 18048,
+        "WORKS": 360,
+        "FIT": 0,
+        "DAY BY DAY": 0,
+        "OUTROS": 0,
+        "total": 31569,
+        "label": "15/Jun-19/Jun",
+        "pedidos": 15,
+        "clientes": 2,
+        "top_refs": [
+          [
+            "2601 DUNA",
+            6180
+          ],
+          [
+            "1319 LILY",
+            5028
+          ],
+          [
+            "1317 NELLIE",
+            4944
+          ]
+        ],
+        "ok": true,
+        "pct_meta": 105,
+        "export": 0,
+        "pe": 30900,
+        "mi": 0,
+        "pct_mi": 0.0,
+        "convencional": 27672,
+        "montado": 3897,
+        "pct_conv": 87.7,
+        "pct_mont": 12.3,
+        "pct_export": 0.0,
+        "pct_pe": 97.9
+      },
+      "2026-06-22": {
+        "CLASSIC": 19490,
+        "EVA": 12042,
+        "WORKS": 1314,
+        "FIT": 0,
+        "DAY BY DAY": 616,
+        "OUTROS": 265,
+        "total": 33727,
+        "label": "22/Jun-26/Jun",
+        "pedidos": 59,
+        "clientes": 54,
+        "top_refs": [
+          [
+            "1317 NELLIE",
+            8215
+          ],
+          [
+            "1319 LILY",
+            3446
+          ],
+          [
+            "2422 ADVENTURE",
+            2782
+          ]
+        ],
+        "ok": true,
+        "pct_meta": 112,
+        "export": 24284,
+        "pe": 0,
+        "mi": 8907,
+        "pct_mi": 26.4,
+        "convencional": 30044,
+        "montado": 3418,
+        "pct_conv": 89.1,
+        "pct_mont": 10.1,
+        "pct_export": 72.0,
+        "pct_pe": 0.0
+      },
+      "2026-06-29": {
+        "CLASSIC": 18912,
+        "EVA": 16050,
+        "WORKS": 282,
+        "FIT": 0,
+        "DAY BY DAY": 0,
+        "OUTROS": 0,
+        "total": 35244,
+        "label": "29/Jun-03/Jul",
+        "pedidos": 156,
+        "clientes": 131,
+        "top_refs": [
+          [
+            "1317 NELLIE",
+            6396
+          ],
+          [
+            "1319 LILY",
+            3660
+          ],
+          [
+            "2309 MAXXI",
+            3156
+          ]
+        ],
+        "ok": true,
+        "pct_meta": 117,
+        "export": 7818,
+        "pe": 0,
+        "mi": 27198,
+        "pct_mi": 77.2,
+        "convencional": 30126,
+        "montado": 5118,
+        "pct_conv": 85.5,
+        "pct_mont": 14.5,
+        "pct_export": 22.2,
+        "pct_pe": 0.0
+      }
+    }
+  },
+  "estoque": {
+    "fisico": 143970,
+    "reservas": 29260,
+    "livre": 114710,
+    "vlr_fisico": 7114744.27,
+    "vlr_livre": 5689385.35
+  }
+}
