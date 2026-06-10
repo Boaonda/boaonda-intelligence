@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import datetime
 import os
+import shutil
 import traceback
 
 from flask import (Flask, request, jsonify, send_from_directory,
@@ -10,10 +11,30 @@ import processador
 
 BASE_DIR     = Path(__file__).parent
 FRONTEND_DIR = BASE_DIR / 'frontend'
-UPLOADS_DIR  = BASE_DIR / 'uploads'
+
+# DATA_DIR guarda os JSONs gerados e os uploads — em produção (Fly.io) aponta
+# para um volume persistente, sobrevivendo a redeploys. Em dev local, usa a
+# própria pasta frontend/ (comportamento de antes).
+DATA_DIR = Path(os.environ.get('DATA_DIR', str(FRONTEND_DIR)))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+UPLOADS_DIR = DATA_DIR / 'uploads'
 UPLOADS_DIR.mkdir(exist_ok=True)
 
-app = Flask(__name__, static_folder='frontend', static_url_path='')
+DATA_FILES = (
+    'dados_estoque.json', 'dados_portal.json', 'dados_programacao.json',
+    'dados_refs_tabela.json', 'dados_vendas.json', 'boaonda_dados_completos.json',
+)
+
+# Primeira execução com volume vazio: semeia com os JSONs versionados no repo
+if DATA_DIR != FRONTEND_DIR:
+    for _fname in DATA_FILES:
+        _dst = DATA_DIR / _fname
+        _src = FRONTEND_DIR / _fname
+        if not _dst.exists() and _src.exists():
+            shutil.copy(_src, _dst)
+
+app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-local-key-change-in-prod')
 app.config['MAX_CONTENT_LENGTH'] = 250 * 1024 * 1024  # 250MB — 3YS.csv pode ter ~130MB
 
@@ -122,7 +143,16 @@ def logout():
 # ─────────────────────────────────────────────
 @app.route('/')
 def index():
-    return send_from_directory('frontend', 'index.html')
+    return send_from_directory(FRONTEND_DIR, 'index.html')
+
+
+@app.route('/<path:filename>')
+def serve_file(filename):
+    # JSONs gerados pelo /upload vivem em DATA_DIR (volume persistente);
+    # o restante (HTML/CSS/JS dos dashboards) vem do código versionado.
+    if filename in DATA_FILES:
+        return send_from_directory(DATA_DIR, filename)
+    return send_from_directory(FRONTEND_DIR, filename)
 
 
 _UPLOAD_HTML = '''<!DOCTYPE html>
@@ -194,7 +224,7 @@ def upload():
     f_3ys  = request.files.get('arquivo_3ys')
     f_esqt = request.files.get('arquivo_esqt')
 
-    if (not f_esqt or not f_esqt.filename) and not (FRONTEND_DIR / 'dados_estoque.json').exists():
+    if (not f_esqt or not f_esqt.filename) and not (DATA_DIR / 'dados_estoque.json').exists():
         return render_template_string(_UPLOAD_HTML, message='Envie ao menos o ESQT.xls na primeira atualização.', ok=False)
 
     path_3ys = path_esqt = None
@@ -215,7 +245,7 @@ def upload():
         resumo = processador.processar_tudo(
             arquivo_3ys=str(path_3ys) if path_3ys else None,
             arquivo_esqt=str(path_esqt),
-            output_dir=str(FRONTEND_DIR),
+            output_dir=str(DATA_DIR),
         )
 
         # Guarda uma cópia do ESQT mais recente para reprocessamentos futuros
