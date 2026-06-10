@@ -422,10 +422,10 @@ function fallback(){return{
   gerado_em:'–',
   vendas:{mes_label:'Jun/2026',canais_mes:{MI:14759,ME:0,ECOM:547,PE:8616},total_mes:23922,pendente_validacao:true},
   programacao:{mes_label:'Jun/2026',total_mes:124605,semanas:{
-    '2026-S23':{total:32244,range:'01–07/Jun',ok:true},
-    '2026-S24':{total:27330,range:'08–14/Jun',ok:false},
-    '2026-S25':{total:31569,range:'15–21/Jun',ok:true},
-    '2026-S26':{total:33462,range:'22–28/Jun',ok:true},
+    '2026-S23':{total:32244,label:'01–07/Jun',ok:true},
+    '2026-S24':{total:27330,label:'08–14/Jun',ok:false},
+    '2026-S25':{total:31569,label:'15–21/Jun',ok:true},
+    '2026-S26':{total:33462,label:'22–28/Jun',ok:true},
   }},
   estoque:{fisico:147378,reservas:29890,livre:117488}
 };}
@@ -456,7 +456,7 @@ function render(d){
     sm.innerHTML+=`<div class="sem ${s.ok?'ok':'warn'}">
       <div class="sem-n">${n}</div>
       <div class="sem-v">${f(s.total)}</div>
-      <div class="sem-r">${s.range}</div>
+      <div class="sem-r">${s.label||''}</div>
     </div>`;
   });
 
