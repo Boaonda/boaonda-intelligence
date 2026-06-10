@@ -431,6 +431,31 @@ def gerar_dados_completos(vendas, prog, estoque, output_dir='.'):
         json.dump(dados, f_, ensure_ascii=False, default=str)
     print(f"  ✓ boaonda_dados_completos.json atualizado")
 
+def _carregar_vendas_prog_existentes(output_dir):
+    """Recarrega vendas/programação a partir dos JSONs já gerados, para não
+    apagar esses dados do portal quando só o ESQT é reprocessado."""
+    try:
+        with open(os.path.join(output_dir, 'dados_vendas.json'), encoding='utf-8') as f_:
+            dv = json.load(f_)
+        vendas = {
+            'canais_mes': dv.get('canais_mes', {}),
+            'canais_total': dv.get('canais_total', {}),
+            'total_mes': dv.get('total_mes', 0),
+            'mensal': dv.get('mensal', {}),
+            'pendente_validacao': dv.get('pendente_validacao', True),
+        }
+    except (FileNotFoundError, json.JSONDecodeError):
+        vendas = {'canais_mes':{},'canais_total':{},'total_mes':0,'mensal':{},'pendente_validacao':True}
+
+    try:
+        with open(os.path.join(output_dir, 'dados_programacao.json'), encoding='utf-8') as f_:
+            dp = json.load(f_)
+        prog = {'semanas': dp.get('semanas', {})}
+    except (FileNotFoundError, json.JSONDecodeError):
+        prog = {'semanas': {}}
+
+    return vendas, prog
+
 # ─── ORQUESTRADOR ────────────────────────────────────────────────────
 def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
     """Roda o pipeline completo. Retorna um resumo (dict) do que foi gerado.
@@ -454,8 +479,7 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         vendas = processar_vendas(arquivo_3ys, mes_atual, output_dir)
         prog   = processar_programacao(arquivo_3ys, output_dir)
     else:
-        vendas = {'canais_mes':{},'canais_total':{},'total_mes':0,'mensal':{},'linha_canal':{},'refs_top20':[],'holdings_top20':[],'pendente_validacao':True}
-        prog   = {'semanas':{},'refs_top20':[]}
+        vendas, prog = _carregar_vendas_prog_existentes(output_dir)
 
     gerar_json_portal(vendas, prog, estoque, mes_atual, mes_label, output_dir)
     gerar_dados_completos(vendas, prog, estoque, output_dir)

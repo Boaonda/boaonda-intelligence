@@ -1,5 +1,5 @@
 {
-  "gerado_em": "10/06/2026 13:58",
+  "gerado_em": "10/06/2026 15:28",
   "meta_semanal": 30000,
   "vendas": {
     "mes_atual": "202606",
@@ -211,10 +211,10 @@
     }
   },
   "estoque": {
-    "fisico": 143970,
-    "reservas": 29260,
-    "livre": 114710,
-    "vlr_fisico": 7114744.27,
-    "vlr_livre": 5689385.35
+    "fisico": 143028,
+    "reservas": 29008,
+    "livre": 114020,
+    "vlr_fisico": 7066076.17,
+    "vlr_livre": 5654862.25
   }
 }
