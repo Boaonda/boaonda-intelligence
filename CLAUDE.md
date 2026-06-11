@@ -17,13 +17,25 @@ Isso é diferente do projeto `analytics-hub` (que roda só localmente via
 
 ## Pipeline de dados
 
-`processador.py` lê `3YS.csv` (vendas/programação/carteira) e `ESQT.xls`
-(estoque) e gera os JSONs em `frontend/` (`dados_vendas.json`,
+`processador.py` gera os JSONs em `frontend/` (`dados_vendas.json`,
 `dados_programacao.json`, `dados_refs_tabela.json`,
 `dados_estoque.json`, `dados_carteira.json`, `dados_portal.json`,
 `boaonda_dados_completos.json`). Sempre que a lógica de classificação
 mudar, reprocessar com `processador.processar_tudo(...)` e
 commitar os JSONs atualizados junto com o código.
+
+**Fonte de vendas/programação/carteira — MySQL interno**: se a variável de
+ambiente `MYSQL_HOST` estiver definida (ver `.env`, gitignored), o
+processador busca essas três bases via `carregar_linhas_3ys()` direto do
+MySQL (`mould.v_entradapedidos_extended`, query `QUERY_3YS`), usando
+`db_mysql.py`. Esse banco só é acessível pela rede interna — então essa
+busca só funciona rodando localmente (não no Railway). Sem `MYSQL_HOST`,
+cai de volta para o `3YS.csv` (upload manual via `/upload`). O mapeamento
+de colunas (`IDX`) é o mesmo para os dois formatos — `_linha_de_db_row`
+monta uma linha "sintética" a partir do dict do MySQL.
+
+**Fonte de estoque**: ainda só via upload de `ESQT.xls` (`/upload`) —
+migração para MySQL pendente (falta a query equivalente).
 
 ## Configuração de produção (`config_producao.json`)
 

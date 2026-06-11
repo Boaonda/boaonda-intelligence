@@ -31,8 +31,35 @@ IDX = {
     'dt_ent':11,'dt_fat':12,'pedido':13,'anomes':18,
     'marca':20,'linha':23,'vlr':26,'cod_esp':27,'abr_grp':29,
     'holding':16,'nomeholder':17,'plano':35,'dt_plano':77,
-    'pos_item':40,'etapa':39,'local':72,
+    'pos_item':40,'etapa':39,'local':72,'tipomontagem':85,
 }
+
+# Query usada quando MYSQL_HOST está configurado (ver db_mysql.py) — substitui
+# a leitura do 3YS.csv. Os alias das colunas seguem as chaves de IDX usadas
+# pelo processamento, para que _linha_de_db_row monte a linha "sintética"
+# direto a partir do dict retornado pelo MySQL.
+QUERY_3YS = """
+SELECT
+    razao_social    AS razao,
+    referencia      AS ref,
+    qtdpares        AS qtd,
+    dt_entrada      AS dt_ent,
+    dt_faturam      AS dt_fat,
+    pedido          AS pedido,
+    anomesentrada   AS anomes,
+    linha           AS linha,
+    cod_esp_ent_sai AS cod_esp,
+    abr_grp         AS abr_grp,
+    nomeholding     AS nomeholder,
+    planoproducao   AS plano,
+    dt_plano        AS dt_plano,
+    pos_item        AS pos_item,
+    etapa_atual     AS etapa,
+    LocalEstoque    AS local,
+    CorPalmilha     AS tipomontagem
+FROM mould.v_entradapedidos_extended v
+WHERE v.dt_entrada >= date_format(date_sub(current_date, interval 1 year), '%Y/01/01')
+"""
 
 # Pedido em Carteira — pos_item que não devem entrar (já cancelados ou já
 # totalmente faturados/entregues, não representam carteira aberta).
@@ -142,10 +169,45 @@ def detectar_sep(path):
         sample = f.read(2000)
     return ';' if sample.count(';') > sample.count(',') else ','
 
-# ─── VENDAS ──────────────────────────────────────────────────────────
-def processar_vendas(arquivo_3ys, mes_atual, output_dir='.'):
-    print("\n  Processando vendas...")
+def _db_val_to_str(v):
+    """Converte um valor vindo do MySQL (Decimal/date/int/None/...) para o
+    mesmo formato de string que vinha de uma célula do 3YS.csv."""
+    if v is None: return ''
+    if hasattr(v, 'strftime'): return v.strftime('%Y-%m-%d')
+    return str(v)
+
+def _linha_de_db_row(db_row):
+    """Monta uma linha 'sintética' (lista indexável por IDX) a partir de um
+    dict retornado pelo MySQL (consulta QUERY_3YS)."""
+    linha = [''] * (max(IDX.values()) + 1)
+    for chave, idx in IDX.items():
+        linha[idx] = _db_val_to_str(db_row.get(chave))
+    return linha
+
+def carregar_linhas_3ys(arquivo_3ys=None):
+    """Retorna a lista de linhas (cada uma indexável por IDX) a processar.
+
+    Se MYSQL_HOST estiver configurado (rede interna), busca direto do MySQL
+    via QUERY_3YS. Caso contrário, lê do arquivo 3YS.csv informado."""
+    if os.environ.get('MYSQL_HOST'):
+        import db_mysql
+        print("    Lendo 3YS do MySQL...")
+        db_rows = db_mysql.consultar(QUERY_3YS)
+        print(f"    {len(db_rows):,} linhas carregadas do MySQL")
+        return [_linha_de_db_row(r) for r in db_rows]
+
     sep = detectar_sep(arquivo_3ys)
+    linhas = []
+    with open(arquivo_3ys, 'r', encoding='utf-8', errors='replace') as f_:
+        reader = csv.reader(f_, delimiter=sep)
+        next(reader)
+        for row in reader:
+            linhas.append(row)
+    return linhas
+
+# ─── VENDAS ──────────────────────────────────────────────────────────
+def processar_vendas(linhas, mes_atual, output_dir='.'):
+    print("\n  Processando vendas...")
     canais_mes = {'MI':0,'ME':0,'ECOM':0,'GRUPO_MOULD':0}
     canais_total = {'MI':0,'ME':0,'ECOM':0,'GRUPO_MOULD':0}
     tipos_mes = {'MI':defaultdict(int),'ME':defaultdict(int),'ECOM':defaultdict(int)}
@@ -158,39 +220,36 @@ def processar_vendas(arquivo_3ys, mes_atual, output_dir='.'):
     refs_ec = Counter()
     holdings = defaultdict(lambda: defaultdict(int))
 
-    with open(arquivo_3ys, 'r', encoding='utf-8', errors='replace') as f_:
-        reader = csv.reader(f_, delimiter=sep)
-        next(reader)
-        for row in reader:
-            abr = g(row, IDX['abr_grp']).upper()
-            cod = g(row, IDX['cod_esp'])
-            pos_item = g(row, IDX['pos_item'])
-            canal, tipo = classifica_venda(abr, cod, pos_item)
-            if not canal: continue
-            try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
-            except: qtd = 0
-            if qtd <= 0: continue
-            anomes = g(row, IDX['anomes'])
-            ref = g(row, IDX['ref'])
-            linha = g(row, IDX['linha'])
-            ln = linha if linha in ('CLASSIC','EVA','WORKS','FIT','DAY BY DAY') else 'OUTROS'
-            holding = g(row, IDX['nomeholder']) or g(row, IDX['razao'])[:40]
+    for row in linhas:
+        abr = g(row, IDX['abr_grp']).upper()
+        cod = g(row, IDX['cod_esp'])
+        pos_item = g(row, IDX['pos_item'])
+        canal, tipo = classifica_venda(abr, cod, pos_item)
+        if not canal: continue
+        try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
+        except: qtd = 0
+        if qtd <= 0: continue
+        anomes = g(row, IDX['anomes'])
+        ref = g(row, IDX['ref'])
+        linha = g(row, IDX['linha'])
+        ln = linha if linha in ('CLASSIC','EVA','WORKS','FIT','DAY BY DAY') else 'OUTROS'
+        holding = g(row, IDX['nomeholder']) or g(row, IDX['razao'])[:40]
 
-            canais_total[canal] += qtd
-            if anomes == mes_atual:
-                canais_mes[canal] += qtd
-                if tipo: tipos_mes[canal][tipo] += qtd
-            if anomes and len(anomes) == 6 and anomes.isdigit():
-                if tipo: mensal[anomes][canal][tipo] += qtd
-                else: mensal[anomes][canal] += qtd
-            if ln != 'OUTROS':
-                linha_canal[ln][canal] += qtd
-            if ref:
-                refs[ref] += qtd
-                if canal == 'MI': refs_mi[ref] += qtd
-                elif canal == 'ME': refs_me[ref] += qtd
-                elif canal == 'ECOM': refs_ec[ref] += qtd
-            holdings[holding][canal] += qtd
+        canais_total[canal] += qtd
+        if anomes == mes_atual:
+            canais_mes[canal] += qtd
+            if tipo: tipos_mes[canal][tipo] += qtd
+        if anomes and len(anomes) == 6 and anomes.isdigit():
+            if tipo: mensal[anomes][canal][tipo] += qtd
+            else: mensal[anomes][canal] += qtd
+        if ln != 'OUTROS':
+            linha_canal[ln][canal] += qtd
+        if ref:
+            refs[ref] += qtd
+            if canal == 'MI': refs_mi[ref] += qtd
+            elif canal == 'ME': refs_me[ref] += qtd
+            elif canal == 'ECOM': refs_ec[ref] += qtd
+        holdings[holding][canal] += qtd
 
     # Volume "calçados" (MI+ME+ECOM) — Grupo Mould é outra unidade de negócio
     # e fica de fora deste total, mas continua disponível em canais_mes/total.
@@ -238,9 +297,8 @@ def processar_vendas(arquivo_3ys, mes_atual, output_dir='.'):
     }
 
 # ─── PROGRAMAÇÃO ─────────────────────────────────────────────────────
-def processar_programacao(arquivo_3ys, output_dir='.'):
+def processar_programacao(linhas, output_dir='.'):
     print("\n  Processando programação...")
-    sep = detectar_sep(arquivo_3ys)
 
     refs_por_semana = defaultdict(Counter)
     refs_por_mes    = defaultdict(Counter)
@@ -259,71 +317,68 @@ def processar_programacao(arquivo_3ys, output_dir='.'):
     refs_prog = Counter()
     linhas_proc = 0
 
-    with open(arquivo_3ys, 'r', encoding='utf-8', errors='replace') as f_:
-        reader = csv.reader(f_, delimiter=sep)
-        next(reader)
-        for row in reader:
-            abr = g(row, IDX['abr_grp']).upper()
-            if not any(p in abr for p in GRUPOS_OK): continue
-            plano = g(row, IDX['plano'])
-            if not plano or plano in ('Não se aplica','NÃ£o se aplica',''): continue
-            dt = parse_date(g(row, IDX['dt_plano']))
-            if not dt: continue
-            if dt.weekday() > 4: continue  # excluir fins de semana
-            try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
-            except: qtd = 0
-            if qtd <= 0: continue
+    for row in linhas:
+        abr = g(row, IDX['abr_grp']).upper()
+        if not any(p in abr for p in GRUPOS_OK): continue
+        plano = g(row, IDX['plano'])
+        if not plano or plano in ('Não se aplica','NÃ£o se aplica',''): continue
+        dt = parse_date(g(row, IDX['dt_plano']))
+        if not dt: continue
+        if dt.weekday() > 4: continue  # excluir fins de semana
+        try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
+        except: qtd = 0
+        if qtd <= 0: continue
 
-            linha = g(row, IDX['linha'])
-            ln = linha if linha in ('CLASSIC','EVA','WORKS','FIT','DAY BY DAY') else 'OUTROS'
-            razao = g(row, IDX['razao']).upper().strip()
-            pedido = g(row, IDX['pedido'])
-            ref = g(row, IDX['ref'])
-            is_export = 'EXPORTA' in abr
-            is_pe     = 'MOULD' in abr and 'ARMAZEM PRONTA ENTREGA' in razao
-            is_mi     = ('MERCADO INTERNO' in abr or 'ISENTO' in abr) and not is_export and not is_pe
-            # Tipo de montagem
-            tp = g(row, 85).upper()
-            is_conv = 'CONVENCIONAL' in tp
-            is_mont = 'MONTADO' in tp and 'CONVENCIONAL' not in tp
+        linha = g(row, IDX['linha'])
+        ln = linha if linha in ('CLASSIC','EVA','WORKS','FIT','DAY BY DAY') else 'OUTROS'
+        razao = g(row, IDX['razao']).upper().strip()
+        pedido = g(row, IDX['pedido'])
+        ref = g(row, IDX['ref'])
+        is_export = 'EXPORTA' in abr
+        is_pe     = 'MOULD' in abr and 'ARMAZEM PRONTA ENTREGA' in razao
+        is_mi     = ('MERCADO INTERNO' in abr or 'ISENTO' in abr) and not is_export and not is_pe
+        # Tipo de montagem
+        tp = g(row, IDX['tipomontagem']).upper()
+        is_conv = 'CONVENCIONAL' in tp
+        is_mont = 'MONTADO' in tp and 'CONVENCIONAL' not in tp
 
-            monday = dt - timedelta(days=dt.weekday())
-            friday = monday + timedelta(days=4)
-            sem_key = monday.strftime('%Y-%m-%d')
-            # O mês "dono" da semana é o mês da sexta-feira (último dia útil).
-            # Assim, semanas que viram o mês (ex: seg 29/Jun-sex 03/Jul) contam
-            # inteiramente para o mês da sexta-feira (Jul), e não são divididas.
-            mes_key = friday.strftime('%Y-%m')
+        monday = dt - timedelta(days=dt.weekday())
+        friday = monday + timedelta(days=4)
+        sem_key = monday.strftime('%Y-%m-%d')
+        # O mês "dono" da semana é o mês da sexta-feira (último dia útil).
+        # Assim, semanas que viram o mês (ex: seg 29/Jun-sex 03/Jul) contam
+        # inteiramente para o mês da sexta-feira (Jul), e não são divididas.
+        mes_key = friday.strftime('%Y-%m')
 
-            s = semanas[sem_key]
-            s[ln] += qtd; s['total'] += qtd
-            s['pedidos'].add(pedido); s['clientes'].add(g(row, IDX['razao'])[:40])
-            s['refs'][ref] += qtd
-            if not s['label']: s['label'] = semana_label(monday, friday)
-            s['mes_ref'] = mes_key
-            if is_export: s['export'] += qtd
-            if is_pe:     s['pe'] += qtd
-            if is_mi:     s['mi'] += qtd
-            if is_conv: s['convencional'] += qtd
-            if is_mont: s['montado'] += qtd
+        s = semanas[sem_key]
+        s[ln] += qtd; s['total'] += qtd
+        s['pedidos'].add(pedido); s['clientes'].add(g(row, IDX['razao'])[:40])
+        s['refs'][ref] += qtd
+        if not s['label']: s['label'] = semana_label(monday, friday)
+        s['mes_ref'] = mes_key
+        if is_export: s['export'] += qtd
+        if is_pe:     s['pe'] += qtd
+        if is_mi:     s['mi'] += qtd
+        if is_conv: s['convencional'] += qtd
+        if is_mont: s['montado'] += qtd
 
-            m2 = meses[mes_key]
-            m2[ln] += qtd; m2['total'] += qtd
-            m2['pedidos'].add(pedido); m2['refs'][ref] += qtd
-            m2['semanas_keys'].add(sem_key)
-            if not m2['label']: m2['label'] = mes_label_str(friday)
-            if is_export: m2['export'] += qtd
-            if is_pe:     m2['pe'] += qtd
-            if is_mi:     m2['mi'] += qtd
-            if is_conv: m2['convencional'] += qtd
-            if is_mont: m2['montado'] += qtd
+        m2 = meses[mes_key]
+        m2[ln] += qtd; m2['total'] += qtd
+        m2['pedidos'].add(pedido); m2['refs'][ref] += qtd
+        m2['semanas_keys'].add(sem_key)
+        if not m2['label']: m2['label'] = mes_label_str(friday)
+        if is_export: m2['export'] += qtd
+        if is_pe:     m2['pe'] += qtd
+        if is_mi:     m2['mi'] += qtd
+        if is_conv: m2['convencional'] += qtd
+        if is_mont: m2['montado'] += qtd
 
-            refs_prog[ref] += qtd
-            refs_por_semana[sem_key][ref] += qtd
-            refs_por_mes[mes_key][ref]    += qtd
-            if sem_key not in sem_labels_rp: sem_labels_rp[sem_key] = s['label']
-            if mes_key not in mes_labels_rp: mes_labels_rp[mes_key] = m2['label']
-            linhas_proc += 1
+        refs_prog[ref] += qtd
+        refs_por_semana[sem_key][ref] += qtd
+        refs_por_mes[mes_key][ref]    += qtd
+        if sem_key not in sem_labels_rp: sem_labels_rp[sem_key] = s['label']
+        if mes_key not in mes_labels_rp: mes_labels_rp[mes_key] = m2['label']
+        linhas_proc += 1
 
     print(f"    Linhas processadas: {linhas_proc:,}")
     print(f"    Semanas mapeadas:   {len(semanas)}")
@@ -402,7 +457,7 @@ def processar_programacao(arquivo_3ys, output_dir='.'):
     return {'semanas': semanas_out, 'refs_top20': refs_prog.most_common(20)}
 
 # ─── PEDIDO EM CARTEIRA ──────────────────────────────────────────────
-def processar_carteira(arquivo_3ys, output_dir='.'):
+def processar_carteira(linhas, output_dir='.'):
     """Pedidos vendidos (canais MI/ME) que ainda NÃO foram enviados para
     produção — ou seja, sem plano de produção vinculado.
 
@@ -418,7 +473,6 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
         verdade: "Nada faturado"/"Parcialmente faturado")
     """
     print("\n  Processando carteira...")
-    sep = detectar_sep(arquivo_3ys)
 
     pedidos_set = set()
     total_pares = 0
@@ -430,62 +484,59 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
     # Agregação por pedido (1 linha por pedido) para a tabela do dashboard
     pedidos_agg = {}
 
-    with open(arquivo_3ys, 'r', encoding='utf-8', errors='replace') as f_:
-        reader = csv.reader(f_, delimiter=sep)
-        next(reader)
-        for row in reader:
-            abr = g(row, IDX['abr_grp']).upper()
-            cod = g(row, IDX['cod_esp'])
-            plano = g(row, IDX['plano'])
-            pos_item = g(row, IDX['pos_item'])
-            local = g(row, IDX['local'])
+    for row in linhas:
+        abr = g(row, IDX['abr_grp']).upper()
+        cod = g(row, IDX['cod_esp'])
+        plano = g(row, IDX['plano'])
+        pos_item = g(row, IDX['pos_item'])
+        local = g(row, IDX['local'])
 
-            canal = VENDA_CANAL_POR_GRUPO.get(abr)
-            if canal not in ('MI', 'ME'): continue
-            if cod not in ('1', '31'): continue
-            plano_vazio = (not plano) or plano in ('Não se aplica', 'NÃ£o se aplica')
-            if not plano_vazio: continue
-            if pos_item.upper() in CARTEIRA_POS_ITEM_EXCLUIDOS: continue
-            if local != '30': continue
+        canal = VENDA_CANAL_POR_GRUPO.get(abr)
+        if canal not in ('MI', 'ME'): continue
+        if cod not in ('1', '31'): continue
+        plano_vazio = (not plano) or plano in ('Não se aplica', 'NÃ£o se aplica')
+        if not plano_vazio: continue
+        if pos_item.upper() in CARTEIRA_POS_ITEM_EXCLUIDOS: continue
+        if local != '30': continue
 
-            try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
-            except: qtd = 0
-            if qtd <= 0: continue
+        try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
+        except: qtd = 0
+        if qtd <= 0: continue
 
-            pedido = g(row, IDX['pedido'])
-            etapa = corrigir_mojibake(g(row, IDX['etapa'])) or 'NÃO INFORMADO'
-            cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))
-            ref = g(row, IDX['ref'])
-            dt_ent = parse_date(g(row, IDX['dt_ent']))
-            dt_fat = parse_date(g(row, IDX['dt_fat']))
+        pedido = g(row, IDX['pedido'])
+        etapa = corrigir_mojibake(g(row, IDX['etapa'])) or 'NÃO INFORMADO'
+        cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))
+        ref = g(row, IDX['ref'])
+        dt_ent = parse_date(g(row, IDX['dt_ent']))
+        dt_fat = parse_date(g(row, IDX['dt_fat']))
 
-            pedidos_set.add(pedido)
-            total_pares += qtd
-            canais[canal]['pedidos'].add(pedido); canais[canal]['pares'] += qtd
-            etapas[etapa]['pedidos'].add(pedido); etapas[etapa]['pares'] += qtd
+        pedidos_set.add(pedido)
+        total_pares += qtd
+        canais[canal]['pedidos'].add(pedido); canais[canal]['pares'] += qtd
+        etapas[etapa]['pedidos'].add(pedido); etapas[etapa]['pares'] += qtd
 
-            if dt_ent:
-                k = dt_ent.strftime('%Y-%m')
-                mes_entrada[k]['label'] = mes_label_curto(dt_ent)
-                mes_entrada[k]['pares'] += qtd
-            if dt_fat:
-                k = dt_fat.strftime('%Y-%m')
-                mes_entrega[k]['label'] = mes_label_curto(dt_fat)
-                mes_entrega[k]['pares'] += qtd
+        if dt_ent:
+            k = dt_ent.strftime('%Y-%m')
+            mes_entrada[k]['label'] = mes_label_curto(dt_ent)
+            mes_entrada[k]['pares'] += qtd
+        if dt_fat:
+            k = dt_fat.strftime('%Y-%m')
+            mes_entrega[k]['label'] = mes_label_curto(dt_fat)
+            mes_entrega[k]['pares'] += qtd
 
-            pa = pedidos_agg.get(pedido)
-            if not pa:
-                pa = pedidos_agg[pedido] = {
-                    'pedido': pedido, 'cliente': cliente, 'canal': canal,
-                    'etapa': etapa, 'pares': 0, 'refs': Counter(),
-                    'dt_entrada': dt_ent, 'dt_faturam': dt_fat,
-                }
-            pa['pares'] += qtd
-            if ref: pa['refs'][ref] += qtd
-            if dt_ent and (not pa['dt_entrada'] or dt_ent < pa['dt_entrada']):
-                pa['dt_entrada'] = dt_ent
-            if dt_fat and (not pa['dt_faturam'] or dt_fat < pa['dt_faturam']):
-                pa['dt_faturam'] = dt_fat
+        pa = pedidos_agg.get(pedido)
+        if not pa:
+            pa = pedidos_agg[pedido] = {
+                'pedido': pedido, 'cliente': cliente, 'canal': canal,
+                'etapa': etapa, 'pares': 0, 'refs': Counter(),
+                'dt_entrada': dt_ent, 'dt_faturam': dt_fat,
+            }
+        pa['pares'] += qtd
+        if ref: pa['refs'][ref] += qtd
+        if dt_ent and (not pa['dt_entrada'] or dt_ent < pa['dt_entrada']):
+            pa['dt_entrada'] = dt_ent
+        if dt_fat and (not pa['dt_faturam'] or dt_fat < pa['dt_faturam']):
+            pa['dt_faturam'] = dt_fat
 
     print(f"    Pedidos em carteira: {len(pedidos_set):,} ({total_pares:,} pares)")
 
@@ -713,10 +764,12 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
 
     estoque = processar_estoque(arquivo_esqt, output_dir)
 
-    if arquivo_3ys and os.path.exists(arquivo_3ys):
-        vendas   = processar_vendas(arquivo_3ys, mes_atual, output_dir)
-        prog     = processar_programacao(arquivo_3ys, output_dir)
-        carteira = processar_carteira(arquivo_3ys, output_dir)
+    usar_mysql = bool(os.environ.get('MYSQL_HOST'))
+    if usar_mysql or (arquivo_3ys and os.path.exists(arquivo_3ys)):
+        linhas = carregar_linhas_3ys(arquivo_3ys)
+        vendas   = processar_vendas(linhas, mes_atual, output_dir)
+        prog     = processar_programacao(linhas, output_dir)
+        carteira = processar_carteira(linhas, output_dir)
     else:
         vendas, prog, carteira = _carregar_vendas_prog_existentes(output_dir)
 
@@ -745,9 +798,12 @@ def main():
     arquivo_esqt = 'ESQT.xls'
 
     print(f"\n  Verificando arquivos...")
+    usar_mysql = bool(os.environ.get('MYSQL_HOST'))
     tem_3ys  = os.path.exists(arquivo_3ys)
     tem_esqt = os.path.exists(arquivo_esqt)
-    if tem_3ys:
+    if usar_mysql:
+        print(f"  ✓ MYSQL_HOST configurado — vendas/programação/carteira virão do MySQL")
+    elif tem_3ys:
         print(f"  ✓ {arquivo_3ys} ({os.path.getsize(arquivo_3ys)/1024:.0f} KB)")
     else:
         print(f"  ⚠ Não encontrado: 3YS — vendas e programação não serão atualizadas")
