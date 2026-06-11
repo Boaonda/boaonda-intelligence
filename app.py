@@ -23,7 +23,8 @@ UPLOADS_DIR.mkdir(exist_ok=True)
 
 DATA_FILES = (
     'dados_estoque.json', 'dados_portal.json', 'dados_programacao.json',
-    'dados_refs_tabela.json', 'dados_vendas.json', 'boaonda_dados_completos.json',
+    'dados_refs_tabela.json', 'dados_vendas.json', 'dados_carteira.json',
+    'boaonda_dados_completos.json',
 )
 
 # Primeira execução com volume vazio: semeia com os JSONs versionados no repo

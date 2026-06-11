@@ -1,29 +1,29 @@
 {
-  "gerado_em": "11/06/2026 11:54",
+  "gerado_em": "11/06/2026 15:09",
   "meta_semanal": 30000,
   "vendas": {
     "mes_atual": "202606",
     "mes_label": "Jun/2026",
     "canais_mes": {
-      "MI": 36702,
+      "MI": 38394,
       "ME": 3366,
-      "ECOM": 1307,
+      "ECOM": 1311,
       "GRUPO_MOULD": 12070
     },
     "tipos_mes": {
       "MI": {
-        "PE": 6906,
-        "MISTA": 9510,
-        "PROG": 20286
+        "PE": 6858,
+        "MISTA": 9714,
+        "PROG": 21822
       },
       "ME": {
         "PROG": 3366
       },
       "ECOM": {
-        "ECOM": 1307
+        "ECOM": 1311
       }
     },
-    "total_mes": 41375,
+    "total_mes": 43071,
     "pendente_validacao": false
   },
   "programacao": {
@@ -189,10 +189,14 @@
     }
   },
   "estoque": {
-    "fisico": 143028,
-    "reservas": 29008,
-    "livre": 114020,
-    "vlr_fisico": 7066076.17,
-    "vlr_livre": 5654862.25
+    "fisico": 157392,
+    "reservas": 36088,
+    "livre": 121304,
+    "vlr_fisico": 7693789.87,
+    "vlr_livre": 5980336.69
+  },
+  "carteira": {
+    "total_pedidos": 148,
+    "total_pares": 18496
   }
 }

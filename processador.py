@@ -31,8 +31,12 @@ IDX = {
     'dt_ent':11,'dt_fat':12,'pedido':13,'anomes':18,
     'marca':20,'linha':23,'vlr':26,'cod_esp':27,'abr_grp':29,
     'holding':16,'nomeholder':17,'plano':35,'dt_plano':77,
-    'pos_item':40,
+    'pos_item':40,'etapa':39,'local':72,
 }
+
+# Pedido em Carteira — pos_item que não devem entrar (já cancelados ou já
+# totalmente faturados/entregues, não representam carteira aberta).
+CARTEIRA_POS_ITEM_EXCLUIDOS = {'CANCELADO', 'FATURADO'}
 
 # Mapeamento abr_grp -> canal de vendas (MI/ME/ECOM).
 # Apenas calçados — EVA, SOLA, CLIENTES NACIONAIS e GRUPO MOULD são outras
@@ -78,9 +82,27 @@ def mes_label_str(dt):
          'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
     return f"{m[dt.month-1]}/{dt.year}"
 
+def mes_label_curto(dt):
+    m = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+    return f"{m[dt.month-1]}/{dt.year}"
+
 def g(row, idx):
     try: return row[idx].strip()
     except: return ''
+
+def corrigir_mojibake(s):
+    """Corrige texto que veio do 3YS com acentos duplamente
+    mal-codificados (ex: 'AVALIAÃ‡ÃƒO' -> 'AVALIAÇÃO',
+    'NÃ£o se aplica' -> 'Não se aplica')."""
+    if not s: return s
+    for _ in range(4):
+        try:
+            s2 = s.encode('cp1252').decode('utf-8')
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            return s
+        if s2 == s: return s
+        s = s2
+    return s
 
 def classifica_canal(cod, abr):
     if cod == '1': return 'MI'
@@ -379,6 +401,158 @@ def processar_programacao(arquivo_3ys, output_dir='.'):
 
     return {'semanas': semanas_out, 'refs_top20': refs_prog.most_common(20)}
 
+# ─── PEDIDO EM CARTEIRA ──────────────────────────────────────────────
+def processar_carteira(arquivo_3ys, output_dir='.'):
+    """Pedidos vendidos (canais MI/ME) que ainda NÃO foram enviados para
+    produção — ou seja, sem plano de produção vinculado.
+
+    Regras de inclusão de uma linha:
+      - canal (abr_grp) é MI ou ME (E-commerce nunca gera carteira a
+        produzir, fica de fora)
+      - planoproducao vazio / "Não se aplica" (ainda não está na programação)
+      - cod_esp_ent_sai em (1=Programado, 31=Venda Mista) — espécie 22
+        (Pronta Entrega) não entra, pois já está pronta
+      - LocalEstoque == '30' (local que alimenta a programação) — vale
+        tanto para espécie 1 quanto 31
+      - pos_item não é 'Cancelado' nem 'Faturado' (carteira aberta de
+        verdade: "Nada faturado"/"Parcialmente faturado")
+    """
+    print("\n  Processando carteira...")
+    sep = detectar_sep(arquivo_3ys)
+    hoje = datetime.now()
+
+    pedidos_set = set()
+    total_pares = 0
+    canais = defaultdict(lambda: {'pedidos': set(), 'pares': 0})
+    etapas = defaultdict(lambda: {'pedidos': set(), 'pares': 0})
+    situacao = {
+        'atraso': {'pedidos': set(), 'pares': 0},
+        'risco':  {'pedidos': set(), 'pares': 0},
+        'prazo':  {'pedidos': set(), 'pares': 0},
+    }
+    mes_entrada = defaultdict(lambda: {'label': '', 'pares': 0})
+    mes_entrega = defaultdict(lambda: {'label': '', 'pares': 0})
+
+    # Agregação por pedido (1 linha por pedido) para a tabela do dashboard
+    pedidos_agg = {}
+
+    with open(arquivo_3ys, 'r', encoding='utf-8', errors='replace') as f_:
+        reader = csv.reader(f_, delimiter=sep)
+        next(reader)
+        for row in reader:
+            abr = g(row, IDX['abr_grp']).upper()
+            cod = g(row, IDX['cod_esp'])
+            plano = g(row, IDX['plano'])
+            pos_item = g(row, IDX['pos_item'])
+            local = g(row, IDX['local'])
+
+            canal = VENDA_CANAL_POR_GRUPO.get(abr)
+            if canal not in ('MI', 'ME'): continue
+            if cod not in ('1', '31'): continue
+            plano_vazio = (not plano) or plano in ('Não se aplica', 'NÃ£o se aplica')
+            if not plano_vazio: continue
+            if pos_item.upper() in CARTEIRA_POS_ITEM_EXCLUIDOS: continue
+            if local != '30': continue
+
+            try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
+            except: qtd = 0
+            if qtd <= 0: continue
+
+            pedido = g(row, IDX['pedido'])
+            etapa = corrigir_mojibake(g(row, IDX['etapa'])) or 'NÃO INFORMADO'
+            cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))
+            ref = g(row, IDX['ref'])
+            dt_ent = parse_date(g(row, IDX['dt_ent']))
+            dt_fat = parse_date(g(row, IDX['dt_fat']))
+
+            pedidos_set.add(pedido)
+            total_pares += qtd
+            canais[canal]['pedidos'].add(pedido); canais[canal]['pares'] += qtd
+            etapas[etapa]['pedidos'].add(pedido); etapas[etapa]['pares'] += qtd
+
+            if dt_ent:
+                k = dt_ent.strftime('%Y-%m')
+                mes_entrada[k]['label'] = mes_label_curto(dt_ent)
+                mes_entrada[k]['pares'] += qtd
+            if dt_fat:
+                k = dt_fat.strftime('%Y-%m')
+                mes_entrega[k]['label'] = mes_label_curto(dt_fat)
+                mes_entrega[k]['pares'] += qtd
+
+            # situação de entrega (com base na dt_faturam = data negociada)
+            sit = None
+            if dt_fat:
+                diff = (dt_fat.date() - hoje.date()).days
+                if diff < 0: sit = 'atraso'
+                elif diff <= 15: sit = 'risco'
+                else: sit = 'prazo'
+                situacao[sit]['pedidos'].add(pedido)
+                situacao[sit]['pares'] += qtd
+
+            pa = pedidos_agg.get(pedido)
+            if not pa:
+                pa = pedidos_agg[pedido] = {
+                    'pedido': pedido, 'cliente': cliente, 'canal': canal,
+                    'etapa': etapa, 'pares': 0, 'refs': Counter(),
+                    'dt_entrada': dt_ent, 'dt_faturam': dt_fat, 'situacao': sit,
+                }
+            pa['pares'] += qtd
+            if ref: pa['refs'][ref] += qtd
+            if dt_ent and (not pa['dt_entrada'] or dt_ent < pa['dt_entrada']):
+                pa['dt_entrada'] = dt_ent
+            if dt_fat and (not pa['dt_faturam'] or dt_fat < pa['dt_faturam']):
+                pa['dt_faturam'] = dt_fat
+                diff = (dt_fat.date() - hoje.date()).days
+                pa['situacao'] = 'atraso' if diff < 0 else ('risco' if diff <= 15 else 'prazo')
+
+    print(f"    Pedidos em carteira: {len(pedidos_set):,} ({total_pares:,} pares)")
+
+    canais_out = {c: {'pedidos': len(v['pedidos']), 'pares': v['pares']}
+                   for c, v in canais.items()}
+    for c in ('MI', 'ME'):
+        canais_out.setdefault(c, {'pedidos': 0, 'pares': 0})
+
+    etapas_out = [
+        {'etapa': e, 'pedidos': len(v['pedidos']), 'pares': v['pares']}
+        for e, v in sorted(etapas.items(), key=lambda x: -x[1]['pares'])
+    ]
+
+    situacao_out = {k: {'pedidos': len(v['pedidos']), 'pares': v['pares']}
+                     for k, v in situacao.items()}
+
+    pedidos_out = []
+    for pa in sorted(pedidos_agg.values(), key=lambda x: x['dt_faturam'] or datetime.max):
+        top_ref = pa['refs'].most_common(1)
+        pedidos_out.append({
+            'pedido': pa['pedido'], 'cliente': pa['cliente'][:40], 'canal': pa['canal'],
+            'etapa': pa['etapa'], 'pares': pa['pares'],
+            'ref_principal': top_ref[0][0] if top_ref else '',
+            'qtd_refs': len(pa['refs']),
+            'dt_entrada': pa['dt_entrada'].strftime('%d/%m/%Y') if pa['dt_entrada'] else '',
+            'dt_faturam': pa['dt_faturam'].strftime('%d/%m/%Y') if pa['dt_faturam'] else '',
+            'situacao': pa['situacao'] or '',
+        })
+
+    dados_cart = {
+        'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        'total_pedidos': len(pedidos_set),
+        'total_pares': total_pares,
+        'canais': canais_out,
+        'etapas': etapas_out,
+        'situacao': situacao_out,
+        'mes_entrada': dict(sorted(mes_entrada.items())),
+        'mes_entrega': dict(sorted(mes_entrega.items())),
+        'pedidos': pedidos_out,
+    }
+    with open(os.path.join(output_dir, 'dados_carteira.json'), 'w', encoding='utf-8') as f_:
+        json.dump(dados_cart, f_, ensure_ascii=False, default=str)
+    print(f"    ✓ dados_carteira.json gerado")
+
+    return {
+        'total_pedidos': len(pedidos_set), 'total_pares': total_pares,
+        'canais': canais_out, 'situacao': situacao_out,
+    }
+
 # ─── ESTOQUE ─────────────────────────────────────────────────────────
 def processar_estoque(arquivo_esqt, output_dir='.'):
     print("\n  Processando estoque...")
@@ -451,7 +625,7 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
     return {'refs': estoque_out, 'totais': totais_est}
 
 # ─── JSON PORTAL ─────────────────────────────────────────────────────
-def gerar_json_portal(vendas, prog, estoque, mes_atual, mes_label, output_dir='.'):
+def gerar_json_portal(vendas, prog, estoque, carteira, mes_atual, mes_label, output_dir='.'):
     agora = datetime.now()
     ano = int(mes_atual[:4]); mes = int(mes_atual[4:])
     mes_ref_atual = f"{ano}-{mes:02d}"
@@ -476,12 +650,16 @@ def gerar_json_portal(vendas, prog, estoque, mes_atual, mes_label, output_dir='.
             'semanas': sems_mes,
         },
         'estoque': estoque['totais'],
+        'carteira': {
+            'total_pedidos': carteira.get('total_pedidos', 0),
+            'total_pares': carteira.get('total_pares', 0),
+        },
     }
     with open(os.path.join(output_dir, 'dados_portal.json'), 'w', encoding='utf-8') as f_:
         json.dump(dados, f_, ensure_ascii=False, indent=2)
     print(f"\n  ✓ dados_portal.json atualizado")
 
-def gerar_dados_completos(vendas, prog, estoque, output_dir='.'):
+def gerar_dados_completos(vendas, prog, estoque, carteira, output_dir='.'):
     dados = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
         'vendas': {
@@ -492,14 +670,20 @@ def gerar_dados_completos(vendas, prog, estoque, output_dir='.'):
         },
         'programacao': {'semanas': prog['semanas']},
         'estoque': {'totais': estoque['totais'], 'refs': estoque['refs']},
+        'carteira': {
+            'total_pedidos': carteira.get('total_pedidos', 0),
+            'total_pares': carteira.get('total_pares', 0),
+            'canais': carteira.get('canais', {}),
+            'situacao': carteira.get('situacao', {}),
+        },
     }
     with open(os.path.join(output_dir, 'boaonda_dados_completos.json'), 'w', encoding='utf-8') as f_:
         json.dump(dados, f_, ensure_ascii=False, default=str)
     print(f"  ✓ boaonda_dados_completos.json atualizado")
 
 def _carregar_vendas_prog_existentes(output_dir):
-    """Recarrega vendas/programação a partir dos JSONs já gerados, para não
-    apagar esses dados do portal quando só o ESQT é reprocessado."""
+    """Recarrega vendas/programação/carteira a partir dos JSONs já gerados,
+    para não apagar esses dados do portal quando só o ESQT é reprocessado."""
     try:
         with open(os.path.join(output_dir, 'dados_vendas.json'), encoding='utf-8') as f_:
             dv = json.load(f_)
@@ -521,7 +705,19 @@ def _carregar_vendas_prog_existentes(output_dir):
     except (FileNotFoundError, json.JSONDecodeError):
         prog = {'semanas': {}}
 
-    return vendas, prog
+    try:
+        with open(os.path.join(output_dir, 'dados_carteira.json'), encoding='utf-8') as f_:
+            dc = json.load(f_)
+        carteira = {
+            'total_pedidos': dc.get('total_pedidos', 0),
+            'total_pares': dc.get('total_pares', 0),
+            'canais': dc.get('canais', {}),
+            'situacao': dc.get('situacao', {}),
+        }
+    except (FileNotFoundError, json.JSONDecodeError):
+        carteira = {'total_pedidos':0,'total_pares':0,'canais':{},'situacao':{}}
+
+    return vendas, prog, carteira
 
 # ─── ORQUESTRADOR ────────────────────────────────────────────────────
 def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
@@ -543,13 +739,14 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
     estoque = processar_estoque(arquivo_esqt, output_dir)
 
     if arquivo_3ys and os.path.exists(arquivo_3ys):
-        vendas = processar_vendas(arquivo_3ys, mes_atual, output_dir)
-        prog   = processar_programacao(arquivo_3ys, output_dir)
+        vendas   = processar_vendas(arquivo_3ys, mes_atual, output_dir)
+        prog     = processar_programacao(arquivo_3ys, output_dir)
+        carteira = processar_carteira(arquivo_3ys, output_dir)
     else:
-        vendas, prog = _carregar_vendas_prog_existentes(output_dir)
+        vendas, prog, carteira = _carregar_vendas_prog_existentes(output_dir)
 
-    gerar_json_portal(vendas, prog, estoque, mes_atual, mes_label, output_dir)
-    gerar_dados_completos(vendas, prog, estoque, output_dir)
+    gerar_json_portal(vendas, prog, estoque, carteira, mes_atual, mes_label, output_dir)
+    gerar_dados_completos(vendas, prog, estoque, carteira, output_dir)
 
     cm = vendas['canais_mes']
     t  = estoque['totais']
@@ -559,7 +756,8 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         'vendas_mes': cm,
         'estoque_totais': t,
         'arquivos': ['dados_portal.json','dados_programacao.json','dados_refs_tabela.json',
-                      'dados_vendas.json','dados_estoque.json','boaonda_dados_completos.json'],
+                      'dados_vendas.json','dados_estoque.json','dados_carteira.json',
+                      'boaonda_dados_completos.json'],
     }
 
 # ─── CLI ─────────────────────────────────────────────────────────────

@@ -303,6 +303,16 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-kpi-label">níveis hierárquicos</div>
     </div>
 
+    <!-- NÓ: PEDIDO EM CARTEIRA (esq meio) -->
+    <div class="nó coral" style="left:40px;top:340px" onclick="abrirModulo('carteira')">
+      <span class="nó-icon">🗂️</span>
+      <div class="nó-title">Pedido em Carteira</div>
+      <div class="nó-desc">MI · ME · sem plano de produção</div>
+      <div class="nó-kpi coral" id="kpi-c-pedidos">–</div>
+      <div class="nó-kpi-label">pedidos em carteira</div>
+      <div class="nó-cta">Analisar carteira →</div>
+    </div>
+
     <!-- NÓ CENTRAL: ESTOQUE -->
     <div class="nó-central" style="left:50%;top:230px;transform:translateX(-50%)" onclick="abrirModulo('estoque')">
       <div class="nó-central-icon">📦</div>
@@ -380,6 +390,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   <iframe class="mod-frame" id="frame-estoque" src="" title="Estoque"></iframe>
 </div>
 
+<div class="page" id="page-carteira">
+  <iframe class="mod-frame" id="frame-carteira" src="" title="Pedido em Carteira"></iframe>
+</div>
+
 <div class="page" id="page-equilibrio">
   <div class="mod-header">
     <div class="mod-icon">⚖️</div>
@@ -397,6 +411,7 @@ const MODS={
   vendas:{file:'boaonda_vendas_catalogo.html',label:'Vendas & Catálogo'},
   programacao:{file:'boaonda_programacao_v3.html',label:'Programação'},
   estoque:{file:'boaonda_estoque.html',label:'Estoque'},
+  carteira:{file:'boaonda_carteira.html',label:'Pedido em Carteira'},
   equilibrio:{file:null,label:'Equilíbrio'},
 };
 function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
@@ -415,7 +430,8 @@ function fallback(){return{
     '2026-S25':{total:31569,label:'15–21/Jun',ok:true},
     '2026-S26':{total:33462,label:'22–28/Jun',ok:true},
   }},
-  estoque:{fisico:147378,reservas:29890,livre:117488}
+  estoque:{fisico:147378,reservas:29890,livre:117488},
+  carteira:{total_pedidos:0,total_pares:0}
 };}
 
 function render(d){
@@ -447,6 +463,10 @@ function render(d){
       <div class="sem-r">${s.label||''}</div>
     </div>`;
   });
+
+  // CARTEIRA
+  const c=d.carteira||{};
+  document.getElementById('kpi-c-pedidos').textContent=f(c.total_pedidos);
 
   // ESTOQUE
   const e=d.estoque;
