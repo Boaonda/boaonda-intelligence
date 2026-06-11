@@ -193,7 +193,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .mod-icon{font-size:18px}
 .mod-title{font-size:15px;font-weight:700;color:var(--txt)}
 .mod-sub{font-size:10px;color:var(--txt-s)}
-.mod-frame{width:100%;border:none;min-height:calc(100vh - 110px)}
+.mod-frame{width:100%;border:none;min-height:calc(100vh - 64px);display:block}
 
 /* alerta */
 .alerta-val{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2);border-radius:5px;padding:4px 9px;font-size:8.5px;color:var(--coral);font-weight:600;margin-top:6px;display:inline-block}
@@ -369,26 +369,14 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 
 <!-- MÓDULOS -->
 <div class="page" id="page-vendas">
-  <div class="mod-header">
-    <div class="mod-icon">📊</div>
-    <div><div class="mod-title">Vendas & Catálogo</div><div class="mod-sub">MI · ME · E-commerce · Pronta Entrega · jan/2025–jun/2026</div></div>
-  </div>
   <iframe class="mod-frame" id="frame-vendas" src="" title="Vendas"></iframe>
 </div>
 
 <div class="page" id="page-programacao">
-  <div class="mod-header">
-    <div class="mod-icon">🏭</div>
-    <div><div class="mod-title">Programação de Produção</div><div class="mod-sub">Semanas por dt_plano · Meta 30.000 pares/semana</div></div>
-  </div>
   <iframe class="mod-frame" id="frame-programacao" src="" title="Programação"></iframe>
 </div>
 
 <div class="page" id="page-estoque">
-  <div class="mod-header">
-    <div class="mod-icon">📦</div>
-    <div><div class="mod-title">Estoque Disponível</div><div class="mod-sub">Locais 30·156·157·158·159·160·234·VI · físico · reservas · livre</div></div>
-  </div>
   <iframe class="mod-frame" id="frame-estoque" src="" title="Estoque"></iframe>
 </div>
 
@@ -420,7 +408,7 @@ fetch('dados_portal.json?_='+Date.now())
 
 function fallback(){return{
   gerado_em:'–',
-  vendas:{mes_label:'Jun/2026',canais_mes:{MI:14759,ME:0,ECOM:547,PE:8616},total_mes:23922,pendente_validacao:true},
+  vendas:{mes_label:'Jun/2026',canais_mes:{MI:14759,ME:0,ECOM:547,GRUPO_MOULD:0},total_mes:15306,pendente_validacao:true},
   programacao:{mes_label:'Jun/2026',total_mes:124605,semanas:{
     '2026-S23':{total:32244,label:'01–07/Jun',ok:true},
     '2026-S24':{total:27330,label:'08–14/Jun',ok:false},
@@ -442,7 +430,7 @@ function render(d){
     <span class="tag mi">MI ${f(cm.MI)}</span>
     <span class="tag me">ME ${f(cm.ME)}</span>
     <span class="tag ec">E-com ${f(cm.ECOM)}</span>
-    <span class="tag pe">PE ${f(cm.PE)}</span>`;
+    <span class="tag pe">Mould ${f(cm.GRUPO_MOULD)}</span>`;
   if(v.pendente_validacao)
     document.getElementById('alerta-v').innerHTML='<div class="alerta-val">⚠️ MI em validação</div>';
 

@@ -31,7 +31,27 @@ IDX = {
     'dt_ent':11,'dt_fat':12,'pedido':13,'anomes':18,
     'marca':20,'linha':23,'vlr':26,'cod_esp':27,'abr_grp':29,
     'holding':16,'nomeholder':17,'plano':35,'dt_plano':77,
+    'pos_item':40,
 }
+
+# Mapeamento abr_grp -> canal de vendas (MI/ME/ECOM).
+# Apenas calçados — EVA, SOLA, CLIENTES NACIONAIS e GRUPO MOULD são outras
+# unidades de negócio e ficam fora desta análise (Mould mantém seu próprio
+# total à parte, ver classifica_venda).
+VENDA_CANAL_POR_GRUPO = {
+    'CALCADO - MERCADO INTERNO': 'MI',
+    'CALCADO - CLIENTES ISENTOS': 'MI',
+    'EXPORTACAO - CALCADOS': 'ME',
+    'E-COMMERCE': 'ECOM',
+}
+
+# cod_esp_ent_sai -> tipo de pedido dentro do canal:
+#   1  = Programado
+#   10 = Venda Equiparada (exportação)
+#   22 = Pronta Entrega
+#   31 = Venda Mista (programação + pronta entrega no mesmo pedido)
+#   32 = Ecommerce
+VENDA_TIPO_POR_COD = {'1':'PROG','10':'EQUIPARADA','22':'PE','31':'MISTA','32':'ECOM'}
 
 # ─── HELPERS ───────────────────────────────────────────────────────────
 def achar_3ys(diretorio='.'):
@@ -72,6 +92,29 @@ def classifica_canal(cod, abr):
     if 'MOULD' in abr: return 'GRUPO_MOULD'
     return None
 
+def classifica_venda(abr, cod, pos_item):
+    """Classifica uma linha de venda em (canal, tipo) para o relatório de
+    Vendas (MI/ME/ECOM + tipo de pedido).
+
+    Regras:
+      - Itens 'Cancelado' (pos_item) nunca contam no volume de vendas.
+      - Canal vem do abr_grp (CALCADO - MERCADO INTERNO/CLIENTES ISENTOS -> MI,
+        EXPORTACAO - CALCADOS -> ME, E-COMMERCE -> ECOM).
+      - Tipo vem do cod_esp_ent_sai (1=Programado, 10=Venda Equiparada,
+        22=Pronta Entrega, 31=Venda Mista, 32=Ecommerce).
+      - Linhas de GRUPO MOULD entram à parte, em 'GRUPO_MOULD' (sem tipo),
+        para manter o total dessa unidade de negócio visível.
+    """
+    if pos_item.strip().upper() == 'CANCELADO':
+        return None, None
+    canal = VENDA_CANAL_POR_GRUPO.get(abr)
+    tipo = VENDA_TIPO_POR_COD.get(cod)
+    if canal and tipo:
+        return canal, tipo
+    if 'MOULD' in abr:
+        return 'GRUPO_MOULD', None
+    return None, None
+
 def detectar_sep(path):
     with open(path, 'r', encoding='utf-8', errors='replace') as f:
         sample = f.read(2000)
@@ -81,9 +124,11 @@ def detectar_sep(path):
 def processar_vendas(arquivo_3ys, mes_atual, output_dir='.'):
     print("\n  Processando vendas...")
     sep = detectar_sep(arquivo_3ys)
-    canais_mes = {'MI':0,'ME':0,'ECOM':0,'PE':0,'GRUPO_MOULD':0}
-    canais_total = {'MI':0,'ME':0,'ECOM':0,'PE':0}
-    mensal = defaultdict(lambda: defaultdict(int))
+    canais_mes = {'MI':0,'ME':0,'ECOM':0,'GRUPO_MOULD':0}
+    canais_total = {'MI':0,'ME':0,'ECOM':0,'GRUPO_MOULD':0}
+    tipos_mes = {'MI':defaultdict(int),'ME':defaultdict(int),'ECOM':defaultdict(int)}
+    mensal = defaultdict(lambda: {'MI':defaultdict(int),'ME':defaultdict(int),
+                                   'ECOM':defaultdict(int),'GRUPO_MOULD':0})
     linha_canal = defaultdict(lambda: defaultdict(int))
     refs = Counter()
     refs_mi = Counter()
@@ -96,8 +141,9 @@ def processar_vendas(arquivo_3ys, mes_atual, output_dir='.'):
         next(reader)
         for row in reader:
             abr = g(row, IDX['abr_grp']).upper()
-            if not any(p in abr for p in GRUPOS_OK): continue
-            canal = classifica_canal(g(row, IDX['cod_esp']), abr)
+            cod = g(row, IDX['cod_esp'])
+            pos_item = g(row, IDX['pos_item'])
+            canal, tipo = classifica_venda(abr, cod, pos_item)
             if not canal: continue
             try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
             except: qtd = 0
@@ -107,33 +153,46 @@ def processar_vendas(arquivo_3ys, mes_atual, output_dir='.'):
             linha = g(row, IDX['linha'])
             ln = linha if linha in ('CLASSIC','EVA','WORKS','FIT','DAY BY DAY') else 'OUTROS'
             holding = g(row, IDX['nomeholder']) or g(row, IDX['razao'])[:40]
-            if anomes == mes_atual and canal in canais_mes:
+
+            canais_total[canal] += qtd
+            if anomes == mes_atual:
                 canais_mes[canal] += qtd
-            if canal in canais_total:
-                canais_total[canal] += qtd
+                if tipo: tipos_mes[canal][tipo] += qtd
             if anomes and len(anomes) == 6 and anomes.isdigit():
-                mensal[anomes][canal] += qtd
+                if tipo: mensal[anomes][canal][tipo] += qtd
+                else: mensal[anomes][canal] += qtd
             if ln != 'OUTROS':
                 linha_canal[ln][canal] += qtd
             if ref:
                 refs[ref] += qtd
                 if canal == 'MI': refs_mi[ref] += qtd
                 elif canal == 'ME': refs_me[ref] += qtd
-                elif canal in ('ECOM','EC'): refs_ec[ref] += qtd
-            if canal in canais_total:
-                holdings[holding][canal] += qtd
+                elif canal == 'ECOM': refs_ec[ref] += qtd
+            holdings[holding][canal] += qtd
 
-    total_mes = sum(canais_mes.values())
-    print(f"    Mês {mes_atual}: {total_mes:,} pares total")
+    # Volume "calçados" (MI+ME+ECOM) — Grupo Mould é outra unidade de negócio
+    # e fica de fora deste total, mas continua disponível em canais_mes/total.
+    total_mes = canais_mes['MI'] + canais_mes['ME'] + canais_mes['ECOM']
+    print(f"    Mês {mes_atual}: {total_mes:,} pares (MI+ME+ECOM) "
+          f"| Grupo Mould: {canais_mes['GRUPO_MOULD']:,}")
+
+    mensal_out = {}
+    for k, v in sorted(mensal.items()):
+        mensal_out[k] = {
+            'MI': dict(v['MI']), 'ME': dict(v['ME']), 'ECOM': dict(v['ECOM']),
+            'GRUPO_MOULD': v['GRUPO_MOULD'],
+        }
+    tipos_mes_out = {c: dict(t) for c, t in tipos_mes.items()}
 
     # Gravar dados_vendas.json
     dados_vend = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
         'mes_atual': mes_atual,
         'canais_mes': canais_mes,
+        'tipos_mes': tipos_mes_out,
         'canais_total': canais_total,
         'total_mes': total_mes,
-        'mensal': {k: dict(v) for k,v in sorted(mensal.items())},
+        'mensal': mensal_out,
         'refs_top20': {
             'MI': refs_mi.most_common(20) if hasattr(refs_mi,'most_common') else [],
             'ME': refs_me.most_common(20) if hasattr(refs_me,'most_common') else [],
@@ -146,9 +205,9 @@ def processar_vendas(arquivo_3ys, mes_atual, output_dir='.'):
     print(f"    ✓ dados_vendas.json gerado")
 
     return {
-        'canais_mes': canais_mes, 'canais_total': canais_total,
+        'canais_mes': canais_mes, 'tipos_mes': tipos_mes_out, 'canais_total': canais_total,
         'total_mes': total_mes,
-        'mensal': {k: dict(v) for k,v in sorted(mensal.items())},
+        'mensal': mensal_out,
         'linha_canal': {k: dict(v) for k,v in linha_canal.items()},
         'refs_top20': refs.most_common(20),
         'holdings_top20': [(n, dict(cv), sum(cv.values()))
@@ -209,13 +268,17 @@ def processar_programacao(arquivo_3ys, output_dir='.'):
             monday = dt - timedelta(days=dt.weekday())
             friday = monday + timedelta(days=4)
             sem_key = monday.strftime('%Y-%m-%d')
-            mes_key = dt.strftime('%Y-%m')
+            # O mês "dono" da semana é o mês da sexta-feira (último dia útil).
+            # Assim, semanas que viram o mês (ex: seg 29/Jun-sex 03/Jul) contam
+            # inteiramente para o mês da sexta-feira (Jul), e não são divididas.
+            mes_key = friday.strftime('%Y-%m')
 
             s = semanas[sem_key]
             s[ln] += qtd; s['total'] += qtd
             s['pedidos'].add(pedido); s['clientes'].add(g(row, IDX['razao'])[:40])
             s['refs'][ref] += qtd
             if not s['label']: s['label'] = semana_label(monday, friday)
+            s['mes_ref'] = mes_key
             if is_export: s['export'] += qtd
             if is_pe:     s['pe'] += qtd
             if is_mi:     s['mi'] += qtd
@@ -226,7 +289,7 @@ def processar_programacao(arquivo_3ys, output_dir='.'):
             m2[ln] += qtd; m2['total'] += qtd
             m2['pedidos'].add(pedido); m2['refs'][ref] += qtd
             m2['semanas_keys'].add(sem_key)
-            if not m2['label']: m2['label'] = mes_label_str(dt)
+            if not m2['label']: m2['label'] = mes_label_str(friday)
             if is_export: m2['export'] += qtd
             if is_pe:     m2['pe'] += qtd
             if is_mi:     m2['mi'] += qtd
@@ -250,7 +313,7 @@ def processar_programacao(arquivo_3ys, output_dir='.'):
         semanas_out[k] = {
             'CLASSIC':s['CLASSIC'],'EVA':s['EVA'],'WORKS':s['WORKS'],
             'FIT':s['FIT'],'DAY BY DAY':s['DAY BY DAY'],'OUTROS':s['OUTROS'],
-            'total':s['total'],'label':s['label'],
+            'total':s['total'],'label':s['label'],'mes_ref':s['mes_ref'],
             'pedidos':len(s['pedidos']),'clientes':len(s['clientes']),
             'top_refs':s['refs'].most_common(3),
             'ok':s['total'] >= META_SEMANAL,
@@ -391,10 +454,11 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
 def gerar_json_portal(vendas, prog, estoque, mes_atual, mes_label, output_dir='.'):
     agora = datetime.now()
     ano = int(mes_atual[:4]); mes = int(mes_atual[4:])
-    m_abrevs = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-    mes_abrev = m_abrevs[mes-1]
+    mes_ref_atual = f"{ano}-{mes:02d}"
+    # Uma semana pertence ao mês cujo último dia útil (sexta-feira) ela contém
+    # — ver 'mes_ref' calculado em processar_programacao.
     sems_mes = {k:v for k,v in prog['semanas'].items()
-                if mes_abrev in v.get('label','') and str(ano) in k}
+                if v.get('mes_ref')==mes_ref_atual}
 
     dados = {
         'gerado_em': agora.strftime('%d/%m/%Y %H:%M'),
@@ -402,6 +466,7 @@ def gerar_json_portal(vendas, prog, estoque, mes_atual, mes_label, output_dir='.
         'vendas': {
             'mes_atual': mes_atual, 'mes_label': mes_label,
             'canais_mes': vendas['canais_mes'],
+            'tipos_mes': vendas.get('tipos_mes', {}),
             'total_mes': vendas['total_mes'],
             'pendente_validacao': vendas['pendente_validacao'],
         },
@@ -421,6 +486,7 @@ def gerar_dados_completos(vendas, prog, estoque, output_dir='.'):
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
         'vendas': {
             'canais_mes': vendas['canais_mes'],
+            'tipos_mes': vendas.get('tipos_mes', {}),
             'canais_total': vendas['canais_total'],
             'mensal': vendas['mensal'],
         },
@@ -439,13 +505,14 @@ def _carregar_vendas_prog_existentes(output_dir):
             dv = json.load(f_)
         vendas = {
             'canais_mes': dv.get('canais_mes', {}),
+            'tipos_mes': dv.get('tipos_mes', {}),
             'canais_total': dv.get('canais_total', {}),
             'total_mes': dv.get('total_mes', 0),
             'mensal': dv.get('mensal', {}),
             'pendente_validacao': dv.get('pendente_validacao', True),
         }
     except (FileNotFoundError, json.JSONDecodeError):
-        vendas = {'canais_mes':{},'canais_total':{},'total_mes':0,'mensal':{},'pendente_validacao':True}
+        vendas = {'canais_mes':{},'tipos_mes':{},'canais_total':{},'total_mes':0,'mensal':{},'pendente_validacao':True}
 
     try:
         with open(os.path.join(output_dir, 'dados_programacao.json'), encoding='utf-8') as f_:
@@ -531,7 +598,7 @@ def main():
     print("=" * 52)
     cm = resumo['vendas_mes']
     print(f"\n  VENDAS — {resumo['mes_label']}")
-    print(f"    MI: {cm.get('MI',0):>8,} | ME: {cm.get('ME',0):>8,} | E-com: {cm.get('ECOM',0):>6,} | PE: {cm.get('PE',0):>6,}")
+    print(f"    MI: {cm.get('MI',0):>8,} | ME: {cm.get('ME',0):>8,} | E-com: {cm.get('ECOM',0):>6,} | Mould: {cm.get('GRUPO_MOULD',0):>6,}")
 
     t = resumo['estoque_totais']
     print(f"\n  ESTOQUE PA")

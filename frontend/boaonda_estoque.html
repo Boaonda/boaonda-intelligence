@@ -4,36 +4,41 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Boaonda — Estoque Disponível</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
-  --bg:#0D0F14;--card:#161B25;--card2:#1E2535;--border:#2A3347;
-  --gold:#C9A84C;--gold-l:#E8C97A;
-  --blue:#3B82F6;--green:#10B981;--red:#EF4444;--amber:#F59E0B;
-  --txt:#F1F5F9;--txt-s:#94A3B8;--txt-m:#64748B;
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --border:#262b3a;--line2:#333a4d;
+  --gold:#ed6842;--gold-l:#ed6842;
+  --blue:#4994c7;--green:#6c9c37;--red:#EF4444;--amber:#F59E0B;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-height:100vh}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
 
-.header{background:var(--card);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.brand{font-family:'Playfair Display',serif;font-size:18px;color:var(--gold-l)}
-.brand span{color:var(--txt-s);font-family:'DM Sans',sans-serif;font-size:12px;margin-left:10px}
-.hmeta{font-size:11px;color:var(--txt-m);text-align:right;line-height:1.9}
-.hmeta strong{color:var(--txt-s)}
-
-.filtros{background:var(--card2);border-bottom:1px solid var(--border);padding:9px 32px;font-size:10px;color:var(--txt-m);display:flex;gap:18px;flex-wrap:wrap}
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:20px 32px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:1.4rem;font-weight:800;color:var(--txt)}
+.h-sub{font-size:11px;color:var(--txt-s);margin-top:4px}
+.h-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.h-meta strong{color:var(--txt-s)}
+.h-controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:flex-end;font-size:10px;color:var(--txt-m)}
 .fi{display:flex;align-items:center;gap:5px}
 .fl{text-transform:uppercase;letter-spacing:.08em}
-.fv{color:var(--gold);font-weight:600}
+.fv{color:var(--coral);font-weight:600}
 
 .main{padding:24px 32px;max-width:1440px;margin:0 auto}
-.stitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.stitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--border)}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
 .kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--gold);border-radius:10px;padding:16px}
 .kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
-.kpi-v{font-family:'Playfair Display',serif;font-size:2rem;color:var(--gold-l);line-height:1}
+.kpi-v{font-size:1.75rem;font-weight:800;color:var(--gold-l);line-height:1}
 .kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
 .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;margin-top:4px}
 .ok{background:rgba(16,185,129,.12);color:var(--green)}
@@ -55,11 +60,11 @@ body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-
 table{width:100%;border-collapse:collapse;font-size:12px}
 th{padding:7px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap}
 th:hover{color:var(--txt-s)}
-td{padding:8px 12px;border-bottom:1px solid rgba(42,51,71,.4);color:var(--txt-s);vertical-align:top}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--txt-s);vertical-align:top}
 tr:last-child td{border:none}
 tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .td-ref{font-weight:600;color:var(--txt)}
-.tn{font-family:'Playfair Display',serif;font-size:13px}
+.tn{font-weight:700;font-size:13px}
 .tl{color:var(--gold-l)}
 .tr2{color:var(--amber)}
 .tg{color:var(--green)}
@@ -90,13 +95,17 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 <body>
 
 <div class="header">
-  <div class="brand">Boaonda Intelligence <span>· Estoque Disponível</span></div>
-  <div class="hmeta">Base: ESQT · Atualizado: <strong id="hdr-data">10/Jun/2026</strong></div>
-</div>
-
-<div class="filtros">
-  <div class="fi"><span class="fl">Locais</span><span class="fv">30 · 156 · 157 · 158 · 159 · 160 · 234 · VI</span></div>
-  <div class="fi"><span class="fl">Livre</span><span class="fv">físico − reservas = disponível real para venda</span></div>
+  <div>
+    <div class="h-badge">Estoque</div>
+    <div class="h-title">Estoque Disponível</div>
+    <div class="h-sub">Base: ESQT · Livre = físico − reservas (disponível real para venda)</div>
+  </div>
+  <div class="h-right">
+    <div class="h-controls">
+      <div class="fi"><span class="fl">Locais</span><span class="fv">30 · 156 · 157 · 158 · 159 · 160 · 234 · VI</span></div>
+    </div>
+    <div class="h-meta">Atualizado: <strong id="hdr-data">10/Jun/2026</strong></div>
+  </div>
 </div>
 
 <div class="main">
@@ -177,9 +186,9 @@ let DATA = {};
 let currentData = {};
 let chartTop=null, chartStk=null;
 
-Chart.defaults.color='#64748B';Chart.defaults.borderColor='#2A3347';
-Chart.defaults.font.family="'DM Sans',sans-serif";
-const TIP={backgroundColor:'#1E2535',borderColor:'#2A3347',borderWidth:1,titleColor:'#F1F5F9',bodyColor:'#94A3B8',padding:12,cornerRadius:8};
+Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
+Chart.defaults.font.family="'Montserrat',sans-serif";
+const TIP={backgroundColor:'#161922',borderColor:'#262b3a',borderWidth:1,titleColor:'#f3f0eb',bodyColor:'#b6b3ac',padding:12,cornerRadius:8};
 function f(n){return(n||0).toLocaleString('pt-BR')}
 function pct(a,b){return b?Math.round(a/b*100):0}
 

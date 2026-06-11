@@ -8,29 +8,30 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
-  --coral:#ed6842;--cinza:#71706f;--verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
-  --bg:#f8f5f1;--card:#fff;--card2:#f3f0eb;--line:#e2ddd8;--line2:#ccc8c2;
-  --txt:#26361e;--txt-s:#71706f;--txt-m:#9b9895;
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --line:#262b3a;--line2:#333a4d;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
 }
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
 body{background:var(--bg);color:var(--txt);min-height:100vh}
 
 /* HEADER */
-.header{background:#fff;border-bottom:1px solid var(--line);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;box-shadow:0 1px 6px rgba(38,54,30,.05)}
-.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px}
-.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
-.hmeta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.9}
-.hmeta strong{color:var(--txt-s)}
-
-/* FILTROS BAR */
-.filtros{background:#fff;border-bottom:1px solid var(--line);padding:12px 32px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.filtro-hint{font-size:9px;color:var(--txt-m);margin-left:auto;font-style:italic}
+.header{background:var(--card);border-bottom:1px solid var(--line);padding:20px 32px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:1.4rem;font-weight:800;color:var(--txt)}
+.h-sub{font-size:11px;color:var(--txt-s);margin-top:4px}
+.h-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.h-meta strong{color:var(--txt-s)}
+.h-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 
 /* DROPDOWN */
 .dd-wrap{position:relative}
 .dd-btn{
   display:flex;align-items:center;gap:8px;padding:7px 14px;
-  background:#fff;border:1.5px solid var(--line2);border-radius:8px;
+  background:var(--card2);border:1.5px solid var(--line2);border-radius:8px;
   cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;
   font-weight:600;color:var(--txt);transition:.15s;white-space:nowrap;
   min-width:160px;justify-content:space-between
@@ -43,9 +44,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 
 .dd-menu{
   position:absolute;top:100%;left:0;z-index:200;
-  background:#fff;border:1.5px solid var(--coral);
+  background:var(--card);border:1.5px solid var(--coral);
   border-top:none;border-radius:0 0 8px 8px;
-  min-width:220px;box-shadow:0 8px 24px rgba(38,54,30,.1);
+  min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,.4);
   display:none;max-height:300px;overflow-y:auto
 }
 .dd-menu.open{display:block}
@@ -59,7 +60,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .dd-cb{
   width:16px;height:16px;border:2px solid var(--line2);border-radius:3px;
   flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  transition:.15s;background:#fff
+  transition:.15s;background:var(--card2)
 }
 .dd-cb.checked{background:var(--coral);border-color:var(--coral)}
 .dd-cb.checked::after{content:'✓';color:#fff;font-size:10px;font-weight:700}
@@ -67,12 +68,13 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 
 /* MAIN */
 .main{padding:24px 32px;max-width:1400px;margin:0 auto}
-.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--line)}
 .stitle-info{font-size:10px;color:var(--txt-m);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px}
 
 /* KPIs */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
-.kpi{background:#fff;border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
 .kpi.verde{border-top-color:var(--verde)}
 .kpi.azul{border-top-color:var(--azul)}
 .kpi.cinza{border-top-color:var(--cinza)}
@@ -87,15 +89,15 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 
 /* Charts */
 .crow{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
-.ccard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px}
+.ccard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
 .ctitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-m);margin-bottom:14px}
 .ctitle-badge{font-size:9px;background:rgba(237,104,66,.1);color:var(--coral);padding:2px 8px;border-radius:4px;font-weight:700;margin-left:6px;text-transform:none;letter-spacing:0}
 
 /* Tabela */
-.tcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;overflow-x:auto}
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:12px}
 th{padding:7px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line)}
-td{padding:8px 12px;border-bottom:1px solid rgba(226,221,216,.5);color:var(--txt-s)}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--txt-s)}
 tr:last-child td{border:none}
 tr:hover td{background:var(--card2);color:var(--txt)}
 .td-ref{font-weight:700;color:var(--txt)}
@@ -108,12 +110,13 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 <body>
 
 <div class="header">
-  <div class="brand">BOAONDA <span>· Vendas</span></div>
-  <div class="hmeta">Base: 3YS · Jan/2025–Jun/2026<br>Atualizado: <strong id="hdr-data">–</strong></div>
-</div>
-
-<!-- FILTROS -->
-<div class="filtros">
+  <div>
+    <div class="h-badge">Vendas</div>
+    <div class="h-title">Vendas</div>
+    <div class="h-sub">Base: 3YS · Jan/2025–Jun/2026 · Gráfico de evolução respeita canal · KPIs e tabela respeitam todos os filtros</div>
+  </div>
+  <div class="h-right">
+    <div class="h-controls">
 
   <!-- Canal -->
   <div class="dd-wrap" id="ddw-canal">
@@ -160,7 +163,11 @@ tr:hover td{background:var(--card2);color:var(--txt)}
       </div>
       <div class="dd-item" onclick="ddToggle('tipo','PE')">
         <div class="dd-cb" id="cb-tipo-PE"></div>
-        <span>Pronta Entrega (cod 22/31)</span>
+        <span>Pronta Entrega (cod 22)</span>
+      </div>
+      <div class="dd-item" onclick="ddToggle('tipo','MISTA')">
+        <div class="dd-cb" id="cb-tipo-MISTA"></div>
+        <span>Venda Mista (cod 31)</span>
       </div>
     </div>
   </div>
@@ -181,7 +188,9 @@ tr:hover td{background:var(--card2);color:var(--txt)}
     </div>
   </div>
 
-  <span class="filtro-hint">Gráfico de evolução respeita canal · KPIs e tabela respeitam todos os filtros</span>
+    </div>
+    <div class="h-meta">Atualizado: <strong id="hdr-data">–</strong></div>
+  </div>
 </div>
 
 <div class="main">
@@ -211,9 +220,9 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 <script>
 const f=n=>(Math.round(n)||0).toLocaleString('pt-BR');
 const pct=(a,b)=>b?Math.round(a/b*100):0;
-Chart.defaults.color='#9b9895';Chart.defaults.borderColor='#e2ddd8';
+Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
-const TIP={backgroundColor:'#fff',borderColor:'#e2ddd8',borderWidth:1,titleColor:'#26361e',bodyColor:'#71706f',padding:12,cornerRadius:8};
+const TIP={backgroundColor:'#161922',borderColor:'#262b3a',borderWidth:1,titleColor:'#f3f0eb',bodyColor:'#b6b3ac',padding:12,cornerRadius:8};
 
 // ── DADOS ──────────────────────────────────────────────────────────
 const MESES_ALL=['202501','202502','202503','202504','202505','202506','202507','202508','202509','202510','202511','202512','202601','202602','202603','202604','202605','202606'];
@@ -224,17 +233,18 @@ fetch('dados_vendas.json?_='+Date.now())
   .then(r=>r.ok?r.json():null)
   .then(d=>{
     if(!d) return; // usa dados vazios
-    // Adapta o formato gerado pelo atualizar.py (chave "mensal", canais
-    // MI/PE/ME/ECOM/GRUPO_MOULD) para a estrutura usada pelo dashboard
-    // (MI.PROG, MI.PE, ME.ME, EC.EC)
+    // Adapta o formato gerado pelo processador.py (chave "mensal", canais
+    // MI/ME/ECOM com tipos PROG/PE/MISTA/ECOM) para a estrutura usada pelo
+    // dashboard (MI.PROG/PE/MISTA, ME.ME, EC.EC)
     DADOS = {};
     const mensal = d.mensal || {};
+    const soma = obj => Object.values(obj||{}).reduce((a,b)=>a+b,0);
     for(const m in mensal){
       const v = mensal[m] || {};
       DADOS[m] = {
-        MI: {PROG: v.MI||0, PE: v.PE||0},
-        ME: {ME: v.ME||0},
-        EC: {EC: v.ECOM||0}
+        MI: {PROG: v.MI?.PROG||0, PE: v.MI?.PE||0, MISTA: v.MI?.MISTA||0},
+        ME: {ME: soma(v.ME)},
+        EC: {EC: soma(v.ECOM)}
       };
     }
     REFS_MI = d.refs_top20?.MI || [];
@@ -248,10 +258,11 @@ fetch('dados_vendas.json?_='+Date.now())
   .catch(()=>render());
 
 // ── ESTADO ──────────────────────────────────────────────────────────
+const TIPOS_ALL=['PROG','PE','MISTA'];
 const estado = {
   canal: new Set(['MI','ME','EC']),  // todos
-  tipo:  new Set(['PROG','PE']),      // todos
-  meses: new Set(MESES_ALL),         // todos
+  tipo:  new Set(TIPOS_ALL),          // todos
+  meses: new Set([MESES_ALL[MESES_ALL.length-1]]),  // mês atual (mais recente)
 };
 
 let chartEv=null, chartMix=null;
@@ -277,7 +288,7 @@ document.addEventListener('click',e=>{
 
 function ddToggle(grupo, val){
   const set = estado[grupo==='periodo'?'meses':grupo];
-  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?['PROG','PE']:MESES_ALL;
+  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?TIPOS_ALL:MESES_ALL;
   if(set.has(val)){ if(set.size>1) set.delete(val); }
   else set.add(val);
   updateDDUI(grupo);
@@ -286,7 +297,7 @@ function ddToggle(grupo, val){
 
 function ddSelectAll(grupo){
   const set = grupo==='periodo'?estado.meses:estado[grupo];
-  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?['PROG','PE']:MESES_ALL;
+  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?TIPOS_ALL:MESES_ALL;
   const isAll = set.size===allVals.length;
   if(isAll){ set.clear(); set.add(allVals[0]); }
   else { allVals.forEach(v=>set.add(v)); }
@@ -296,7 +307,7 @@ function ddSelectAll(grupo){
 
 function updateDDUI(grupo){
   const set = grupo==='periodo'?estado.meses:estado[grupo];
-  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?['PROG','PE']:MESES_ALL;
+  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?TIPOS_ALL:MESES_ALL;
   const isAll = set.size===allVals.length;
 
   // All checkbox
@@ -322,7 +333,7 @@ function updateDDUI(grupo){
     else if(set.size===1){
       const v=[...set][0];
       const nomes={MI:'Merc. Interno',ME:'Merc. Externo',EC:'E-commerce',
-                   PROG:'Programação',PE:'Pronta Entrega'};
+                   PROG:'Programação',PE:'Pronta Entrega',MISTA:'Venda Mista'};
       txt.textContent=nomes[v]||mesLabel(v);
     } else txt.textContent=set.size+' selecionados';
   }
@@ -340,7 +351,8 @@ function initMeses(){
     const div=document.createElement('div');
     div.className='dd-item';
     div.onclick=()=>ddToggle('periodo',m);
-    div.innerHTML='<div class="dd-cb checked" data-val="'+m+'"></div><span>'+mesLabel(m)+'</span>';
+    const checkedCls=estado.meses.has(m)?' checked':'';
+    div.innerHTML='<div class="dd-cb'+checkedCls+'" data-val="'+m+'"></div><span>'+mesLabel(m)+'</span>';
     cont.appendChild(div);
   });
 }
@@ -352,6 +364,7 @@ function calcValMes(m, canais, tipos){
   if(canais.has('MI')){
     if(tipos.has('PROG')) tot+=(d.MI||{}).PROG||0;
     if(tipos.has('PE'))   tot+=(d.MI||{}).PE||0;
+    if(tipos.has('MISTA'))tot+=(d.MI||{}).MISTA||0;
   }
   if(canais.has('ME')) tot+=(d.ME||{}).ME||0;
   if(canais.has('EC')) tot+=(d.EC||{}).EC||0;
@@ -363,23 +376,25 @@ function render(){
   const canais=estado.canal, tipos=estado.tipo, meses=estado.meses;
 
   // Totais para KPIs (respeitam todos os filtros)
-  let mi_prog=0,mi_pe=0,me=0,ec=0;
+  let mi_prog=0,mi_pe=0,mi_mista=0,me=0,ec=0;
   [...meses].sort().forEach(m=>{
     const d=DADOS[m]||{};
-    if(canais.has('MI')){ 
+    if(canais.has('MI')){
       if(tipos.has('PROG')) mi_prog+=(d.MI||{}).PROG||0;
       if(tipos.has('PE'))   mi_pe+=(d.MI||{}).PE||0;
+      if(tipos.has('MISTA'))mi_mista+=(d.MI||{}).MISTA||0;
     }
     if(canais.has('ME')) me+=(d.ME||{}).ME||0;
     if(canais.has('EC')) ec+=(d.EC||{}).EC||0;
   });
-  const total=mi_prog+mi_pe+me+ec;
+  const total=mi_prog+mi_pe+mi_mista+me+ec;
 
   // KPIs
   let kpiHTML='';
   kpiHTML+=kpi('','Total selecionado',f(total),'pares no período');
-  if(canais.has('MI') && tipos.has('PROG')) kpiHTML+=kpi('azul','MI — Programação',f(mi_prog),pct(mi_prog,total)+'% do total');
-  if(canais.has('MI') && tipos.has('PE'))   kpiHTML+=kpi('cinza','MI — Pronta Entrega',f(mi_pe),pct(mi_pe,total)+'% do total');
+  if(canais.has('MI') && tipos.has('PROG'))  kpiHTML+=kpi('azul','MI — Programação',f(mi_prog),pct(mi_prog,total)+'% do total');
+  if(canais.has('MI') && tipos.has('PE'))    kpiHTML+=kpi('cinza','MI — Pronta Entrega',f(mi_pe),pct(mi_pe,total)+'% do total');
+  if(canais.has('MI') && tipos.has('MISTA')) kpiHTML+=kpi('cinza','MI — Venda Mista',f(mi_mista),pct(mi_mista,total)+'% do total');
   if(canais.has('ME')) kpiHTML+=kpi('cinza','Mercado Externo',f(me),pct(me,total)+'% do total');
   if(canais.has('EC')) kpiHTML+=kpi('verde','E-commerce',f(ec),pct(ec,total)+'% do total');
   kpiHTML+=kpi('laranja','Meses',meses.size,meses.size===MESES_ALL.length?'todos':'de '+MESES_ALL.length);
@@ -387,7 +402,8 @@ function render(){
 
   // Descrição
   const cNomes={MI:'MI',ME:'ME',EC:'E-com'};
-  const cDesc=[...canais].map(c=>cNomes[c]).join('+') + (canais.has('MI')&&tipos.size<2?' ('+([...tipos][0]==='PROG'?'Prog':'PE')+')':'');
+  const tNomesShort={PROG:'Prog',PE:'PE',MISTA:'Mista'};
+  const cDesc=[...canais].map(c=>cNomes[c]).join('+') + (canais.has('MI')&&tipos.size<TIPOS_ALL.length?' ('+[...tipos].map(t=>tNomesShort[t]).join('/')+')':'');
   document.getElementById('stitle-desc').textContent=cDesc+' · '+meses.size+' meses';
   document.getElementById('stitle-refs').textContent=cDesc+' · '+meses.size+' meses';
 
@@ -413,6 +429,8 @@ function renderCharts(canais, tipos){
       datasets.push({label:'MI Programação',data:MESES_ALL.map(m=>(DADOS[m]?.MI?.PROG||0)),backgroundColor:'#4994c7cc',borderRadius:3});
     if(tipos.has('PE'))
       datasets.push({label:'MI Pronta Entrega',data:MESES_ALL.map(m=>(DADOS[m]?.MI?.PE||0)),backgroundColor:'#4994c744',borderRadius:3,borderColor:'#4994c7',borderWidth:1});
+    if(tipos.has('MISTA'))
+      datasets.push({label:'MI Venda Mista',data:MESES_ALL.map(m=>(DADOS[m]?.MI?.MISTA||0)),backgroundColor:'#ed684288',borderRadius:3,borderColor:'#ed6842',borderWidth:1});
   }
   if(canais.has('ME'))
     datasets.push({label:'Mercado Externo',data:MESES_ALL.map(m=>(DADOS[m]?.ME?.ME||0)),backgroundColor:'#71706fcc',borderRadius:3});
@@ -425,20 +443,22 @@ function renderCharts(canais, tipos){
       scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:v=>f(v)}}}}});
 
   // Mix — usa totais de todos os meses filtrados pelo canal
-  let totMI_P=0,totMI_PE=0,totME=0,totEC=0;
+  let totMI_P=0,totMI_PE=0,totMI_M=0,totME=0,totEC=0;
   MESES_ALL.forEach(m=>{
     const d=DADOS[m]||{};
-    if(canais.has('MI')){ 
+    if(canais.has('MI')){
       if(tipos.has('PROG')) totMI_P+=(d.MI||{}).PROG||0;
       if(tipos.has('PE'))   totMI_PE+=(d.MI||{}).PE||0;
+      if(tipos.has('MISTA'))totMI_M+=(d.MI||{}).MISTA||0;
     }
     if(canais.has('ME')) totME+=(d.ME||{}).ME||0;
     if(canais.has('EC')) totEC+=(d.EC||{}).EC||0;
   });
-  const mixTotal=totMI_P+totMI_PE+totME+totEC;
+  const mixTotal=totMI_P+totMI_PE+totMI_M+totME+totEC;
   const mixLabels=[],mixData=[],mixColors=[];
   if(totMI_P){mixLabels.push('MI Programação');mixData.push(totMI_P);mixColors.push('#4994c7');}
   if(totMI_PE){mixLabels.push('MI Pronta Entrega');mixData.push(totMI_PE);mixColors.push('#4994c755');}
+  if(totMI_M){mixLabels.push('MI Venda Mista');mixData.push(totMI_M);mixColors.push('#ed6842');}
   if(totME){mixLabels.push('Merc. Externo');mixData.push(totME);mixColors.push('#71706f');}
   if(totEC){mixLabels.push('E-commerce');mixData.push(totEC);mixColors.push('#6c9c37');}
 
@@ -471,6 +491,9 @@ function renderRefs(canais, tipos, meses){
 
 // INIT
 initMeses();
+updateDDUI('canal');
+updateDDUI('tipo');
+updateDDUI('periodo');
 // render() é chamado após fetch carregar os dados
 </script>
 </body>
