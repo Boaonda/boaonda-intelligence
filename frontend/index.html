@@ -90,6 +90,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .nó-kpi-label{font-size:8.5px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
 .nó-cta{font-size:9px;color:var(--coral);font-weight:700;margin-top:8px;opacity:.8}
 
+/* Linha com dois KPIs lado a lado */
+.nó-kpi-row{display:flex;gap:18px;margin-bottom:2px}
+.nó-kpi-row .nó-kpi{font-size:19px;margin-bottom:2px}
+
 /* Tags de canal */
 .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .tag{padding:2px 7px;border-radius:3px;font-size:8.5px;font-weight:700}
@@ -308,8 +312,16 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <span class="nó-icon">🗂️</span>
       <div class="nó-title">Pedido em Carteira</div>
       <div class="nó-desc">MI · ME · sem plano de produção</div>
-      <div class="nó-kpi coral" id="kpi-c-pedidos">–</div>
-      <div class="nó-kpi-label">pedidos em carteira</div>
+      <div class="nó-kpi-row">
+        <div>
+          <div class="nó-kpi coral" id="kpi-c-pedidos">–</div>
+          <div class="nó-kpi-label">pedidos</div>
+        </div>
+        <div>
+          <div class="nó-kpi coral" id="kpi-c-pares">–</div>
+          <div class="nó-kpi-label">pares</div>
+        </div>
+      </div>
       <div class="nó-cta">Analisar carteira →</div>
     </div>
 
@@ -467,6 +479,7 @@ function render(d){
   // CARTEIRA
   const c=d.carteira||{};
   document.getElementById('kpi-c-pedidos').textContent=f(c.total_pedidos);
+  document.getElementById('kpi-c-pares').textContent=f(c.total_pares);
 
   // ESTOQUE
   const e=d.estoque;
