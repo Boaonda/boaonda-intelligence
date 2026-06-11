@@ -101,6 +101,7 @@ tr:last-child td{border:none}
   </div>
   <div class="h-right">
     <div class="h-meta">Atualizado: <strong id="hdr-data">–</strong></div>
+    <div class="h-meta">Prazo produtivo: <strong id="hdr-prazo">–</strong> dias (<a href="/config" target="_blank" style="color:var(--coral)">ajustar</a>)</div>
   </div>
 </div>
 
@@ -199,7 +200,9 @@ tr:last-child td{border:none}
 </div>
 
 <script>
-let DATA = {pedidos:[], etapas:[], situacao:{}, canais:{}, mes_entrada:{}, mes_entrega:{}};
+let DATA = {pedidos:[], etapas:[], canais:{}, mes_entrada:{}, mes_entrega:{}};
+let CONFIG = {prazo_producao_dias: 45};
+let SIT = {atraso:{pedidos:0,pares:0}, prazo:{pedidos:0,pares:0}};
 let chartSit=null, chartEnt=null, chartEnt2=null;
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
@@ -207,13 +210,43 @@ Chart.defaults.font.family="'Montserrat',sans-serif";
 const TIP={backgroundColor:'#161922',borderColor:'#262b3a',borderWidth:1,titleColor:'#f3f0eb',bodyColor:'#b6b3ac',padding:12,cornerRadius:8};
 function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
 
-fetch('dados_carteira.json?_=' + Date.now())
-  .then(r => { if(!r.ok) throw new Error(); return r.json(); })
-  .then(d => { DATA = d; init(); })
-  .catch(() => { init(); });
+function parseDataBrDate(s){
+  if(!s) return null;
+  const [d,m,y] = s.split('/');
+  return new Date(Number(y), Number(m)-1, Number(d));
+}
+
+// Situação de entrega calculada no cliente, com base no prazo produtivo
+// configurável (config_producao.json): se hoje + prazo > dt_faturam, o
+// pedido não tem mais tempo hábil de produção -> "Em atraso".
+function calcularSituacao(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const limite = new Date(hoje);
+  limite.setDate(limite.getDate() + (CONFIG.prazo_producao_dias || 45));
+
+  SIT = {atraso:{pedidos:0,pares:0}, prazo:{pedidos:0,pares:0}};
+  (DATA.pedidos||[]).forEach(p=>{
+    const dtFat = parseDataBrDate(p.dt_faturam);
+    if(!dtFat){ p.situacao=''; return; }
+    p.situacao = limite > dtFat ? 'atraso' : 'prazo';
+    SIT[p.situacao].pedidos++;
+    SIT[p.situacao].pares += p.pares;
+  });
+}
+
+Promise.all([
+  fetch('dados_carteira.json?_=' + Date.now()).then(r => r.ok ? r.json() : {}),
+  fetch('config_producao.json?_=' + Date.now()).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+]).then(([d, cfg]) => {
+  DATA = d;
+  if(cfg && cfg.prazo_producao_dias) CONFIG.prazo_producao_dias = cfg.prazo_producao_dias;
+  calcularSituacao();
+  init();
+}).catch(() => { calcularSituacao(); init(); });
 
 function init(){
   document.getElementById('hdr-data').textContent = DATA.gerado_em || '–';
+  document.getElementById('hdr-prazo').textContent = CONFIG.prazo_producao_dias || 45;
 
   document.getElementById('k-pedidos').textContent = f(DATA.total_pedidos);
   document.getElementById('k-pares').textContent = f(DATA.total_pares);
@@ -225,18 +258,17 @@ function init(){
   document.getElementById('k-me').textContent = f(me.pares);
   document.getElementById('k-me-ped').textContent = f(me.pedidos)+' pedidos';
 
-  const s = DATA.situacao || {};
-  const atraso = s.atraso || {pedidos:0,pares:0};
-  const prazo  = s.prazo  || {pedidos:0,pares:0};
+  const prazoDias = CONFIG.prazo_producao_dias || 45;
+  const atraso = SIT.atraso, prazo = SIT.prazo;
   document.getElementById('k-atraso').textContent = f(atraso.pares);
-  document.getElementById('k-atraso-s').textContent = f(atraso.pedidos)+' pedidos · sem prazo produtivo (45d)';
+  document.getElementById('k-atraso-s').textContent = f(atraso.pedidos)+` pedidos · sem prazo produtivo (${prazoDias}d)`;
   document.getElementById('k-prazo').textContent = f(prazo.pares);
   document.getElementById('k-prazo-s').textContent = f(prazo.pedidos)+' pedidos · ainda há tempo hábil';
 
   const alertBar = document.getElementById('alert-bar');
   if(atraso.pedidos > 0){
     alertBar.classList.remove('ok');
-    alertBar.innerHTML = `⚠️ <b>${f(atraso.pedidos)} pedido(s)</b> sem prazo produtivo de 45 dias até a entrega — total de <b>${f(atraso.pares)} pares</b> com risco de atraso.`;
+    alertBar.innerHTML = `⚠️ <b>${f(atraso.pedidos)} pedido(s)</b> sem prazo produtivo de ${prazoDias} dias até a entrega — total de <b>${f(atraso.pares)} pares</b> com risco de atraso.`;
   } else {
     alertBar.classList.add('ok');
     alertBar.innerHTML = `✅ Nenhum pedido com risco de atraso — carteira sob controle.`;
@@ -261,11 +293,10 @@ function renderEtapas(){
 }
 
 function renderCharts(){
-  const s = DATA.situacao || {};
   if(chartSit) chartSit.destroy();
   chartSit = new Chart(document.getElementById('c-situacao'),{type:'doughnut',data:{
     labels:['Em atraso','Em prazo'],
-    datasets:[{data:[(s.atraso||{}).pares||0,(s.prazo||{}).pares||0],
+    datasets:[{data:[SIT.atraso.pares, SIT.prazo.pares],
       backgroundColor:['#EF4444','#6c9c37'],borderWidth:0,hoverOffset:6}]
   },options:{responsive:true,maintainAspectRatio:false,
     plugins:{legend:{position:'right',labels:{boxWidth:10,font:{size:10}}},

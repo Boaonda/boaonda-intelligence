@@ -419,17 +419,11 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
     """
     print("\n  Processando carteira...")
     sep = detectar_sep(arquivo_3ys)
-    hoje = datetime.now()
 
     pedidos_set = set()
     total_pares = 0
     canais = defaultdict(lambda: {'pedidos': set(), 'pares': 0})
     etapas = defaultdict(lambda: {'pedidos': set(), 'pares': 0})
-    situacao = {
-        'atraso': {'pedidos': set(), 'pares': 0},
-        'prazo':  {'pedidos': set(), 'pares': 0},
-    }
-    LIMITE_PRODUCAO = hoje.date() + timedelta(days=45)
     mes_entrada = defaultdict(lambda: {'label': '', 'pares': 0})
     mes_entrega = defaultdict(lambda: {'label': '', 'pares': 0})
 
@@ -479,19 +473,12 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
                 mes_entrega[k]['label'] = mes_label_curto(dt_fat)
                 mes_entrega[k]['pares'] += qtd
 
-            # situação de entrega (com base na dt_faturam = data negociada)
-            sit = None
-            if dt_fat:
-                sit = 'atraso' if LIMITE_PRODUCAO > dt_fat.date() else 'prazo'
-                situacao[sit]['pedidos'].add(pedido)
-                situacao[sit]['pares'] += qtd
-
             pa = pedidos_agg.get(pedido)
             if not pa:
                 pa = pedidos_agg[pedido] = {
                     'pedido': pedido, 'cliente': cliente, 'canal': canal,
                     'etapa': etapa, 'pares': 0, 'refs': Counter(),
-                    'dt_entrada': dt_ent, 'dt_faturam': dt_fat, 'situacao': sit,
+                    'dt_entrada': dt_ent, 'dt_faturam': dt_fat,
                 }
             pa['pares'] += qtd
             if ref: pa['refs'][ref] += qtd
@@ -499,7 +486,6 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
                 pa['dt_entrada'] = dt_ent
             if dt_fat and (not pa['dt_faturam'] or dt_fat < pa['dt_faturam']):
                 pa['dt_faturam'] = dt_fat
-                pa['situacao'] = 'atraso' if LIMITE_PRODUCAO > dt_fat.date() else 'prazo'
 
     print(f"    Pedidos em carteira: {len(pedidos_set):,} ({total_pares:,} pares)")
 
@@ -513,9 +499,6 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
         for e, v in sorted(etapas.items(), key=lambda x: -x[1]['pares'])
     ]
 
-    situacao_out = {k: {'pedidos': len(v['pedidos']), 'pares': v['pares']}
-                     for k, v in situacao.items()}
-
     pedidos_out = []
     for pa in sorted(pedidos_agg.values(), key=lambda x: x['dt_faturam'] or datetime.max):
         top_ref = pa['refs'].most_common(1)
@@ -526,7 +509,6 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
             'qtd_refs': len(pa['refs']),
             'dt_entrada': pa['dt_entrada'].strftime('%d/%m/%Y') if pa['dt_entrada'] else '',
             'dt_faturam': pa['dt_faturam'].strftime('%d/%m/%Y') if pa['dt_faturam'] else '',
-            'situacao': pa['situacao'] or '',
         })
 
     dados_cart = {
@@ -535,7 +517,6 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
         'total_pares': total_pares,
         'canais': canais_out,
         'etapas': etapas_out,
-        'situacao': situacao_out,
         'mes_entrada': dict(sorted(mes_entrada.items())),
         'mes_entrega': dict(sorted(mes_entrega.items())),
         'pedidos': pedidos_out,
@@ -546,7 +527,7 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
 
     return {
         'total_pedidos': len(pedidos_set), 'total_pares': total_pares,
-        'canais': canais_out, 'situacao': situacao_out,
+        'canais': canais_out,
     }
 
 # ─── ESTOQUE ─────────────────────────────────────────────────────────
@@ -670,7 +651,6 @@ def gerar_dados_completos(vendas, prog, estoque, carteira, output_dir='.'):
             'total_pedidos': carteira.get('total_pedidos', 0),
             'total_pares': carteira.get('total_pares', 0),
             'canais': carteira.get('canais', {}),
-            'situacao': carteira.get('situacao', {}),
         },
     }
     with open(os.path.join(output_dir, 'boaonda_dados_completos.json'), 'w', encoding='utf-8') as f_:
@@ -708,10 +688,9 @@ def _carregar_vendas_prog_existentes(output_dir):
             'total_pedidos': dc.get('total_pedidos', 0),
             'total_pares': dc.get('total_pares', 0),
             'canais': dc.get('canais', {}),
-            'situacao': dc.get('situacao', {}),
         }
     except (FileNotFoundError, json.JSONDecodeError):
-        carteira = {'total_pedidos':0,'total_pares':0,'canais':{},'situacao':{}}
+        carteira = {'total_pedidos':0,'total_pares':0,'canais':{}}
 
     return vendas, prog, carteira
 

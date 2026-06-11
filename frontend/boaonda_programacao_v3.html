@@ -64,6 +64,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .sem-card.crit::before{background:#ef4444}
 .sem-card.atual{border-color:var(--coral);border-width:2px}
 .sem-card.atual::after{content:'ATUAL';position:absolute;top:8px;right:9px;font-size:7px;color:var(--coral);font-weight:800;letter-spacing:.1em}
+.sem-card.foco{border-color:var(--azul);border-width:2px}
+.sem-card.foco::after{content:'PROGRAMANDO AGORA';position:absolute;top:8px;right:9px;font-size:7px;color:var(--azul);font-weight:800;letter-spacing:.1em}
+.sem-card.atual.foco::after{content:'ATUAL · PROGRAMANDO';color:var(--azul)}
 .sc-num{font-size:9px;color:var(--txt-m);font-weight:700;text-transform:uppercase;margin-bottom:2px}
 .sc-range{font-size:9.5px;color:var(--txt-s);margin-bottom:8px}
 .sc-total{font-size:1.6rem;font-weight:800;color:var(--txt);line-height:1}
@@ -166,6 +169,7 @@ table.top-refs tr:hover td{background:var(--card2);color:var(--txt)}
       </div>
     </div>
     <div class="h-meta">Atualizado: <strong id="hdr-data">–</strong></div>
+    <div class="h-meta">Programando para: <strong id="hdr-foco">–</strong> (prazo <strong id="hdr-prazo">–</strong>d, <a href="/config" target="_blank" style="color:var(--coral)">ajustar</a>)</div>
   </div>
 </div>
 
@@ -222,6 +226,8 @@ const _REFS  = {"semanas":{"2026-05-04":{"label":"04/Mai-08/Mai","refs":{"2523 C
 let SEMANAS={}, MESES={}, REFS=[], REFS_TABELA={semanas:{},meses:{}};
 let modo='semana', periodoAtual='', rpSort='total';
 let chartEv=null, chartMix=null, chartMontBar=null, chartMontDonut=null;
+let CONFIG={prazo_producao_dias:45};
+let semanaRefKey='', semanaRefLabel='';
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
@@ -240,28 +246,46 @@ function mesRef(semKey, dado){
   return sexta.getFullYear()+'-'+String(sexta.getMonth()+1).padStart(2,'0');
 }
 
+// Calcula a segunda-feira da semana de uma data
+function mondayKey(date){
+  const day=date.getDay();
+  const diff=day===0?-6:1-day;
+  const mon=new Date(date);
+  mon.setDate(date.getDate()+diff);
+  return mon.toISOString().slice(0,10);
+}
+
 function inicializar(d, rt) {
     SEMANAS=d.semanas||{};MESES=d.meses||{};REFS=d.refs_top15||[];
     REFS_TABELA=rt||{semanas:{},meses:{}};
     document.getElementById('hdr-data').textContent=d.gerado_em||'–';
     const hoje=new Date();
     const mesHoje=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+
+    const prazoDias=CONFIG.prazo_producao_dias||45;
+    const alvo=new Date(hoje); alvo.setDate(alvo.getDate()+prazoDias);
+    semanaRefKey=mondayKey(alvo);
+    const semRef=SEMANAS[semanaRefKey];
+    semanaRefLabel=semRef?semRef.label:'';
+    document.getElementById('hdr-prazo').textContent=prazoDias;
+    document.getElementById('hdr-foco').textContent=semanaRefLabel||'–';
+
     const ps=[...new Set(Object.entries(SEMANAS).map(([k,v])=>mesRef(k,v)))].sort();
-    periodoAtual=ps.includes(mesHoje)?mesHoje:(ps[ps.length-1]||mesHoje);
+    const mesFoco=semRef?mesRef(semanaRefKey,semRef):null;
+    periodoAtual=(mesFoco&&ps.includes(mesFoco))?mesFoco:(ps.includes(mesHoje)?mesHoje:(ps[ps.length-1]||mesHoje));
     renderTudo();
 }
 
 // Tentar carregar JSON externo (atualizado pelo atualizar.bat)
 // Se não encontrar, usa dados embutidos
-fetch('dados_programacao.json?_='+Date.now())
-  .then(r=>{if(!r.ok)throw new Error();return r.json();})
-  .then(d=>{
-    fetch('dados_refs_tabela.json?_='+Date.now())
-      .then(r=>r.ok?r.json():_REFS)
-      .then(rt=>inicializar(d,rt))
-      .catch(()=>inicializar(d,_REFS));
-  })
-  .catch(()=>inicializar(_DADOS,_REFS));
+Promise.all([
+  fetch('dados_programacao.json?_='+Date.now()).then(r=>r.ok?r.json():_DADOS).catch(()=>_DADOS),
+  fetch('dados_refs_tabela.json?_='+Date.now()).then(r=>r.ok?r.json():_REFS).catch(()=>_REFS),
+  fetch('config_producao.json?_='+Date.now()).then(r=>r.ok?r.json():{}).catch(()=>({})),
+]).then(([d,rt,cfg])=>{
+  if(cfg&&cfg.prazo_producao_dias) CONFIG.prazo_producao_dias=cfg.prazo_producao_dias;
+  inicializar(d,rt);
+});
 
 const periodosSem=()=>[...new Set(Object.entries(SEMANAS).map(([k,v])=>mesRef(k,v)))].sort();
 const periodosMes=()=>Object.keys(MESES).sort();
@@ -315,9 +339,7 @@ function renderSemanas(){
     kpiBox('verde','Convencional',f(totCV),pct(totCV,totP)+'% do total')+
     kpiBox('laranja','Montado',f(totMT),pct(totMT,totP)+'% do total');
 
-  const hoje=new Date();
-  const mon=new Date(hoje); mon.setDate(hoje.getDate()-hoje.getDay()+1);
-  const hojeKey=mon.toISOString().slice(0,10);
+  const hojeKey=mondayKey(new Date());
   const grid=document.getElementById('cards-semana');
   grid.innerHTML='';
   if(!sems.length){grid.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:20px">Nenhuma semana para este período.</div>';return;}
@@ -327,7 +349,7 @@ function renderSemanas(){
     const cls=d.ok?'ok':d.pct_meta>=85?'warn':'crit';
     const top=d.top_refs&&d.top_refs[0]?d.top_refs[0][0].split(' ').slice(0,2).join(' '):'–';
     const el=document.createElement('div');
-    el.className='sem-card '+cls+(k===hojeKey?' atual':'');
+    el.className='sem-card '+cls+(k===hojeKey?' atual':'')+(k===semanaRefKey?' foco':'');
     el.innerHTML=
       '<div class="sc-num">Semana</div>'+
       '<div class="sc-range">'+d.label+'</div>'+

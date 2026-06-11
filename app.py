@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+import json
 import os
 import shutil
 import traceback
@@ -24,7 +25,7 @@ UPLOADS_DIR.mkdir(exist_ok=True)
 DATA_FILES = (
     'dados_estoque.json', 'dados_portal.json', 'dados_programacao.json',
     'dados_refs_tabela.json', 'dados_vendas.json', 'dados_carteira.json',
-    'boaonda_dados_completos.json',
+    'boaonda_dados_completos.json', 'config_producao.json',
 )
 
 # Primeira execução com volume vazio: semeia com os JSONs versionados no repo
@@ -267,6 +268,88 @@ def upload():
         # 3YS é grande — não manter no disco após processar
         if path_3ys and path_3ys.exists():
             path_3ys.unlink()
+
+
+_CONFIG_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Boaonda Intelligence — Configurações</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--coral:#ed6842;--verde:#6c9c37;--verde-dark:#26361e;--bg:#f8f5f1;--card:#fff;--line:#e2ddd8;--txt-s:#71706f;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
+body{background:var(--bg);color:var(--verde-dark);min-height:100vh;padding:32px}
+.wrap{max-width:560px;margin:0 auto}
+.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px;margin-bottom:4px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
+h1{font-size:16px;font-weight:700;margin:24px 0 8px}
+p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:16px}
+.field{margin-bottom:18px}
+label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-s);margin-bottom:8px}
+.hint{font-size:11px;color:var(--txt-m);margin-top:4px}
+input[type=number]{width:100%;background:#f3f0eb;border:1px solid var(--line);border-radius:8px;padding:10px 14px;color:var(--verde-dark);font-size:14px;outline:none}
+input[type=number]:focus{border-color:var(--coral)}
+.btn{background:var(--coral);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:13px;font-weight:700;cursor:pointer}
+.btn:hover{background:#dd7051}
+.msg{border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:16px}
+.msg.ok{background:rgba(108,156,55,.1);color:var(--verde);border:1px solid rgba(108,156,55,.25)}
+.msg.err{background:rgba(239,68,68,.08);color:#c0392b;border:1px solid rgba(239,68,68,.25)}
+.back{display:inline-block;margin-top:8px;font-size:12px;color:var(--txt-s);text-decoration:none}
+.back:hover{color:var(--coral)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">BOAONDA <span>· Intelligence</span></div>
+  <h1>Configurações de produção</h1>
+  <p class="sub">Esses parâmetros alimentam os cálculos de prazo dos dashboards (Carteira, Programação) sem precisar reprocessar os dados.</p>
+
+  {% if message %}
+  <div class="msg {{ 'ok' if ok else 'err' }}">{{ message }}</div>
+  {% endif %}
+
+  <form class="card" method="post">
+    <div class="field">
+      <label>Prazo produtivo (dias)</label>
+      <input type="number" name="prazo_producao_dias" min="1" max="365" value="{{ prazo }}" required>
+      <div class="hint">Lead time médio de produção. Usado para calcular se um pedido em carteira ainda tem tempo hábil de produção (hoje + prazo &gt; entrega prevista = em atraso) e para destacar a semana de referência na Programação.</div>
+    </div>
+    <button class="btn" type="submit">Salvar</button>
+  </form>
+
+  <a class="back" href="/">← Voltar ao portal</a>
+</div>
+</body>
+</html>'''
+
+
+@app.route('/config', methods=['GET', 'POST'])
+def config():
+    config_path = DATA_DIR / 'config_producao.json'
+    try:
+        with open(config_path, encoding='utf-8') as f_:
+            cfg = json.load(f_)
+    except (FileNotFoundError, json.JSONDecodeError):
+        cfg = {}
+    prazo = cfg.get('prazo_producao_dias', 45)
+
+    message, ok = None, True
+    if request.method == 'POST':
+        try:
+            novo_prazo = int(request.form.get('prazo_producao_dias', ''))
+            if novo_prazo < 1 or novo_prazo > 365:
+                raise ValueError
+        except ValueError:
+            message, ok = 'Informe um número de dias entre 1 e 365.', False
+        else:
+            prazo = novo_prazo
+            with open(config_path, 'w', encoding='utf-8') as f_:
+                json.dump({'prazo_producao_dias': prazo}, f_, ensure_ascii=False, indent=2)
+            message = f'Configuração salva: prazo produtivo de {prazo} dias.'
+
+    return render_template_string(_CONFIG_HTML, message=message, ok=ok, prazo=prazo)
 
 
 @app.route('/version')
