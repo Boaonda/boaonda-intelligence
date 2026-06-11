@@ -37,7 +37,10 @@ E-commerce fica de fora) que ainda não têm plano de produção vinculado:
 - `LocalEstoque == '30'` (vale para espécie 1 e 31)
 - `pos_item` não é "Cancelado" nem "Faturado"
 
-KPIs: total de pedidos/pares, canal MI/ME, em atraso / em risco (15d) / em
-prazo (com base em `dt_faturam` vs hoje), volume por `etapa_atual`,
-pares por mês de `dt_entrada` e `dt_faturam`. A Home mostra um card com o
-KPI "Total de pedidos em carteira" (`dados_portal.json.carteira.total_pedidos`).
+KPIs: total de pedidos/pares, canal MI/ME, em atraso / em prazo. Situação de
+entrega usa o prazo médio de produção (45 dias): se `hoje + 45 dias >
+dt_faturam`, o pedido não tem mais tempo hábil de produção e entra em "em
+atraso" (provável atraso); caso contrário, "em prazo". Também mostra volume
+por `etapa_atual` e pares por mês de `dt_entrada` e `dt_faturam`. A Home
+mostra um card com os KPIs "Total de pedidos em carteira" e "Total de pares
+em carteira" (`dados_portal.json.carteira`).

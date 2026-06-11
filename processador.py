@@ -427,9 +427,9 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
     etapas = defaultdict(lambda: {'pedidos': set(), 'pares': 0})
     situacao = {
         'atraso': {'pedidos': set(), 'pares': 0},
-        'risco':  {'pedidos': set(), 'pares': 0},
         'prazo':  {'pedidos': set(), 'pares': 0},
     }
+    LIMITE_PRODUCAO = hoje.date() + timedelta(days=45)
     mes_entrada = defaultdict(lambda: {'label': '', 'pares': 0})
     mes_entrega = defaultdict(lambda: {'label': '', 'pares': 0})
 
@@ -482,10 +482,7 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
             # situação de entrega (com base na dt_faturam = data negociada)
             sit = None
             if dt_fat:
-                diff = (dt_fat.date() - hoje.date()).days
-                if diff < 0: sit = 'atraso'
-                elif diff <= 15: sit = 'risco'
-                else: sit = 'prazo'
+                sit = 'atraso' if LIMITE_PRODUCAO > dt_fat.date() else 'prazo'
                 situacao[sit]['pedidos'].add(pedido)
                 situacao[sit]['pares'] += qtd
 
@@ -502,8 +499,7 @@ def processar_carteira(arquivo_3ys, output_dir='.'):
                 pa['dt_entrada'] = dt_ent
             if dt_fat and (not pa['dt_faturam'] or dt_fat < pa['dt_faturam']):
                 pa['dt_faturam'] = dt_fat
-                diff = (dt_fat.date() - hoje.date()).days
-                pa['situacao'] = 'atraso' if diff < 0 else ('risco' if diff <= 15 else 'prazo')
+                pa['situacao'] = 'atraso' if LIMITE_PRODUCAO > dt_fat.date() else 'prazo'
 
     print(f"    Pedidos em carteira: {len(pedidos_set):,} ({total_pares:,} pares)")
 

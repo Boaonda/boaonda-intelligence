@@ -34,14 +34,12 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
 .kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--gold);border-radius:10px;padding:16px}
 .kpi.k-atraso{border-top-color:var(--red)}
-.kpi.k-risco{border-top-color:var(--amber)}
 .kpi.k-prazo{border-top-color:var(--green)}
 .kpi.k-mi{border-top-color:var(--green)}
 .kpi.k-me{border-top-color:var(--azul)}
 .kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
 .kpi-v{font-size:1.75rem;font-weight:800;color:var(--gold-l);line-height:1}
 .kpi-v.cr{color:var(--red)}
-.kpi-v.ca{color:var(--amber)}
 .kpi-v.cg{color:var(--green)}
 .kpi-v.cb{color:var(--azul)}
 .kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
@@ -88,7 +86,6 @@ tr:last-child td{border:none}
 .tag-mi{background:rgba(108,156,55,.12);color:var(--green)}
 .tag-me{background:rgba(73,148,199,.12);color:var(--azul)}
 .tag-atraso{background:rgba(239,68,68,.12);color:var(--red)}
-.tag-risco{background:rgba(245,158,11,.12);color:var(--amber)}
 .tag-prazo{background:rgba(108,156,55,.12);color:var(--green)}
 
 @media(max-width:900px){.crow,.crow2{grid-template-columns:1fr}.main{padding:14px}}
@@ -134,17 +131,12 @@ tr:last-child td{border:none}
   <div class="kpi k-atraso">
     <div class="kpi-l">Em atraso</div>
     <div class="kpi-v cr" id="k-atraso">–</div>
-    <div class="kpi-s" id="k-atraso-s">– pedidos · dt. entrega vencida</div>
-  </div>
-  <div class="kpi k-risco">
-    <div class="kpi-l">Em risco (15d)</div>
-    <div class="kpi-v ca" id="k-risco">–</div>
-    <div class="kpi-s" id="k-risco-s">– pedidos · vence em até 15 dias</div>
+    <div class="kpi-s" id="k-atraso-s">– pedidos · sem prazo produtivo (45d)</div>
   </div>
   <div class="kpi k-prazo">
     <div class="kpi-l">Em prazo</div>
     <div class="kpi-v cg" id="k-prazo">–</div>
-    <div class="kpi-s" id="k-prazo-s">– pedidos · acima de 15 dias</div>
+    <div class="kpi-s" id="k-prazo-s">– pedidos · ainda há tempo hábil</div>
   </div>
 </div>
 
@@ -184,7 +176,6 @@ tr:last-child td{border:none}
     <select class="sel-inp" id="f-situacao" onchange="render()">
       <option value="">Toda situação</option>
       <option value="atraso">Em atraso</option>
-      <option value="risco">Em risco (15d)</option>
       <option value="prazo">Em prazo</option>
     </select>
     <div class="cnt" id="cnt">– pedidos</div>
@@ -236,22 +227,19 @@ function init(){
 
   const s = DATA.situacao || {};
   const atraso = s.atraso || {pedidos:0,pares:0};
-  const risco  = s.risco  || {pedidos:0,pares:0};
   const prazo  = s.prazo  || {pedidos:0,pares:0};
   document.getElementById('k-atraso').textContent = f(atraso.pares);
-  document.getElementById('k-atraso-s').textContent = f(atraso.pedidos)+' pedidos · dt. entrega vencida';
-  document.getElementById('k-risco').textContent = f(risco.pares);
-  document.getElementById('k-risco-s').textContent = f(risco.pedidos)+' pedidos · vence em até 15 dias';
+  document.getElementById('k-atraso-s').textContent = f(atraso.pedidos)+' pedidos · sem prazo produtivo (45d)';
   document.getElementById('k-prazo').textContent = f(prazo.pares);
-  document.getElementById('k-prazo-s').textContent = f(prazo.pedidos)+' pedidos · acima de 15 dias';
+  document.getElementById('k-prazo-s').textContent = f(prazo.pedidos)+' pedidos · ainda há tempo hábil';
 
   const alertBar = document.getElementById('alert-bar');
   if(atraso.pedidos > 0){
     alertBar.classList.remove('ok');
-    alertBar.innerHTML = `⚠️ <b>${f(atraso.pedidos)} pedido(s)</b> com entrega já vencida — total de <b>${f(atraso.pares)} pares</b> pendentes de programação.`;
+    alertBar.innerHTML = `⚠️ <b>${f(atraso.pedidos)} pedido(s)</b> sem prazo produtivo de 45 dias até a entrega — total de <b>${f(atraso.pares)} pares</b> com risco de atraso.`;
   } else {
     alertBar.classList.add('ok');
-    alertBar.innerHTML = `✅ Nenhum pedido em atraso — carteira sob controle.`;
+    alertBar.innerHTML = `✅ Nenhum pedido com risco de atraso — carteira sob controle.`;
   }
 
   renderEtapas();
@@ -276,9 +264,9 @@ function renderCharts(){
   const s = DATA.situacao || {};
   if(chartSit) chartSit.destroy();
   chartSit = new Chart(document.getElementById('c-situacao'),{type:'doughnut',data:{
-    labels:['Em atraso','Em risco (15d)','Em prazo'],
-    datasets:[{data:[(s.atraso||{}).pares||0,(s.risco||{}).pares||0,(s.prazo||{}).pares||0],
-      backgroundColor:['#EF4444','#F59E0B','#6c9c37'],borderWidth:0,hoverOffset:6}]
+    labels:['Em atraso','Em prazo'],
+    datasets:[{data:[(s.atraso||{}).pares||0,(s.prazo||{}).pares||0],
+      backgroundColor:['#EF4444','#6c9c37'],borderWidth:0,hoverOffset:6}]
   },options:{responsive:true,maintainAspectRatio:false,
     plugins:{legend:{position:'right',labels:{boxWidth:10,font:{size:10}}},
       tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${f(ctx.raw)} pares`}}}}
@@ -320,8 +308,8 @@ function parseDataBr(s){
   return new Date(`${y}-${m}-${d}`).getTime();
 }
 
-const SIT_LABEL = {atraso:'Em atraso', risco:'Em risco', prazo:'Em prazo'};
-const SIT_TAG = {atraso:'tag-atraso', risco:'tag-risco', prazo:'tag-prazo'};
+const SIT_LABEL = {atraso:'Em atraso', prazo:'Em prazo'};
+const SIT_TAG = {atraso:'tag-atraso', prazo:'tag-prazo'};
 
 function render(){
   const q = (document.getElementById('srch').value||'').toLowerCase();
