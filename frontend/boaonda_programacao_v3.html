@@ -44,17 +44,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .stitle::after{content:'';flex:1;height:1px;background:var(--line)}
 /* KPIs */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
-.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
-.kpi.verde{border-top-color:var(--verde)}
-.kpi.azul{border-top-color:var(--azul)}
-.kpi.cinza{border-top-color:var(--cinza)}
-.kpi.laranja{border-top-color:#f59e0b}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--line2);border-radius:10px;padding:14px}
+.kpi.destaque{border-top-color:var(--coral)}
 .kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
-.kpi-v{font-size:1.75rem;font-weight:800;color:var(--coral);line-height:1}
-.kpi-v.verde{color:var(--verde)}
-.kpi-v.azul{color:var(--azul)}
-.kpi-v.cinza{color:var(--cinza)}
-.kpi-v.laranja{color:#f59e0b}
+.kpi-v{font-size:1.75rem;font-weight:800;color:var(--txt);line-height:1}
+.kpi-v.destaque{color:var(--coral)}
 .kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px;line-height:1.4}
 .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;margin-top:4px}
 .ok{background:rgba(108,156,55,.1);color:var(--verde)}
@@ -80,10 +74,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .sc-bar{margin-top:8px;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
 .sc-fill{height:100%;border-radius:2px}
 .sc-tags{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
-.sc-tag{padding:2px 7px;border-radius:3px;font-size:8px;font-weight:700}
-.sc-tag.mi{background:rgba(73,148,199,.12);color:var(--azul)}
-.sc-tag.ex{background:rgba(113,112,111,.12);color:var(--cinza)}
-.sc-tag.pe{background:rgba(113,112,111,.12);color:var(--cinza)}
+.sc-tag{padding:2px 7px;border-radius:3px;font-size:8px;font-weight:700;background:var(--card2);color:var(--txt-s)}
 .sc-info{font-size:8.5px;color:var(--txt-m);margin-top:5px}
 /* Cards mês */
 .mes-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:12px;position:relative;overflow:hidden}
@@ -103,12 +94,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .mc-subtags{display:flex;gap:8px;flex-wrap:wrap}
 .mc-subtag{background:var(--card2);border-radius:6px;padding:6px 12px}
 .mc-subtag-label{font-size:9px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
-.mc-subtag-val{font-weight:800;font-size:14px}
-.mc-subtag-val.mi{color:var(--azul)}
-.mc-subtag-val.ex{color:var(--cinza)}
-.mc-subtag-val.pe{color:var(--cinza)}
-.mc-subtag-val.conv{color:var(--verde)}
-.mc-subtag-val.mont{color:var(--coral)}
+.mc-subtag-val{font-weight:800;font-size:14px;color:var(--txt)}
 /* Charts */
 .crow{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
 .ccard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
@@ -350,15 +336,16 @@ function renderSemanas(){
   const totMT=sems.reduce((s,[,v])=>s+(v.montado||0),0);
   const semsOk=sems.filter(([,v])=>v.ok).length;
 
+  const pctMetaP=metaP?Math.round(totP/metaP*100):0;
   document.getElementById('kpi-area').innerHTML=
-    kpiBox('','Total no período',f(totP),'pares programados')+
-    kpiBox('azul','Meta do período',f(metaP),sems.length+' semanas × 30k')+
-    kpiBox('verde','% da meta',(metaP?Math.round(totP/metaP*100):0)+'%',semsOk+'/'+sems.length+' semanas OK')+
-    kpiBox('azul','Mercado Interno',f(totMI),pct(totMI,totP)+'% do total')+
-    kpiBox('cinza','Exportação',f(totEx),pct(totEx,totP)+'% do total')+
-    kpiBox('cinza','Armazém / PE',f(totPE),pct(totPE,totP)+'% do total')+
-    kpiBox('verde','Convencional',f(totCV),pct(totCV,totP)+'% do total')+
-    kpiBox('laranja','Montado',f(totMT),pct(totMT,totP)+'% do total');
+    kpiBox('destaque','Total no período',f(totP),'pares programados')+
+    kpiBox('','Meta do período',f(metaP),sems.length+' semanas × 30k')+
+    kpiBox('','% da meta',pctMetaP+'%','<span class="badge '+(pctMetaP>=100?'ok':'warn')+'">'+semsOk+'/'+sems.length+' semanas OK</span>')+
+    kpiBox('','Mercado Interno',f(totMI),pct(totMI,totP)+'% do total')+
+    kpiBox('','Exportação',f(totEx),pct(totEx,totP)+'% do total')+
+    kpiBox('','Armazém / PE',f(totPE),pct(totPE,totP)+'% do total')+
+    kpiBox('','Convencional',f(totCV),pct(totCV,totP)+'% do total')+
+    kpiBox('','Montado',f(totMT),pct(totMT,totP)+'% do total');
 
   const hojeKey=mondayKey(new Date());
   const grid=document.getElementById('cards-semana');
@@ -406,15 +393,17 @@ function renderMeses(){
   const totCV=ms.reduce((s,[,v])=>s+(v.convencional||0),0);
   const totMT=ms.reduce((s,[,v])=>s+(v.montado||0),0);
 
+  const pctMetaA=metaA?Math.round(totA/metaA*100):0;
+  const mesesOk=ms.filter(([,v])=>v.ok).length;
   document.getElementById('kpi-area').innerHTML=
-    kpiBox('','Total no ano',f(totA),'pares programados')+
-    kpiBox('azul','Meta do ano',f(metaA),'proporcional às semanas')+
-    kpiBox('verde','% da meta',(metaA?Math.round(totA/metaA*100):0)+'%',ms.filter(([,v])=>v.ok).length+'/'+ms.length+' meses OK')+
-    kpiBox('azul','Mercado Interno',f(totMIA),pct(totMIA,totA)+'% do total')+
-    kpiBox('cinza','Exportação',f(totEx),pct(totEx,totA)+'% do total')+
-    kpiBox('cinza','Armazém / PE',f(totPE),pct(totPE,totA)+'% do total')+
-    kpiBox('verde','Convencional',f(totCV),pct(totCV,totA)+'% do total')+
-    kpiBox('laranja','Montado',f(totMT),pct(totMT,totA)+'% do total');
+    kpiBox('destaque','Total no ano',f(totA),'pares programados')+
+    kpiBox('','Meta do ano',f(metaA),'proporcional às semanas')+
+    kpiBox('','% da meta',pctMetaA+'%','<span class="badge '+(mesesOk===ms.length?'ok':'warn')+'">'+mesesOk+'/'+ms.length+' meses OK</span>')+
+    kpiBox('','Mercado Interno',f(totMIA),pct(totMIA,totA)+'% do total')+
+    kpiBox('','Exportação',f(totEx),pct(totEx,totA)+'% do total')+
+    kpiBox('','Armazém / PE',f(totPE),pct(totPE,totA)+'% do total')+
+    kpiBox('','Convencional',f(totCV),pct(totCV,totA)+'% do total')+
+    kpiBox('','Montado',f(totMT),pct(totMT,totA)+'% do total');
 
   const hoje=new Date();
   const mesAtual=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
