@@ -36,9 +36,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .stitle::after{content:'';flex:1;height:1px;background:var(--border)}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
-.kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--gold);border-radius:10px;padding:16px}
+.kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--line2);border-radius:10px;padding:16px}
+.kpi.destaque{border-top-color:var(--gold)}
 .kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
-.kpi-v{font-size:1.75rem;font-weight:800;color:var(--gold-l);line-height:1}
+.kpi-v{font-size:1.75rem;font-weight:800;color:var(--txt);line-height:1}
+.kpi-v.destaque{color:var(--gold-l)}
 .kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
 .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;margin-top:4px}
 .ok{background:rgba(16,185,129,.12);color:var(--green)}
@@ -64,10 +66,7 @@ td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--tx
 tr:last-child td{border:none}
 tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .td-ref{font-weight:600;color:var(--txt)}
-.tn{font-weight:700;font-size:13px}
-.tl{color:var(--gold-l)}
-.tr2{color:var(--amber)}
-.tg{color:var(--green)}
+.tn{font-weight:700;font-size:13px;color:var(--txt)}
 .mbar-wrap{min-width:80px}
 .mbar{height:4px;border-radius:2px;opacity:.7}
 
@@ -123,9 +122,9 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
     <div class="kpi-s">Comprometido — não disponível</div>
     <div class="badge warn" id="k-pct-reservas">20,3% do físico</div>
   </div>
-  <div class="kpi">
+  <div class="kpi destaque">
     <div class="kpi-l">Livre — disponível</div>
-    <div class="kpi-v" id="k-livre">114.710</div>
+    <div class="kpi-v destaque" id="k-livre">114.710</div>
     <div class="kpi-s">Pares para venda imediata</div>
     <div class="badge ok" id="k-pct-livre">79,7% do físico</div>
   </div>
