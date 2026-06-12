@@ -57,13 +57,35 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .ctitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-m);margin-bottom:14px}
 
 /* TABELA ETAPAS */
-.etapa-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
-.etapa-row:last-child{border:none}
+.etapa-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;cursor:pointer;border-radius:6px;transition:background .15s}
+.etapa-row:last-child{border-bottom:1px solid rgba(255,255,255,.04)}
+.etapa-row:hover{background:rgba(255,255,255,.03)}
+.etapa-row.ativa{background:rgba(237,104,66,.08)}
 .etapa-nome{flex:1;color:var(--txt-s);font-size:11px}
+.etapa-row.ativa .etapa-nome{color:var(--txt);font-weight:700}
 .etapa-bar-wrap{flex:1.4;background:var(--card2);border-radius:3px;height:8px;overflow:hidden}
 .etapa-bar{height:100%;background:var(--gold);border-radius:3px}
 .etapa-val{width:90px;text-align:right;font-weight:700;color:var(--txt);font-size:11px}
 .etapa-ped{width:54px;text-align:right;color:var(--txt-m);font-size:10px}
+
+/* DRILLDOWN */
+.drill{margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+.drill-head{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:8px}
+.drill-close{cursor:pointer;color:var(--txt-m);text-transform:none;letter-spacing:0;font-weight:600}
+.drill-close:hover{color:var(--coral)}
+.drill-cliente{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px}
+.drill-cliente:hover{background:rgba(255,255,255,.03)}
+.drill-cliente.ativa{background:var(--card2)}
+.drill-arrow{width:14px;color:var(--txt-m);font-size:10px}
+.drill-cliente.ativa .drill-arrow{color:var(--coral)}
+.dc-nome{flex:1;color:var(--txt-s);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drill-cliente.ativa .dc-nome{color:var(--txt);font-weight:600}
+.dc-ped{width:60px;text-align:right;color:var(--txt-m);font-size:10px}
+.dc-pares{width:90px;text-align:right;font-weight:700;color:var(--txt);font-size:11px}
+.drill-detail{padding:4px 8px 10px 24px}
+.drill-detail table{font-size:11px}
+.drill-detail th{padding:5px 8px;font-size:8px}
+.drill-detail td{padding:5px 8px;color:var(--txt-s)}
 
 /* TABELA PRINCIPAL */
 .tcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;overflow-x:auto}
@@ -144,8 +166,9 @@ tr:last-child td{border:none}
 
 <div class="crow">
   <div class="ccard">
-    <div class="ctitle">Volume por etapa</div>
+    <div class="ctitle">Volume por etapa <span style="text-transform:none;letter-spacing:0;color:var(--txt-m)">— clique para detalhar</span></div>
     <div id="etapas-list"></div>
+    <div id="etapa-drill"></div>
   </div>
   <div class="ccard">
     <div class="ctitle">Situação de entrega</div>
@@ -278,17 +301,106 @@ function init(){
   render();
 }
 
+let etapaAtual = null;
+let clienteAtivo = null;
+
 function renderEtapas(){
   const wrap = document.getElementById('etapas-list');
   const etapas = DATA.etapas || [];
   const max = Math.max(1, ...etapas.map(e=>e.pares));
-  wrap.innerHTML = etapas.map(e => `
-    <div class="etapa-row">
+  wrap.innerHTML = etapas.map((e,i) => `
+    <div class="etapa-row ${e.etapa===etapaAtual?'ativa':''}" onclick="toggleEtapa(${i})">
       <div class="etapa-nome">${e.etapa}</div>
       <div class="etapa-bar-wrap"><div class="etapa-bar" style="width:${Math.round(e.pares/max*100)}%"></div></div>
       <div class="etapa-val">${f(e.pares)} pares</div>
       <div class="etapa-ped">${f(e.pedidos)} ped.</div>
     </div>`).join('') || '<div style="font-size:11px;color:var(--txt-m)">Sem dados</div>';
+  renderDrill();
+}
+
+function toggleEtapa(i){
+  const e = (DATA.etapas||[])[i];
+  if(i===-1 || (e && etapaAtual === e.etapa)){ etapaAtual = null; }
+  else if(e){ etapaAtual = e.etapa; }
+  else { return; }
+  clienteAtivo = null;
+  renderEtapas();
+}
+
+function renderDrill(){
+  const wrap = document.getElementById('etapa-drill');
+  if(!etapaAtual){ wrap.innerHTML = ''; return; }
+
+  const pedidos = (DATA.pedidos||[]).filter(p=>p.etapa===etapaAtual);
+  const porCliente = {};
+  pedidos.forEach(p=>{
+    const k = p.cliente;
+    if(!porCliente[k]) porCliente[k] = {cliente:k, pares:0, pedidos:[]};
+    porCliente[k].pares += p.pares;
+    porCliente[k].pedidos.push(p);
+  });
+  const clientes = Object.values(porCliente).sort((a,b)=>b.pares-a.pares);
+
+  CLIENTES_REF = [];
+  wrap.innerHTML = `
+    <div class="drill">
+      <div class="drill-head">
+        <span>${clientes.length} cliente(s) — ${etapaAtual}</span>
+        <span class="drill-close" onclick="event.stopPropagation();toggleEtapa(-1)">fechar ✕</span>
+      </div>
+      ${clientes.map((c,ci)=>`
+        <div class="drill-cliente ${clienteAtivo===c.cliente?'ativa':''}" onclick="toggleCliente(${i_(c.cliente)})">
+          <div class="drill-arrow">${clienteAtivo===c.cliente?'▾':'▸'}</div>
+          <div class="dc-nome">${c.cliente}</div>
+          <div class="dc-ped">${f(c.pedidos.length)} ped.</div>
+          <div class="dc-pares">${f(c.pares)} pares</div>
+        </div>
+        ${clienteAtivo===c.cliente ? renderPedidosCliente(c.pedidos) : ''}
+      `).join('')}
+    </div>`;
+}
+
+// Guarda o nome do cliente clicado em CLIENTE_TMP e devolve seu índice no
+// array global, para evitar interpolar aspas/acentos dentro do onclick.
+let CLIENTES_REF = [];
+function i_(nomeCliente){
+  CLIENTES_REF.push(nomeCliente);
+  return CLIENTES_REF.length-1;
+}
+function toggleCliente(idx){
+  const nome = CLIENTES_REF[idx];
+  clienteAtivo = (clienteAtivo===nome) ? null : nome;
+  renderDrill();
+}
+
+function renderPedidosCliente(pedidosCliente){
+  const linhas = [];
+  pedidosCliente.forEach(p=>{
+    const refs = (p.refs && Object.keys(p.refs).length) ? p.refs : {[p.ref_principal||'–']: p.pares};
+    Object.entries(refs).forEach(([ref,qtd])=>{
+      linhas.push({pedido:p.pedido, ref, pares:qtd, dt_entrada:p.dt_entrada, dt_faturam:p.dt_faturam, situacao:p.situacao});
+    });
+  });
+  return `
+    <div class="drill-detail">
+      <table>
+        <thead><tr>
+          <th>Pedido</th><th>Referência</th><th style="text-align:right">Pares</th>
+          <th>Dt. entrada</th><th>Entrega prevista</th><th>Situação</th>
+        </tr></thead>
+        <tbody>
+          ${linhas.map(l=>`
+            <tr>
+              <td class="td-ped">${l.pedido}</td>
+              <td>${l.ref}</td>
+              <td style="text-align:right;font-weight:700;color:var(--txt)">${f(l.pares)}</td>
+              <td>${l.dt_entrada}</td>
+              <td>${l.dt_faturam}</td>
+              <td><span class="tag ${SIT_TAG[l.situacao]||''}">${SIT_LABEL[l.situacao]||'–'}</span></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 function renderCharts(){

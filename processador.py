@@ -558,6 +558,7 @@ def processar_carteira(linhas, output_dir='.'):
             'etapa': pa['etapa'], 'pares': pa['pares'],
             'ref_principal': top_ref[0][0] if top_ref else '',
             'qtd_refs': len(pa['refs']),
+            'refs': dict(pa['refs'].most_common()),
             'dt_entrada': pa['dt_entrada'].strftime('%d/%m/%Y') if pa['dt_entrada'] else '',
             'dt_faturam': pa['dt_faturam'].strftime('%d/%m/%Y') if pa['dt_faturam'] else '',
         })
