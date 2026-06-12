@@ -74,17 +74,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 
 /* KPIs */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
-.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
-.kpi.verde{border-top-color:var(--verde)}
-.kpi.azul{border-top-color:var(--azul)}
-.kpi.cinza{border-top-color:var(--cinza)}
-.kpi.laranja{border-top-color:#f59e0b}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--line2);border-radius:10px;padding:14px}
+.kpi.destaque{border-top-color:var(--coral)}
 .kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
-.kpi-v{font-size:1.75rem;font-weight:800;color:var(--coral);line-height:1}
-.kpi-v.verde{color:var(--verde)}
-.kpi-v.azul{color:var(--azul)}
-.kpi-v.cinza{color:var(--cinza)}
-.kpi-v.laranja{color:#f59e0b}
+.kpi-v{font-size:1.75rem;font-weight:800;color:var(--txt);line-height:1}
+.kpi-v.destaque{color:var(--coral)}
 .kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px}
 
 /* Charts */
@@ -101,7 +95,7 @@ td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--tx
 tr:last-child td{border:none}
 tr:hover td{background:var(--card2);color:var(--txt)}
 .td-ref{font-weight:700;color:var(--txt)}
-.td-num{font-size:13px;font-weight:800;color:var(--coral)}
+.td-num{font-size:13px;font-weight:800;color:var(--txt)}
 .mbar{height:3px;border-radius:2px;opacity:.7}
 
 @media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}}
@@ -391,13 +385,13 @@ function render(){
 
   // KPIs
   let kpiHTML='';
-  kpiHTML+=kpi('','Total selecionado',f(total),'pares no período');
-  if(canais.has('MI') && tipos.has('PROG'))  kpiHTML+=kpi('azul','MI — Programação',f(mi_prog),pct(mi_prog,total)+'% do total');
-  if(canais.has('MI') && tipos.has('PE'))    kpiHTML+=kpi('cinza','MI — Pronta Entrega',f(mi_pe),pct(mi_pe,total)+'% do total');
-  if(canais.has('MI') && tipos.has('MISTA')) kpiHTML+=kpi('cinza','MI — Venda Mista',f(mi_mista),pct(mi_mista,total)+'% do total');
-  if(canais.has('ME')) kpiHTML+=kpi('cinza','Mercado Externo',f(me),pct(me,total)+'% do total');
-  if(canais.has('EC')) kpiHTML+=kpi('verde','E-commerce',f(ec),pct(ec,total)+'% do total');
-  kpiHTML+=kpi('laranja','Meses',meses.size,meses.size===MESES_ALL.length?'todos':'de '+MESES_ALL.length);
+  kpiHTML+=kpi('destaque','Total selecionado',f(total),'pares no período');
+  if(canais.has('MI') && tipos.has('PROG'))  kpiHTML+=kpi('','MI — Programação',f(mi_prog),pct(mi_prog,total)+'% do total');
+  if(canais.has('MI') && tipos.has('PE'))    kpiHTML+=kpi('','MI — Pronta Entrega',f(mi_pe),pct(mi_pe,total)+'% do total');
+  if(canais.has('MI') && tipos.has('MISTA')) kpiHTML+=kpi('','MI — Venda Mista',f(mi_mista),pct(mi_mista,total)+'% do total');
+  if(canais.has('ME')) kpiHTML+=kpi('','Mercado Externo',f(me),pct(me,total)+'% do total');
+  if(canais.has('EC')) kpiHTML+=kpi('','E-commerce',f(ec),pct(ec,total)+'% do total');
+  kpiHTML+=kpi('','Meses',meses.size,meses.size===MESES_ALL.length?'todos':'de '+MESES_ALL.length);
   document.getElementById('kpi-area').innerHTML=kpiHTML;
 
   // Descrição

@@ -32,16 +32,15 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .stitle::after{content:'';flex:1;height:1px;background:var(--border)}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
-.kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--gold);border-radius:10px;padding:16px}
+.kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--line2);border-radius:10px;padding:16px}
+.kpi.destaque{border-top-color:var(--gold)}
 .kpi.k-atraso{border-top-color:var(--red)}
 .kpi.k-prazo{border-top-color:var(--green)}
-.kpi.k-mi{border-top-color:var(--green)}
-.kpi.k-me{border-top-color:var(--azul)}
 .kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
-.kpi-v{font-size:1.75rem;font-weight:800;color:var(--gold-l);line-height:1}
+.kpi-v{font-size:1.75rem;font-weight:800;color:var(--txt);line-height:1}
+.kpi-v.destaque{color:var(--gold-l)}
 .kpi-v.cr{color:var(--red)}
 .kpi-v.cg{color:var(--green)}
-.kpi-v.cb{color:var(--azul)}
 .kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
 
 /* ALERTA */
@@ -83,8 +82,8 @@ tr:last-child td{border:none}
 .tn{font-weight:700;font-size:13px;color:var(--txt)}
 
 .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
-.tag-mi{background:rgba(108,156,55,.12);color:var(--green)}
-.tag-me{background:rgba(73,148,199,.12);color:var(--azul)}
+.tag-mi{background:var(--card2);color:var(--txt-s)}
+.tag-me{background:var(--card2);color:var(--txt-s)}
 .tag-atraso{background:rgba(239,68,68,.12);color:var(--red)}
 .tag-prazo{background:rgba(108,156,55,.12);color:var(--green)}
 
@@ -114,19 +113,19 @@ tr:last-child td{border:none}
     <div class="kpi-v" id="k-pedidos">–</div>
     <div class="kpi-s">Pedidos abertos, fora da programação</div>
   </div>
-  <div class="kpi">
+  <div class="kpi destaque">
     <div class="kpi-l">Total de pares</div>
-    <div class="kpi-v" id="k-pares">–</div>
+    <div class="kpi-v destaque" id="k-pares">–</div>
     <div class="kpi-s">Volume total em carteira</div>
   </div>
-  <div class="kpi k-mi">
+  <div class="kpi">
     <div class="kpi-l">Canal MI</div>
-    <div class="kpi-v cg" id="k-mi">–</div>
+    <div class="kpi-v" id="k-mi">–</div>
     <div class="kpi-s" id="k-mi-ped">– pedidos</div>
   </div>
-  <div class="kpi k-me">
+  <div class="kpi">
     <div class="kpi-l">Canal ME</div>
-    <div class="kpi-v cb" id="k-me">–</div>
+    <div class="kpi-v" id="k-me">–</div>
     <div class="kpi-s" id="k-me-ped">– pedidos</div>
   </div>
   <div class="kpi k-atraso">
