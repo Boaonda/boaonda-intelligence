@@ -352,6 +352,74 @@ def config():
     return render_template_string(_CONFIG_HTML, message=message, ok=ok, prazo=prazo)
 
 
+_RECARREGAR_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Boaonda Intelligence — Recarregar dados</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--coral:#ed6842;--verde:#6c9c37;--verde-dark:#26361e;--bg:#f8f5f1;--card:#fff;--line:#e2ddd8;--txt-s:#71706f;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
+body{background:var(--bg);color:var(--verde-dark);min-height:100vh;padding:32px}
+.wrap{max-width:560px;margin:0 auto}
+.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px;margin-bottom:4px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
+h1{font-size:16px;font-weight:700;margin:24px 0 8px}
+p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:16px}
+.btn{background:var(--coral);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:13px;font-weight:700;cursor:pointer}
+.btn:hover{background:#dd7051}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.msg{border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:16px}
+.msg.ok{background:rgba(108,156,55,.1);color:var(--verde);border:1px solid rgba(108,156,55,.25)}
+.msg.err{background:rgba(239,68,68,.08);color:#c0392b;border:1px solid rgba(239,68,68,.25)}
+.back{display:inline-block;margin-top:8px;font-size:12px;color:var(--txt-s);text-decoration:none}
+.back:hover{color:var(--coral)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">BOAONDA <span>· Intelligence</span></div>
+  <h1>Recarregar dados do último deploy</h1>
+  <p class="sub">Copia os JSONs versionados no repositório (gerados localmente a
+  partir do MySQL/ESQT e enviados via git push) para o volume persistente que
+  alimenta o portal — use depois de cada atualização de dados.</p>
+
+  {% if message %}
+  <div class="msg {{ 'ok' if ok else 'err' }}">{{ message }}</div>
+  {% endif %}
+
+  <form class="card" method="post">
+    <button class="btn" type="submit" {{ 'disabled' if disabled else '' }}>Recarregar agora</button>
+  </form>
+
+  <a class="back" href="/">← Voltar ao portal</a>
+</div>
+</body>
+</html>'''
+
+
+@app.route('/admin/recarregar', methods=['GET', 'POST'])
+def recarregar():
+    if DATA_DIR == FRONTEND_DIR:
+        return render_template_string(_RECARREGAR_HTML,
+            message='Ambiente local: os dados já são lidos direto de frontend/, nada a recarregar.',
+            ok=True, disabled=True)
+
+    message, ok = None, True
+    if request.method == 'POST':
+        copiados = []
+        for fname in DATA_FILES:
+            src = FRONTEND_DIR / fname
+            if src.exists():
+                shutil.copy(src, DATA_DIR / fname)
+                copiados.append(fname)
+        message = f'{len(copiados)} arquivo(s) recarregados do último deploy para o volume.'
+
+    return render_template_string(_RECARREGAR_HTML, message=message, ok=ok, disabled=False)
+
+
 @app.route('/version')
 def version():
     import subprocess
