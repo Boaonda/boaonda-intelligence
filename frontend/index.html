@@ -74,19 +74,13 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 
 /* Borda lateral colorida */
 .nó::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px}
-.nó.verde::before{background:var(--verde)}
-.nó.azul::before{background:var(--azul)}
-.nó.coral::before{background:var(--coral)}
-.nó.cinza::before{background:var(--cinza);opacity:.5}
+.nó::before{background:var(--line2)}
 .nó:hover::before{background:var(--coral)!important}
 
 .nó-icon{font-size:20px;margin-bottom:6px;display:block}
 .nó-title{font-size:12px;font-weight:800;color:var(--txt);margin-bottom:3px}
 .nó-desc{font-size:9.5px;color:var(--txt-s);line-height:1.6;margin-bottom:8px}
-.nó-kpi{font-size:22px;font-weight:800;line-height:1;margin-bottom:2px}
-.nó-kpi.verde{color:var(--verde)}
-.nó-kpi.azul{color:var(--azul)}
-.nó-kpi.coral{color:var(--coral)}
+.nó-kpi{font-size:22px;font-weight:800;line-height:1;margin-bottom:2px;color:var(--txt)}
 .nó-kpi-label{font-size:8.5px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
 .nó-cta{font-size:9px;color:var(--coral);font-weight:700;margin-top:8px;opacity:.8}
 
@@ -97,10 +91,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 /* Tags de canal */
 .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .tag{padding:2px 7px;border-radius:3px;font-size:8.5px;font-weight:700}
-.tag.mi{background:rgba(108,156,55,.1);color:var(--verde)}
-.tag.me{background:rgba(73,148,199,.1);color:var(--azul)}
-.tag.ec{background:rgba(237,104,66,.1);color:var(--coral)}
-.tag.pe{background:rgba(113,112,111,.1);color:var(--cinza)}
+.tag.mi,.tag.me,.tag.ec,.tag.pe{background:var(--card2);color:var(--txt-s)}
 
 /* Semanas mini */
 .sems{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px}
@@ -181,9 +172,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 }
 .fase{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;position:relative;overflow:hidden}
 .fase::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
-.fase.f1::before{background:var(--verde)}
-.fase.f2::before{background:var(--coral)}
-.fase.f3::before{background:var(--azul)}
+.fase::before{background:var(--line2)}
 .fn{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-m);margin-bottom:4px}
 .ft{font-size:12px;font-weight:700;color:var(--txt);margin-bottom:5px}
 .fd{font-size:10.5px;color:var(--txt-s);line-height:1.6}
@@ -276,11 +265,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     </svg>
 
     <!-- NÓ: VENDAS (esq topo) -->
-    <div class="nó verde" style="left:40px;top:60px" onclick="abrirModulo('vendas')">
+    <div class="nó" style="left:40px;top:60px" onclick="abrirModulo('vendas')">
       <span class="nó-icon">📊</span>
       <div class="nó-title">Vendas</div>
       <div class="nó-desc">MI · ME · E-commerce · PE</div>
-      <div class="nó-kpi verde" id="kpi-v-total">–</div>
+      <div class="nó-kpi" id="kpi-v-total">–</div>
       <div class="nó-kpi-label">pares · <span id="kpi-v-mes">Jun/2026</span></div>
       <div class="tags" id="tags-canais"></div>
       <div id="alerta-v"></div>
@@ -288,37 +277,37 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     </div>
 
     <!-- NÓ: PROGRAMAÇÃO (dir topo) -->
-    <div class="nó azul" style="right:40px;top:80px" onclick="abrirModulo('programacao')">
+    <div class="nó" style="right:40px;top:80px" onclick="abrirModulo('programacao')">
       <span class="nó-icon">🏭</span>
       <div class="nó-title">Programação</div>
       <div class="nó-desc">PCP · dt_plano · 30k/sem</div>
-      <div class="nó-kpi azul" id="kpi-p-total">–</div>
+      <div class="nó-kpi" id="kpi-p-total">–</div>
       <div class="nó-kpi-label">pares · <span id="kpi-p-mes">Jun/2026</span></div>
       <div class="sems" id="sems-mini"></div>
       <div class="nó-cta">Analisar programação →</div>
     </div>
 
     <!-- NÓ: CATÁLOGO (dir meio) -->
-    <div class="nó cinza info" style="right:40px;top:340px">
+    <div class="nó info" style="right:40px;top:340px">
       <span class="nó-icon">📋</span>
       <div class="nó-title">Catálogo</div>
       <div class="nó-desc">271 referências · 2.932 SKUs</div>
-      <div class="nó-kpi azul">3</div>
+      <div class="nó-kpi">3</div>
       <div class="nó-kpi-label">níveis hierárquicos</div>
     </div>
 
     <!-- NÓ: PEDIDO EM CARTEIRA (esq meio) -->
-    <div class="nó coral" style="left:40px;top:340px" onclick="abrirModulo('carteira')">
+    <div class="nó" style="left:40px;top:340px" onclick="abrirModulo('carteira')">
       <span class="nó-icon">🗂️</span>
       <div class="nó-title">Pedido em Carteira</div>
       <div class="nó-desc">MI · ME · sem plano de produção</div>
       <div class="nó-kpi-row">
         <div>
-          <div class="nó-kpi coral" id="kpi-c-pedidos">–</div>
+          <div class="nó-kpi" id="kpi-c-pedidos">–</div>
           <div class="nó-kpi-label">pedidos</div>
         </div>
         <div>
-          <div class="nó-kpi coral" id="kpi-c-pares">–</div>
+          <div class="nó-kpi" id="kpi-c-pares">–</div>
           <div class="nó-kpi-label">pares</div>
         </div>
       </div>
@@ -333,8 +322,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-central-sub">pares livres para venda</div>
       <div class="nó-central-bar"><div class="nó-central-fill" id="e-pct" style="width:0%"></div></div>
       <div class="nó-central-stats">
-        <div>Físico <span id="kpi-e-fisico" style="color:var(--azul)">–</span></div>
-        <div>Reservas <span id="kpi-e-reservas" style="color:var(--cinza)">–</span></div>
+        <div>Físico <span id="kpi-e-fisico" style="color:var(--txt-s)">–</span></div>
+        <div>Reservas <span id="kpi-e-reservas" style="color:var(--txt-s)">–</span></div>
       </div>
       <div class="nó-central-cta">Analisar estoque →</div>
     </div>
