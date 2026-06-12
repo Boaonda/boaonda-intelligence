@@ -76,6 +76,36 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .sc-tags{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
 .sc-tag{padding:2px 7px;border-radius:3px;font-size:8px;font-weight:700;background:var(--card2);color:var(--txt-s)}
 .sc-info{font-size:8.5px;color:var(--txt-m);margin-top:5px}
+.sem-card{cursor:pointer;transition:border-color .15s}
+.sem-card:hover{border-color:var(--coral2)}
+.sem-card.ativa{border-color:var(--coral);border-width:2px}
+/* Drilldown da semana */
+.prog-drill{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:24px}
+.pd-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.pd-title{font-size:13px;font-weight:800;color:var(--txt)}
+.pd-sub{font-size:10px;color:var(--txt-m);margin-top:2px}
+.pd-close{cursor:pointer;color:var(--txt-m);font-size:11px;font-weight:700;white-space:nowrap}
+.pd-close:hover{color:var(--coral)}
+.pd-tabs{display:flex;gap:6px;margin-bottom:14px}
+.pd-tab{padding:6px 16px;border-radius:6px;border:1px solid var(--line2);background:var(--card2);font-size:11px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;color:var(--txt-m);transition:.15s}
+.pd-tab.active{background:var(--coral);color:#fff;border-color:var(--coral)}
+.pd-tab:hover:not(.active){background:var(--line);color:var(--txt)}
+.pd-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04)}
+.pd-row:hover{background:rgba(255,255,255,.03)}
+.pd-row.ativa{background:var(--card2)}
+.pd-arrow{width:14px;color:var(--txt-m);font-size:10px}
+.pd-row.ativa .pd-arrow{color:var(--coral)}
+.pd-nome{flex:1;color:var(--txt-s);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pd-row.ativa .pd-nome{color:var(--txt);font-weight:600}
+.pd-meta{font-size:10px;color:var(--txt-m);width:120px;text-align:right;white-space:nowrap}
+.pd-pares{width:90px;text-align:right;font-weight:700;color:var(--txt);font-size:12px}
+.pd-detail{padding:4px 8px 10px 24px}
+.pd-detail table{width:100%;font-size:11px;border-collapse:collapse}
+.pd-detail th{padding:5px 8px;text-align:right;font-size:8px;color:var(--txt-m);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line)}
+.pd-detail th:first-child{text-align:left}
+.pd-detail td{padding:5px 8px;text-align:right;color:var(--txt-s);border-bottom:1px solid rgba(255,255,255,.04)}
+.pd-detail td:first-child{text-align:left;font-weight:600;color:var(--txt)}
+.pd-empty{color:var(--txt-m);font-size:12px;padding:10px}
 /* Cards mês */
 .mes-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:12px;position:relative;overflow:hidden}
 .mes-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
@@ -168,7 +198,7 @@ table.top-refs tr:hover td{background:var(--card2);color:var(--txt)}
 <div class="main">
   <div class="stitle" id="stitle">Semanas de produção</div>
   <div class="kpi-grid" id="kpi-area"><div class="loading">Carregando dados...</div></div>
-  <div id="view-semana"><div class="cards-grid" id="cards-semana"></div></div>
+  <div id="view-semana"><div class="cards-grid" id="cards-semana"></div><div id="sem-drill"></div></div>
   <div id="view-mes" style="display:none"><div id="cards-mes"></div></div>
   <div class="crow">
     <div class="ccard"><div class="ctitle" id="chart-title">Evolução semanal por linha de produção</div><div style="position:relative;height:260px"><canvas id="c-ev"></canvas></div></div>
@@ -220,6 +250,9 @@ let modo='semana', periodoAtual='', rpSort='total';
 let chartEv=null, chartMix=null, chartMontBar=null, chartMontDonut=null;
 let CONFIG={prazo_producao_dias:45};
 let semanaRefKey='', semanaRefLabel='';
+let DETALHE={semanas:{},cutoff:null};
+let semanaAtiva=null, progTab='cliente', itemAtivo=null;
+let PD_REF=[];
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
@@ -289,8 +322,10 @@ Promise.all([
   fetch('dados_programacao.json?_='+Date.now()).then(r=>r.ok?r.json():_DADOS).catch(()=>_DADOS),
   fetch('dados_refs_tabela.json?_='+Date.now()).then(r=>r.ok?r.json():_REFS).catch(()=>_REFS),
   fetch('config_producao.json?_='+Date.now()).then(r=>r.ok?r.json():{}).catch(()=>({})),
-]).then(([d,rt,cfg])=>{
+  fetch('dados_programacao_detalhe.json?_='+Date.now()).then(r=>r.ok?r.json():{semanas:{},cutoff:null}).catch(()=>({semanas:{},cutoff:null})),
+]).then(([d,rt,cfg,det])=>{
   if(cfg&&cfg.prazo_producao_dias) CONFIG.prazo_producao_dias=cfg.prazo_producao_dias;
+  DETALHE=det||{semanas:{},cutoff:null};
   inicializar(d,rt);
 });
 
@@ -357,7 +392,8 @@ function renderSemanas(){
     const cls=d.ok?'ok':d.pct_meta>=85?'warn':'crit';
     const top=d.top_refs&&d.top_refs[0]?d.top_refs[0][0].split(' ').slice(0,2).join(' '):'–';
     const el=document.createElement('div');
-    el.className='sem-card '+cls+(k===hojeKey?' atual':'')+(k===semanaRefKey?' foco':'');
+    el.className='sem-card '+cls+(k===hojeKey?' atual':'')+(k===semanaRefKey?' foco':'')+(k===semanaAtiva?' ativa':'');
+    el.onclick=()=>toggleSemana(k);
     el.innerHTML=
       '<div class="sc-num">Semana</div>'+
       '<div class="sc-range">'+d.label+'</div>'+
@@ -372,12 +408,134 @@ function renderSemanas(){
       '<div class="sc-info">'+d.pedidos+' ped · top: '+top+'</div>';
     grid.appendChild(el);
   });
+  renderSemDrill();
 }
 
 function kpiBox(cls,label,val,sub){
   return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div>'+
     '<div class="kpi-v '+cls+'">'+val+'</div>'+
     '<div class="kpi-s">'+sub+'</div></div>';
+}
+
+// DRILLDOWN POR SEMANA
+function toggleSemana(k){
+  semanaAtiva=(semanaAtiva===k)?null:k;
+  progTab='cliente';itemAtivo=null;
+  renderSemanas();
+}
+
+function setProgTab(tab){
+  progTab=tab;itemAtivo=null;
+  renderSemDrill();
+}
+
+function pdRef(v){PD_REF.push(v);return PD_REF.length-1;}
+function toggleItem(idx){
+  const nome=PD_REF[idx];
+  itemAtivo=(itemAtivo===nome)?null:nome;
+  renderSemDrill();
+}
+
+function fmtCutoff(c){
+  if(!c) return '–';
+  const [y,m,d]=c.split('-');
+  return d+'/'+m+'/'+y;
+}
+
+function renderSemDrill(){
+  const wrap=document.getElementById('sem-drill');
+  if(!wrap) return;
+  if(!semanaAtiva){wrap.innerHTML='';return;}
+  const sem=SEMANAS[semanaAtiva];
+  const itens=(DETALHE.semanas||{})[semanaAtiva];
+  const titulo=sem?sem.label:semanaAtiva;
+  if(!itens){
+    wrap.innerHTML='<div class="prog-drill"><div class="pd-head">'+
+      '<div><div class="pd-title">'+titulo+'</div>'+
+      '<div class="pd-sub">Detalhamento por pedido disponível a partir de '+fmtCutoff(DETALHE.cutoff)+'.</div></div>'+
+      '<span class="pd-close" onclick="toggleSemana(\''+semanaAtiva+'\')">fechar ✕</span>'+
+      '</div></div>';
+    return;
+  }
+  PD_REF=[];
+  const body=progTab==='cliente'?renderPorCliente(itens):renderPorPlano(itens);
+  wrap.innerHTML='<div class="prog-drill"><div class="pd-head">'+
+    '<div><div class="pd-title">'+titulo+'</div>'+
+    '<div class="pd-sub">'+itens.length+' itens programados</div></div>'+
+    '<span class="pd-close" onclick="toggleSemana(\''+semanaAtiva+'\')">fechar ✕</span>'+
+    '</div>'+
+    '<div class="pd-tabs">'+
+      '<button class="pd-tab '+(progTab==='cliente'?'active':'')+'" onclick="setProgTab(\'cliente\')">Por cliente</button>'+
+      '<button class="pd-tab '+(progTab==='plano'?'active':'')+'" onclick="setProgTab(\'plano\')">Por plano de produção</button>'+
+    '</div>'+
+    body+
+    '</div>';
+}
+
+function renderPorCliente(itens){
+  const map={};
+  itens.forEach(it=>{
+    const k=it.cliente;
+    if(!map[k]) map[k]={nome:k,pares:0,pedidos:new Set(),itens:[]};
+    map[k].pares+=it.pares;
+    map[k].pedidos.add(it.pedido);
+    map[k].itens.push(it);
+  });
+  const arr=Object.values(map).sort((a,b)=>b.pares-a.pares);
+  if(!arr.length) return '<div class="pd-empty">Nenhum item nesta semana.</div>';
+  return arr.map(c=>{
+    const ativa=itemAtivo===c.nome;
+    return '<div class="pd-row '+(ativa?'ativa':'')+'" onclick="toggleItem('+pdRef(c.nome)+')">'+
+        '<div class="pd-arrow">'+(ativa?'▾':'▸')+'</div>'+
+        '<div class="pd-nome">'+c.nome+'</div>'+
+        '<div class="pd-meta">'+c.pedidos.size+' ped.</div>'+
+        '<div class="pd-pares">'+f(c.pares)+' pares</div>'+
+      '</div>'+
+      (ativa?renderRefsCliente(c.itens):'');
+  }).join('');
+}
+
+function renderRefsCliente(itens){
+  const map={};
+  itens.forEach(it=>{ map[it.ref]=(map[it.ref]||0)+it.pares; });
+  const arr=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  return '<div class="pd-detail"><table>'+
+    '<thead><tr><th>Referência</th><th>Pares</th></tr></thead>'+
+    '<tbody>'+arr.map(([ref,p])=>'<tr><td>'+ref+'</td><td>'+f(p)+'</td></tr>').join('')+'</tbody>'+
+    '</table></div>';
+}
+
+function renderPorPlano(itens){
+  const map={};
+  itens.forEach(it=>{
+    const k=it.plano;
+    if(!map[k]) map[k]={nome:k,pares:0,dt_plano:it.dt_plano,clientes:new Set(),itens:[]};
+    map[k].pares+=it.pares;
+    map[k].clientes.add(it.cliente);
+    map[k].itens.push(it);
+  });
+  const arr=Object.values(map).sort((a,b)=>b.pares-a.pares);
+  if(!arr.length) return '<div class="pd-empty">Nenhum item nesta semana.</div>';
+  return arr.map(p=>{
+    const ativa=itemAtivo===p.nome;
+    return '<div class="pd-row '+(ativa?'ativa':'')+'" onclick="toggleItem('+pdRef(p.nome)+')">'+
+        '<div class="pd-arrow">'+(ativa?'▾':'▸')+'</div>'+
+        '<div class="pd-nome">Plano '+p.nome+(p.dt_plano?' · '+p.dt_plano:'')+'</div>'+
+        '<div class="pd-meta">'+p.clientes.size+' cliente(s)</div>'+
+        '<div class="pd-pares">'+f(p.pares)+' pares</div>'+
+      '</div>'+
+      (ativa?renderClientesPlano(p.itens):'');
+  }).join('');
+}
+
+function renderClientesPlano(itens){
+  const map={};
+  itens.forEach(it=>{ map[it.cliente]=(map[it.cliente]||0)+it.pares; });
+  const arr=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  return '<div class="pd-detail"><table>'+
+    '<thead><tr><th>Cliente</th><th>Pares</th></tr></thead>'+
+    '<tbody>'+arr.map(([c,p])=>'<tr><td>'+c+'</td><td>'+f(p)+'</td></tr>').join('')+'</tbody>'+
+    '</table></div>';
 }
 
 // MESES

@@ -317,6 +317,15 @@ def processar_programacao(linhas, output_dir='.'):
     refs_prog = Counter()
     linhas_proc = 0
 
+    # Detalhe item-a-item (drilldown por semana) — cobre a partir do 1º dia
+    # do mês anterior ao atual, evitando exportar o histórico inteiro.
+    hoje = datetime.now()
+    if hoje.month == 1:
+        cutoff_detalhe = datetime(hoje.year - 1, 12, 1)
+    else:
+        cutoff_detalhe = datetime(hoje.year, hoje.month - 1, 1)
+    detalhe_raw = defaultdict(lambda: defaultdict(int))
+
     for row in linhas:
         abr = g(row, IDX['abr_grp']).upper()
         if not any(p in abr for p in GRUPOS_OK): continue
@@ -376,6 +385,12 @@ def processar_programacao(linhas, output_dir='.'):
         refs_prog[ref] += qtd
         refs_por_semana[sem_key][ref] += qtd
         refs_por_mes[mes_key][ref]    += qtd
+
+        if dt >= cutoff_detalhe:
+            cliente_d = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40]
+            dt_plano = parse_date(g(row, IDX['dt_plano']))
+            chave = (cliente_d, pedido, ref, plano, dt_plano.strftime('%d/%m/%Y') if dt_plano else '')
+            detalhe_raw[sem_key][chave] += qtd
         if sem_key not in sem_labels_rp: sem_labels_rp[sem_key] = s['label']
         if mes_key not in mes_labels_rp: mes_labels_rp[mes_key] = m2['label']
         linhas_proc += 1
@@ -443,6 +458,21 @@ def processar_programacao(linhas, output_dir='.'):
     with open(os.path.join(output_dir, 'dados_refs_tabela.json'), 'w', encoding='utf-8') as f_:
         json.dump({'semanas': sems_rp, 'meses': meses_rp}, f_, ensure_ascii=False, default=str)
     print(f"    ✓ dados_refs_tabela.json gerado")
+
+    # *** GRAVAR dados_programacao_detalhe.json (drilldown por semana) ***
+    detalhe_out = {}
+    for sem_key, itens in detalhe_raw.items():
+        detalhe_out[sem_key] = [
+            {'cliente': c, 'pedido': p, 'ref': r, 'plano': pl, 'dt_plano': dtp, 'pares': qtd}
+            for (c, p, r, pl, dtp), qtd in itens.items()
+        ]
+    with open(os.path.join(output_dir, 'dados_programacao_detalhe.json'), 'w', encoding='utf-8') as f_:
+        json.dump({
+            'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+            'cutoff': cutoff_detalhe.strftime('%Y-%m-%d'),
+            'semanas': detalhe_out,
+        }, f_, ensure_ascii=False, default=str)
+    print(f"    ✓ dados_programacao_detalhe.json gerado ({sum(len(v) for v in detalhe_out.values())} itens em {len(detalhe_out)} semanas)")
 
     dados_prog = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
@@ -784,9 +814,9 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         'mes_label': mes_label,
         'vendas_mes': cm,
         'estoque_totais': t,
-        'arquivos': ['dados_portal.json','dados_programacao.json','dados_refs_tabela.json',
-                      'dados_vendas.json','dados_estoque.json','dados_carteira.json',
-                      'boaonda_dados_completos.json'],
+        'arquivos': ['dados_portal.json','dados_programacao.json','dados_programacao_detalhe.json',
+                      'dados_refs_tabela.json','dados_vendas.json','dados_estoque.json',
+                      'dados_carteira.json','boaonda_dados_completos.json'],
     }
 
 # ─── CLI ─────────────────────────────────────────────────────────────
