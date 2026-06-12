@@ -24,6 +24,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .h-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
 .h-meta strong{color:var(--txt-s)}
+.sim-row{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.sim-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line2);border-radius:5px;padding:2px 6px;font-size:10px;color:var(--txt-s);white-space:nowrap}
+.sim-chip b{color:var(--txt-m);font-weight:700}
+.sim-chip.active{border-color:var(--azul);color:var(--azul)}
+.sim-chip.active b{color:var(--azul)}
 .h-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
 .fl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
 .modo-sel{display:flex;background:var(--card2);border:1px solid var(--line2);border-radius:8px;overflow:hidden}
@@ -170,6 +175,7 @@ table.top-refs tr:hover td{background:var(--card2);color:var(--txt)}
     </div>
     <div class="h-meta">Atualizado: <strong id="hdr-data">–</strong></div>
     <div class="h-meta">Programando para: <strong id="hdr-foco">–</strong> (prazo <strong id="hdr-prazo">–</strong>d, <a href="/config" target="_blank" style="color:var(--coral)">ajustar</a>)</div>
+    <div class="h-meta sim-row">Simulador de prazo: <span id="hdr-sim"></span></div>
   </div>
 </div>
 
@@ -255,6 +261,20 @@ function mondayKey(date){
   return mon.toISOString().slice(0,10);
 }
 
+// Simulador: para cada opção de prazo, mostra a semana (label, último dia
+// = sexta) que seria a "semana de referência" caso o prazo fosse esse.
+const PRAZOS_SIMULADOR=[35,40,45,50];
+function atualizarSimulador(hoje, prazoAtual){
+  const html=PRAZOS_SIMULADOR.map(dias=>{
+    const alvo=new Date(hoje); alvo.setDate(alvo.getDate()+dias);
+    const sem=SEMANAS[mondayKey(alvo)];
+    const label=sem?sem.label.split('-')[1]:'–';
+    const cls=dias===prazoAtual?'sim-chip active':'sim-chip';
+    return `<span class="${cls}">${dias}d <b>${label}</b></span>`;
+  }).join('');
+  document.getElementById('hdr-sim').innerHTML=html;
+}
+
 function inicializar(d, rt) {
     SEMANAS=d.semanas||{};MESES=d.meses||{};REFS=d.refs_top15||[];
     REFS_TABELA=rt||{semanas:{},meses:{}};
@@ -269,6 +289,7 @@ function inicializar(d, rt) {
     semanaRefLabel=semRef?semRef.label:'';
     document.getElementById('hdr-prazo').textContent=prazoDias;
     document.getElementById('hdr-foco').textContent=semanaRefLabel||'–';
+    atualizarSimulador(hoje, prazoDias);
 
     const ps=[...new Set(Object.entries(SEMANAS).map(([k,v])=>mesRef(k,v)))].sort();
     const mesFoco=semRef?mesRef(semanaRefKey,semRef):null;
