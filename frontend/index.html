@@ -55,7 +55,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   position:relative;
   width:100%;max-width:1100px;
   margin:0 auto;
-  height:1120px;
+  height:900px;
   padding:0 40px;
 }
 .org-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
@@ -88,6 +88,12 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .nó-kpi-row{display:flex;gap:18px;margin-bottom:2px}
 .nó-kpi-row .nó-kpi{font-size:19px;margin-bottom:2px}
 
+/* Pedido em Carteira — box central um pouco maior, em destaque */
+.nó-carteira{width:230px}
+.nó-carteira .nó-kpi-row{gap:28px;margin-top:4px}
+.nó-carteira .nó-kpi-row .nó-kpi{font-size:28px}
+.nó-carteira .nó-kpi-row .nó-kpi-label{font-size:9px}
+
 /* Tags de canal */
 .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .tag{padding:2px 7px;border-radius:3px;font-size:8.5px;font-weight:700}
@@ -102,24 +108,26 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .sem-v{font-size:12px;font-weight:800;color:var(--txt)}
 .sem-r{font-size:7px;color:var(--txt-m);margin-top:1px}
 
-/* NÓ CENTRAL — ESTOQUE */
+/* NÓ CENTRAL — ESTOQUE (card largo, abaixo de Vendas + Pedido em Carteira) */
 .nó-central{
   position:absolute;z-index:10;
   background:var(--card);border:2px solid var(--coral);border-radius:16px;
-  padding:20px 24px;cursor:pointer;transition:.2s;
+  padding:20px 28px;cursor:pointer;transition:.2s;
   box-shadow:0 4px 24px rgba(237,104,66,.1);
-  width:240px;text-align:center;
+  display:flex;align-items:center;justify-content:space-between;gap:32px;
 }
 .nó-central:hover{transform:translateY(-3px);box-shadow:0 10px 32px rgba(237,104,66,.18)}
-.nó-central-icon{font-size:28px;margin-bottom:8px}
+.nc-main{display:flex;align-items:center;gap:16px}
+.nó-central-icon{font-size:32px}
 .nó-central-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:4px}
 .nó-central-kpi{font-size:36px;font-weight:800;color:var(--coral);line-height:1;margin-bottom:3px}
-.nó-central-sub{font-size:10px;color:var(--txt-s);margin-bottom:8px}
+.nó-central-sub{font-size:10px;color:var(--txt-s)}
+.nc-side{flex:0 0 280px}
 .nó-central-bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-bottom:8px}
 .nó-central-fill{height:100%;background:var(--verde);border-radius:2px}
-.nó-central-stats{display:flex;justify-content:space-between;font-size:9px;color:var(--txt-m)}
-.nó-central-stats span{font-weight:600}
-.nó-central-cta{font-size:9px;color:var(--coral);font-weight:700;margin-top:8px;opacity:.8}
+.nó-central-stats{display:flex;justify-content:space-between;font-size:9px;color:var(--txt-m);margin-bottom:8px}
+.nó-central-stats span{font-weight:600;color:var(--txt-s)}
+.nó-central-cta{font-size:9px;color:var(--coral);font-weight:700;opacity:.8;text-align:right}
 
 /* NÓ IA */
 .nó-ia{
@@ -192,7 +200,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .alerta-val{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2);border-radius:5px;padding:4px 9px;font-size:8.5px;color:var(--coral);font-weight:600;margin-top:6px;display:inline-block}
 
 @media(max-width:900px){
-  .org-stage{height:auto;min-height:1000px}
+  .org-stage{height:auto;min-height:900px}
+  .nó-central{flex-direction:column;align-items:stretch;text-align:left}
+  .nc-side{flex:none}
   .fases{grid-template-columns:1fr;padding:8px 16px 40px}
   .hero-title{font-size:26px}
 }
@@ -233,7 +243,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     <span class="sec-label" style="left:50%;transform:translateX(-50%);bottom:8px">Equilíbrio</span>
 
     <!-- SVG CONEXÕES -->
-    <svg class="org-svg" viewBox="0 0 1020 1120" preserveAspectRatio="none">
+    <svg class="org-svg" viewBox="0 0 1020 900" preserveAspectRatio="none">
       <defs>
         <marker id="ac" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
           <path d="M1 2L8 5L1 8" fill="none" stroke="#ed6842" stroke-width="1.5" stroke-linecap="round"/>
@@ -246,20 +256,24 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
         </marker>
       </defs>
 
-      <!-- Fluxo do mix: Vendas → Carteira → Programação → Capacidade → Estoque -->
-      <path d="M 250 160 Q 330 155 405 150" stroke="#6c9c37" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#av)"/>
-      <path d="M 615 150 Q 695 165 770 180" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
-      <path d="M 875 300 L 875 330" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
-      <path d="M 875 510 L 875 540" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
+      <!-- Fluxo do mix: Vendas → Carteira → Programação -->
+      <path d="M 250 160 Q 330 155 395 145" stroke="#6c9c37" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#av)"/>
+      <path d="M 625 145 Q 700 165 770 192" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
+      <!-- Programação → Capacidade Fabril (futura ligação p/ ocupação/eficiência) -->
+      <path d="M 930 324 L 930 354" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
+
+      <!-- Vendas/Programação alimentam o Estoque -->
+      <path d="M 145 260 Q 180 310 250 354" stroke="#6c9c37" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#av)"/>
+      <path d="M 875 324 Q 780 345 600 354" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
 
       <!-- Tudo converge para a IA -->
-      <path d="M 145 260 Q 145 760 440 800" stroke="#6c9c37" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#av)"/>
-      <path d="M 510 240 L 510 800" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
-      <path d="M 875 740 Q 760 790 580 800" stroke="#ed6842" stroke-width="2" fill="none" stroke-dasharray="6 4" opacity=".6" marker-end="url(#ac)"/>
+      <path d="M 405 464 Q 450 530 480 588" stroke="#ed6842" stroke-width="2" fill="none" stroke-dasharray="6 4" opacity=".6" marker-end="url(#ac)"/>
+      <path d="M 510 229 L 510 588" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
+      <path d="M 875 538 Q 800 580 540 588" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
 
       <!-- IA → Outputs -->
-      <path d="M 450 960 Q 350 985 220 1005" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
-      <path d="M 570 960 Q 670 985 800 1005" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
+      <path d="M 460 748 Q 350 780 220 788" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
+      <path d="M 560 748 Q 670 780 800 788" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
     </svg>
 
     <!-- NÓ: VENDAS (esq topo) -->
@@ -274,8 +288,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-cta">Analisar vendas →</div>
     </div>
 
-    <!-- NÓ: PEDIDO EM CARTEIRA (centro topo — entre vendas e produção) -->
-    <div class="nó" style="left:50%;top:60px;transform:translateX(-50%)" onclick="abrirModulo('carteira')">
+    <!-- NÓ: PEDIDO EM CARTEIRA (centro topo — entre vendas e produção, box maior) -->
+    <div class="nó nó-carteira" style="left:50%;top:60px;transform:translateX(-50%)" onclick="abrirModulo('carteira')">
       <span class="nó-icon">🗂️</span>
       <div class="nó-title">Pedido em Carteira</div>
       <div class="nó-desc">MI · ME · sem plano de produção</div>
@@ -304,7 +318,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     </div>
 
     <!-- NÓ: CAPACIDADE FABRIL (abaixo da programação — futura ligação p/ ocupação/eficiência) -->
-    <div class="nó" style="right:40px;top:330px" onclick="abrirModulo('capacidade')">
+    <div class="nó" style="right:40px;top:354px" onclick="abrirModulo('capacidade')">
       <span class="nó-icon">⚙️</span>
       <div class="nó-title">Capacidade Fabril</div>
       <div class="nó-desc">Atelier · Pool de injetados · Setores de apoio</div>
@@ -321,22 +335,28 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-cta">Ver capacidade fabril →</div>
     </div>
 
-    <!-- NÓ CENTRAL: ESTOQUE (abaixo da capacidade fabril) -->
-    <div class="nó-central" style="right:25px;top:540px" onclick="abrirModulo('estoque')">
-      <div class="nó-central-icon">📦</div>
-      <div class="nó-central-label">Estoque PA — Disponível</div>
-      <div class="nó-central-kpi" id="kpi-e-livre">–</div>
-      <div class="nó-central-sub">pares livres para venda</div>
-      <div class="nó-central-bar"><div class="nó-central-fill" id="e-pct" style="width:0%"></div></div>
-      <div class="nó-central-stats">
-        <div>Físico <span id="kpi-e-fisico" style="color:var(--txt-s)">–</span></div>
-        <div>Reservas <span id="kpi-e-reservas" style="color:var(--txt-s)">–</span></div>
+    <!-- NÓ CENTRAL: ESTOQUE (card largo, abaixo de Vendas + Pedido em Carteira) -->
+    <div class="nó-central" style="left:40px;top:354px;width:730px" onclick="abrirModulo('estoque')">
+      <div class="nc-main">
+        <div class="nó-central-icon">📦</div>
+        <div>
+          <div class="nó-central-label">Estoque PA — Disponível</div>
+          <div class="nó-central-kpi" id="kpi-e-livre">–</div>
+          <div class="nó-central-sub">pares livres para venda</div>
+        </div>
       </div>
-      <div class="nó-central-cta">Analisar estoque →</div>
+      <div class="nc-side">
+        <div class="nó-central-bar"><div class="nó-central-fill" id="e-pct" style="width:0%"></div></div>
+        <div class="nó-central-stats">
+          <div>Físico <span id="kpi-e-fisico">–</span></div>
+          <div>Reservas <span id="kpi-e-reservas">–</span></div>
+        </div>
+        <div class="nó-central-cta">Analisar estoque →</div>
+      </div>
     </div>
 
     <!-- NÓ IA (base — conecta tudo) -->
-    <div class="nó-ia" style="left:50%;top:800px;transform:translateX(-50%)" onclick="abrirModulo('equilibrio')">
+    <div class="nó-ia" style="left:50%;top:588px;transform:translateX(-50%)" onclick="abrirModulo('equilibrio')">
       <div class="ia-main">IA</div>
       <div class="ia-sub">Intelligence</div>
       <div class="ia-label">Motor de equilíbrio</div>
@@ -348,13 +368,13 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     </div>
 
     <!-- OUTPUT: COMERCIAL (esq baixo) -->
-    <div class="nó-output" style="left:140px;top:1000px" onclick="abrirModulo('vendas')">
+    <div class="nó-output" style="left:140px;top:788px" onclick="abrirModulo('vendas')">
       <div class="nó-output-title">Para Comercial</div>
       <div class="nó-output-desc">O que vender · quando · para quem</div>
     </div>
 
     <!-- OUTPUT: PCP (dir baixo) -->
-    <div class="nó-output" style="right:140px;top:1000px" onclick="abrirModulo('programacao')">
+    <div class="nó-output" style="right:140px;top:788px" onclick="abrirModulo('programacao')">
       <div class="nó-output-title">Para PCP</div>
       <div class="nó-output-desc">O que produzir · ordem · semana</div>
     </div>
