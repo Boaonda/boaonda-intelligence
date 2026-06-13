@@ -165,6 +165,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   color:var(--txt-m);opacity:.6
 }
 
+/* CAPACIDADE FABRIL — bloco isolado (sem cruzamento com vendas/estoque/programação) */
+.capacidade-row{max-width:1100px;margin:8px auto 0;padding:0 40px;display:flex;justify-content:center}
+.nó.capacidade{position:static;width:100%;max-width:320px;text-align:center}
+.nó.capacidade .nó-kpi-row{justify-content:center;gap:32px}
+
 /* FASES */
 .fases{
   max-width:1100px;margin:0 auto;padding:8px 40px 48px;
@@ -354,6 +359,26 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 
   </div><!-- /stage -->
 
+  <!-- CAPACIDADE FABRIL (bloco isolado — sem cruzamento com vendas/estoque/programação nesta fase) -->
+  <div class="capacidade-row">
+    <div class="nó capacidade" onclick="abrirModulo('capacidade')">
+      <span class="nó-icon">⚙️</span>
+      <div class="nó-title">Capacidade Fabril</div>
+      <div class="nó-desc">Atelier · Pool de injetados · Setores de apoio</div>
+      <div class="nó-kpi-row">
+        <div>
+          <div class="nó-kpi" id="kpi-cap-refs">–</div>
+          <div class="nó-kpi-label">refs mapeadas</div>
+        </div>
+        <div>
+          <div class="nó-kpi" id="kpi-cap-teto">–</div>
+          <div class="nó-kpi-label">teto pares/sem</div>
+        </div>
+      </div>
+      <div class="nó-cta">Ver capacidade fabril →</div>
+    </div>
+  </div>
+
   <!-- FASES -->
   <div class="fases">
     <div class="fase f1">
@@ -395,6 +420,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   <iframe class="mod-frame" id="frame-carteira" src="" title="Pedido em Carteira"></iframe>
 </div>
 
+<div class="page" id="page-capacidade">
+  <iframe class="mod-frame" id="frame-capacidade" src="" title="Capacidade Fabril"></iframe>
+</div>
+
 <div class="page" id="page-equilibrio">
   <div class="mod-header">
     <div class="mod-icon">⚖️</div>
@@ -413,6 +442,7 @@ const MODS={
   programacao:{file:'boaonda_programacao_v3.html',label:'Programação'},
   estoque:{file:'boaonda_estoque.html',label:'Estoque'},
   carteira:{file:'boaonda_carteira.html',label:'Pedido em Carteira'},
+  capacidade:{file:'boaonda_capacidade_fabril.html',label:'Capacidade Fabril'},
   equilibrio:{file:null,label:'Equilíbrio'},
 };
 function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
@@ -421,6 +451,14 @@ function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
 fetch('dados_portal.json?_='+Date.now())
   .then(r=>r.json()).then(render)
   .catch(()=>render(fallback()));
+
+// Capacidade Fabril — bloco isolado, KPIs próprios (sem cruzamento com o portal principal)
+fetch('dados_capacidade.json?_='+Date.now())
+  .then(r=>r.json()).then(d=>{
+    document.getElementById('kpi-cap-refs').textContent = f((d.metadados||{}).total_com_capacidade_montagem);
+    document.getElementById('kpi-cap-teto').textContent = f((d.teto_atelier_semanal||{}).total_pares_semana);
+  })
+  .catch(()=>{});
 
 function fallback(){return{
   gerado_em:'–',

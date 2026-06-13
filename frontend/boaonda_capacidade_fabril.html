@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Capacidade Fabril</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --border:#262b3a;--line:#262b3a;--line2:#333a4d;
+  --gold:#ed6842;--gold-l:#ed6842;
+  --blue:#4994c7;--green:#6c9c37;--red:#EF4444;--amber:#F59E0B;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:20px 32px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.breadcrumb{font-size:10px;color:var(--txt-m);margin-bottom:6px;letter-spacing:.04em}
+.h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:1.4rem;font-weight:800;color:var(--txt)}
+.h-sub{font-size:11px;color:var(--txt-s);margin-top:4px}
+.h-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.h-meta strong{color:var(--txt-s)}
+
+.main{padding:24px 32px;max-width:1440px;margin:0 auto}
+.stitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--border)}
+.stitle-info{font-size:10px;color:var(--txt-m);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px}
+
+/* KPIs */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--line2);border-radius:10px;padding:16px}
+.kpi.destaque{border-top-color:var(--gold)}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
+.kpi-v{font-size:1.75rem;font-weight:800;color:var(--txt);line-height:1}
+.kpi-v.destaque{color:var(--gold-l)}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
+
+/* Observado / pills */
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+.pill{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:11px;color:var(--txt-s);display:flex;align-items:center;gap:8px}
+.pill b{color:var(--txt);font-weight:700}
+.pill span.lbl{color:var(--txt-m);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+
+/* Pool cards (Camada 2) */
+.pool-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:24px}
+.pool-card{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--line2);border-radius:10px;padding:16px}
+.pool-name{font-size:12px;font-weight:800;color:var(--txt);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.pool-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.pool-row{display:flex;justify-content:space-between;font-size:11px;color:var(--txt-s);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.pool-row:last-child{border-bottom:none}
+.pool-row b{color:var(--txt);font-weight:700}
+.pool-note{font-size:9.5px;color:var(--txt-m);margin-top:8px;line-height:1.5}
+
+/* Setores de apoio */
+.apoio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:18px}
+.apoio-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.apoio-title{font-size:12px;font-weight:800;color:var(--txt);margin-bottom:8px}
+.apoio-row{display:flex;justify-content:space-between;font-size:11px;color:var(--txt-s);padding:3px 0}
+.apoio-row b{color:var(--txt);font-weight:700}
+
+.crow{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-bottom:24px}
+.ccard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.ctitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--txt-m);margin-bottom:14px}
+
+/* Stepper */
+.stepper{display:flex;align-items:center;gap:0;flex-wrap:wrap}
+.step{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;flex:1;min-width:110px;text-align:center}
+.step-name{font-size:11px;font-weight:700;color:var(--txt)}
+.step-days{font-size:9px;color:var(--txt-m);margin-top:4px;text-transform:uppercase;letter-spacing:.08em}
+.step.final{border-color:var(--coral);background:rgba(237,104,66,.08)}
+.step.final .step-name{color:var(--coral)}
+.step-arrow{color:var(--txt-m);font-size:16px;padding:0 8px;flex-shrink:0}
+
+/* Tabela */
+.tcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:18px;overflow-x:auto}
+.search-bar{display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.search-inp{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--txt);font-size:12px;flex:1;min-width:160px;outline:none}
+.search-inp:focus{border-color:var(--gold)}
+.cnt{font-size:11px;color:var(--txt-m);white-space:nowrap}
+
+/* Dropdown filtros */
+.dd-wrap{position:relative}
+.dd-btn{display:flex;align-items:center;gap:8px;padding:7px 14px;background:var(--card2);border:1.5px solid var(--line2);border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;color:var(--txt);transition:.15s;white-space:nowrap;min-width:140px;justify-content:space-between}
+.dd-btn:hover{border-color:var(--coral)}
+.dd-btn.open{border-color:var(--coral);border-bottom-left-radius:0;border-bottom-right-radius:0}
+.dd-btn .dd-arrow{font-size:9px;color:var(--txt-m);transition:.2s}
+.dd-btn.open .dd-arrow{transform:rotate(180deg)}
+.dd-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-right:2px}
+.dd-menu{position:absolute;top:100%;left:0;z-index:200;background:var(--card);border:1.5px solid var(--coral);border-top:none;border-radius:0 0 8px 8px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none;max-height:280px;overflow-y:auto}
+.dd-menu.open{display:block}
+.dd-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:.1s;font-size:11px;color:var(--txt)}
+.dd-item:hover{background:var(--card2)}
+.dd-item.all{font-weight:700;border-bottom:1px solid var(--line)}
+.dd-cb{width:16px;height:16px;border:2px solid var(--line2);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.15s;background:var(--card2)}
+.dd-cb.checked{background:var(--coral);border-color:var(--coral)}
+.dd-cb.checked::after{content:'✓';color:#fff;font-size:10px;font-weight:700}
+.dd-sep{height:1px;background:var(--line);margin:4px 0}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--txt-s);vertical-align:top}
+tr:last-child td{border:none}
+.td-ref{font-weight:700;color:var(--txt)}
+.tn{font-weight:700;font-size:13px;color:var(--txt)}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;margin:1px}
+.b-conv{background:rgba(73,148,199,.12);color:var(--azul)}
+.b-mont{background:rgba(237,104,66,.12);color:var(--coral)}
+.b-setor{background:rgba(108,156,55,.12);color:var(--green)}
+.b-pool{background:rgba(155,154,152,.14);color:var(--txt-s)}
+
+/* Validação */
+.valid-card{border-radius:10px;padding:18px;border:1px solid var(--border);margin-bottom:18px}
+.valid-ok{background:rgba(108,156,55,.07);border-color:rgba(108,156,55,.25)}
+.valid-warn{background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.25)}
+.valid-title{font-size:12px;font-weight:800;margin-bottom:6px}
+.valid-ok .valid-title{color:var(--green)}
+.valid-warn .valid-title{color:var(--amber)}
+.valid-body{font-size:12px;color:var(--txt-s);line-height:1.7}
+.valid-list{margin-top:10px;font-size:11px;color:var(--txt-m)}
+.valid-list b{color:var(--txt-s)}
+
+@media(max-width:800px){.crow{grid-template-columns:1fr}.main{padding:14px}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="breadcrumb">Home &gt; Capacidade Fabril</div>
+    <div class="h-badge">Capacidade Fabril</div>
+    <div class="h-title">Cérebro de Capacidade Produtiva</div>
+    <div class="h-sub">Atelier · Injetados · Setores de apoio — bloco independente, sem cruzamento com vendas/estoque/programação nesta fase</div>
+  </div>
+  <div class="h-right">
+    <div class="h-meta">Base: Programação_GERAL · Atualizado em <strong id="hdr-data">–</strong></div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- BLOCO 1 — Camada 0: Teto do Atelier -->
+<div class="stitle">1 · Visão geral do Atelier <span class="stitle-info">Camada 0 — teto agregado semanal</span></div>
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-l">Teto convencional</div>
+    <div class="kpi-v" id="k-teto-conv">–</div>
+    <div class="kpi-s">pares/semana · capacidade agregada MONT1</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">Teto montado</div>
+    <div class="kpi-v" id="k-teto-mont">–</div>
+    <div class="kpi-s">pares/semana · capacidade agregada MONT2</div>
+  </div>
+  <div class="kpi destaque">
+    <div class="kpi-l">Teto total</div>
+    <div class="kpi-v destaque" id="k-teto-total">–</div>
+    <div class="kpi-s">pares/semana · soma convencional + montado</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">Referências mapeadas</div>
+    <div class="kpi-v" id="k-refs-mapeadas">–</div>
+    <div class="kpi-s" id="k-refs-mapeadas-sub">– conv. + – montado</div>
+  </div>
+</div>
+<div class="pill-row" id="pills-observado"></div>
+
+<!-- BLOCO 2 — Camada 2: Pool de Injetados -->
+<div class="stitle">2 · Pool de Máquinas de Injetados <span class="stitle-info">Camada 2 — compartilhado, diário</span></div>
+<div class="pool-grid" id="pool-grid"></div>
+
+<!-- BLOCO 3 — Setores de Apoio -->
+<div class="stitle">3 · Setores de Apoio <span class="stitle-info">Palmilha · Sola · Pintura — lead time sequencial</span></div>
+<div class="crow">
+  <div class="ccard">
+    <div class="ctitle">Pintura — capacidade por grupo/linha (pares/dia)</div>
+    <div style="position:relative;height:220px"><canvas id="c-pintura"></canvas></div>
+  </div>
+  <div class="ccard">
+    <div class="ctitle">Filial Palmilha &amp; Filial Sola</div>
+    <div class="apoio-grid" id="apoio-grid" style="grid-template-columns:1fr"></div>
+  </div>
+</div>
+<div class="ccard" style="margin-bottom:24px">
+  <div class="ctitle">Fluxo sequencial (lead time antes da montagem)</div>
+  <div class="stepper" id="stepper"></div>
+</div>
+
+<!-- BLOCO 4 — Camada 1: Tabela de Referências -->
+<div class="stitle">4 · Tabela de Referências <span class="stitle-info">Camada 1 — capacidade de montagem por referência/linha</span></div>
+<div class="tcard">
+  <div class="search-bar">
+    <input class="search-inp" id="srch" type="text" placeholder="Buscar referência ou descrição..." oninput="render()">
+
+    <div class="dd-wrap" id="ddw-tipo">
+      <div class="dd-btn" id="ddb-tipo" onclick="toggleDD('tipo')">
+        <span><span class="dd-label">Tipo </span><span id="dd-tipo-txt">Todos</span></span>
+        <span class="dd-arrow">▼</span>
+      </div>
+      <div class="dd-menu" id="ddm-tipo">
+        <div class="dd-item all" onclick="ddSelectAll('tipo')">
+          <div class="dd-cb checked" id="cb-tipo-all"></div><span>Todos</span>
+        </div>
+        <div class="dd-sep"></div>
+        <div class="dd-item" onclick="ddToggle('tipo','CONVENCIONAL')">
+          <div class="dd-cb checked" id="cb-tipo-CONVENCIONAL"></div><span>Convencional</span>
+        </div>
+        <div class="dd-item" onclick="ddToggle('tipo','MONTADO')">
+          <div class="dd-cb checked" id="cb-tipo-MONTADO"></div><span>Montado</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dd-wrap" id="ddw-material">
+      <div class="dd-btn" id="ddb-material" onclick="toggleDD('material')">
+        <span><span class="dd-label">Material </span><span id="dd-material-txt">Todos</span></span>
+        <span class="dd-arrow">▼</span>
+      </div>
+      <div class="dd-menu" id="ddm-material">
+        <div class="dd-item all" onclick="ddSelectAll('material')">
+          <div class="dd-cb checked" id="cb-material-all"></div><span>Todos</span>
+        </div>
+        <div class="dd-sep"></div>
+        <div id="dd-material-lista"></div>
+      </div>
+    </div>
+
+    <div class="dd-wrap" id="ddw-setor">
+      <div class="dd-btn" id="ddb-setor" onclick="toggleDD('setor')">
+        <span><span class="dd-label">Setor </span><span id="dd-setor-txt">Todos</span></span>
+        <span class="dd-arrow">▼</span>
+      </div>
+      <div class="dd-menu" id="ddm-setor">
+        <div class="dd-item all" onclick="ddSelectAll('setor')">
+          <div class="dd-cb checked" id="cb-setor-all"></div><span>Todos</span>
+        </div>
+        <div class="dd-sep"></div>
+        <div class="dd-item" onclick="ddToggle('setor','palmilha')">
+          <div class="dd-cb checked" id="cb-setor-palmilha"></div><span>Palmilha</span>
+        </div>
+        <div class="dd-item" onclick="ddToggle('setor','sola')">
+          <div class="dd-cb checked" id="cb-setor-sola"></div><span>Sola</span>
+        </div>
+        <div class="dd-item" onclick="ddToggle('setor','pintura')">
+          <div class="dd-cb checked" id="cb-setor-pintura"></div><span>Pintura</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dd-wrap" id="ddw-pool">
+      <div class="dd-btn" id="ddb-pool" onclick="toggleDD('pool')">
+        <span><span class="dd-label">Pool </span><span id="dd-pool-txt">Todos</span></span>
+        <span class="dd-arrow">▼</span>
+      </div>
+      <div class="dd-menu" id="ddm-pool">
+        <div class="dd-item all" onclick="ddSelectAll('pool')">
+          <div class="dd-cb checked" id="cb-pool-all"></div><span>Todos</span>
+        </div>
+        <div class="dd-sep"></div>
+        <div class="dd-item" onclick="ddToggle('pool','horizontal')">
+          <div class="dd-cb checked" id="cb-pool-horizontal"></div><span>Horizontal</span>
+        </div>
+        <div class="dd-item" onclick="ddToggle('pool','tiras')">
+          <div class="dd-cb checked" id="cb-pool-tiras"></div><span>Tiras</span>
+        </div>
+        <div class="dd-item" onclick="ddToggle('pool','vertical')">
+          <div class="dd-cb checked" id="cb-pool-vertical"></div><span>Vertical</span>
+        </div>
+        <div class="dd-item" onclick="ddToggle('pool','rotativa')">
+          <div class="dd-cb checked" id="cb-pool-rotativa"></div><span>Rotativa</span>
+        </div>
+        <div class="dd-item" onclick="ddToggle('pool','eva')">
+          <div class="dd-cb checked" id="cb-pool-eva"></div><span>EVA</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cnt" id="cnt">– referências</div>
+  </div>
+  <table id="tbl">
+    <thead><tr>
+      <th>Referência / Linha</th>
+      <th>Descrição</th>
+      <th>Material</th>
+      <th>Tipo</th>
+      <th>Cap. Montagem/dia</th>
+      <th>Setores adicionais</th>
+      <th>Pools consumidos</th>
+    </tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<!-- BLOCO 5 — Validação de Cobertura -->
+<div class="stitle">5 · Validação de Cobertura <span class="stitle-info">Capacidade cadastrada vs. programação real</span></div>
+<div class="valid-card valid-ok" id="valid-card">
+  <div class="valid-title" id="valid-title">Carregando...</div>
+  <div class="valid-body" id="valid-body"></div>
+  <div class="valid-list" id="valid-list"></div>
+</div>
+
+</div>
+
+<script>
+let CAP = null;
+const POOL_ORDER = ['horizontal','tiras','vertical','rotativa','eva'];
+const POOL_LABEL = {horizontal:'Horizontal',tiras:'Tiras',vertical:'Vertical',rotativa:'Rotativa',eva:'EVA'};
+const POOL_COLOR = {horizontal:'var(--azul)',tiras:'var(--verde)',vertical:'var(--cinza)',rotativa:'var(--coral)',eva:'var(--coral2)'};
+
+Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
+Chart.defaults.font.family="'Montserrat',sans-serif";
+const TIP={backgroundColor:'#161922',borderColor:'#262b3a',borderWidth:1,titleColor:'#f3f0eb',bodyColor:'#b6b3ac',padding:12,cornerRadius:8};
+
+function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
+function f2(n){return (n||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})}
+
+fetch('dados_capacidade.json?_=' + Date.now())
+  .then(r => { if(!r.ok) throw new Error(); return r.json(); })
+  .then(d => { CAP = d; init(); })
+  .catch(() => { document.getElementById('hdr-data').textContent = 'sem dados'; });
+
+function init(){
+  document.getElementById('hdr-data').textContent = CAP.gerado_em || '–';
+  renderAtelier();
+  renderPools();
+  renderApoio();
+  initFiltrosMaterial();
+  render();
+  renderValidacao();
+}
+
+// ── BLOCO 1 — Atelier (Camada 0) ─────────────────────────────────────
+function renderAtelier(){
+  const t = CAP.teto_atelier_semanal || {};
+  document.getElementById('k-teto-conv').textContent = f(t.convencional_pares_semana);
+  document.getElementById('k-teto-mont').textContent = f(t.montado_pares_semana);
+  document.getElementById('k-teto-total').textContent = f(t.total_pares_semana);
+
+  const m = CAP.metadados || {};
+  document.getElementById('k-refs-mapeadas').textContent = f(m.total_com_capacidade_montagem);
+  const pt = m.por_tipo || {};
+  document.getElementById('k-refs-mapeadas-sub').textContent =
+    `${f(pt.CONVENCIONAL)} conv. + ${f(pt.MONTADO)} montado · de ${f(m.total_referencias_cadastradas)} cadastradas`;
+
+  const obs = (CAP.setores_apoio || {}).capacidade_dia_observada || {};
+  const pills = [
+    ['MONT1 (Convencional)', obs.mont1_convencional, 'pares/dia'],
+    ['MONT2 (Montado)', obs.mont2_montado, 'pares/dia'],
+    ['Filial Palmilha', obs.filial_palmilha, 'pares/dia'],
+    ['Filial Sola', obs.filial_sola, 'pares/dia'],
+    ['Pintura', obs.pintura, 'pares/dia'],
+  ];
+  document.getElementById('pills-observado').innerHTML = pills.map(([lbl,v,u])=>
+    `<div class="pill"><span class="lbl">${lbl}</span><b>${f2(v)}</b><span>${u} (observado)</span></div>`
+  ).join('');
+}
+
+// ── BLOCO 2 — Pool de Injetados (Camada 2) ───────────────────────────
+function renderPools(){
+  const pool = CAP.pool_maquinas_injetados || {};
+  const ef = CAP.eficiencias_padrao || {};
+  const grid = document.getElementById('pool-grid');
+  grid.innerHTML = POOL_ORDER.map(key=>{
+    const p = pool[key];
+    if(!p) return '';
+    const color = POOL_COLOR[key];
+    let effHtml, efetivaHtml, nota = '';
+    if(key === 'rotativa'){
+      const effs = [ef.rotativa_outros, ef.rotativa_lily, ef.rotativa_nellie].filter(v=>v!=null);
+      const lo = Math.min(...effs), hi = Math.max(...effs);
+      effHtml = `${f2(lo)} – ${f2(hi)}`;
+      efetivaHtml = `${f(p.min_dia_total*lo)} – ${f(p.min_dia_total*hi)} min/dia`;
+      nota = 'Eficiência varia por referência (outros/Lily/Nellie) — máquina única compartilhada.';
+    } else if(key === 'eva'){
+      const perMaq = p.min_dia_total / p.maquinas;
+      const effs = [ef.eva_maq1, ef.eva_maq2, ef.eva_maq3];
+      const total = effs.reduce((s,e)=>s+perMaq*e,0);
+      effHtml = `${f2(Math.min(...effs))} – ${f2(Math.max(...effs))}`;
+      efetivaHtml = `${f(total)} min/dia`;
+      nota = `3 máquinas ativas (Maq1-3) + 1 reserva (${p.maquinas_ativas ? 'Maq4' : 'Maq4'}, não contabilizada).`;
+    } else {
+      const e = ef[key];
+      effHtml = f2(e);
+      efetivaHtml = `${f(p.min_dia_total*e)} min/dia`;
+    }
+    return `
+    <div class="pool-card" style="border-left-color:${color}">
+      <div class="pool-name"><span class="pool-dot" style="background:${color}"></span>${POOL_LABEL[key]}</div>
+      <div class="pool-row"><span>Máquinas</span><b>${p.maquinas} × ${f2(p.horas_dia)}h/dia</b></div>
+      <div class="pool-row"><span>Capacidade total</span><b>${f(p.min_dia_total)} min/dia</b></div>
+      <div class="pool-row"><span>Eficiência</span><b>${effHtml}</b></div>
+      <div class="pool-row"><span>Capacidade efetiva</span><b>${efetivaHtml}</b></div>
+      ${nota ? `<div class="pool-note">${nota}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── BLOCO 3 — Setores de Apoio ───────────────────────────────────────
+let chartPintura = null;
+function renderApoio(){
+  const s = CAP.setores_apoio || {};
+  const pal = s.filial_palmilha || {}, sol = s.filial_sola || {};
+
+  document.getElementById('apoio-grid').innerHTML = `
+    <div class="apoio-card">
+      <div class="apoio-title">Filial Palmilha</div>
+      <div class="apoio-row"><span>Capacidade/dia</span><b>${f(pal.capacidade_dia)} pares</b></div>
+      <div class="apoio-row"><span>Refs que usam</span><b>${f(pal.refs_que_usam)}</b></div>
+      <div class="apoio-row"><span>Giro (lead time)</span><b>${(s.giro_dias||{}).palmilha||'–'} dias</b></div>
+    </div>
+    <div class="apoio-card">
+      <div class="apoio-title">Filial Sola</div>
+      <div class="apoio-row"><span>Capacidade/dia</span><b>${f(sol.capacidade_dia)} pares</b></div>
+      <div class="apoio-row"><span>Refs que usam</span><b>${f(sol.refs_que_usam)}</b></div>
+    </div>`;
+
+  const grupos = (s.pintura||{}).grupos || {};
+  const labels = Object.keys(grupos).sort((a,b)=>+a-+b);
+  if(chartPintura) chartPintura.destroy();
+  chartPintura = new Chart(document.getElementById('c-pintura'), {
+    type:'bar',
+    data:{
+      labels: labels.map(l=>f(+l)+' pares/dia'),
+      datasets:[{label:'Referências', data: labels.map(l=>grupos[l]), backgroundColor:'#ed684288', borderRadius:3}]
+    },
+    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{...TIP, callbacks:{label:ctx=>`${ctx.raw} referência(s)`}}},
+      scales:{x:{ticks:{precision:0}}, y:{grid:{display:false}, ticks:{font:{size:10}}}}}
+  });
+
+  // Stepper — fluxo sequencial
+  const g = s.giro_dias || {};
+  const steps = [
+    {nome:'Corte', dias: g.corte},
+    {nome:'Costura', dias: g.costura},
+    {nome:'Palmilha', dias: g.palmilha},
+    {nome:'Montagem', dias: null, final:true},
+  ];
+  document.getElementById('stepper').innerHTML = steps.map((st,i)=>{
+    const box = `<div class="step ${st.final?'final':''}">
+      <div class="step-name">${st.nome}</div>
+      <div class="step-days">${st.dias!=null ? st.dias+' dia(s)' : 'destino'}</div>
+    </div>`;
+    return i < steps.length-1 ? box + '<div class="step-arrow">→</div>' : box;
+  }).join('');
+}
+
+// ── BLOCO 4 — Tabela de Referências (Camada 1) ───────────────────────
+const estado = {
+  tipo: new Set(['CONVENCIONAL','MONTADO']),
+  material: new Set(),
+  setor: new Set(['palmilha','sola','pintura']),
+  pool: new Set(POOL_ORDER),
+};
+let MATERIAIS_ALL = [];
+
+function initFiltrosMaterial(){
+  MATERIAIS_ALL = [...new Set(Object.values(CAP.referencias).map(r=>r.material).filter(Boolean))].sort();
+  estado.material = new Set(MATERIAIS_ALL);
+  document.getElementById('dd-material-lista').innerHTML = MATERIAIS_ALL.map(m=>
+    `<div class="dd-item" onclick="ddToggle('material','${m}')">
+       <div class="dd-cb checked" id="cb-material-${m}"></div><span>${m}</span>
+     </div>`
+  ).join('');
+}
+
+function toggleDD(id){
+  const menu=document.getElementById('ddm-'+id);
+  const btn=document.getElementById('ddb-'+id);
+  const isOpen=menu.classList.contains('open');
+  document.querySelectorAll('.dd-menu').forEach(m=>m.classList.remove('open'));
+  document.querySelectorAll('.dd-btn').forEach(b=>b.classList.remove('open'));
+  if(!isOpen){ menu.classList.add('open'); btn.classList.add('open'); }
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.dd-wrap')){
+    document.querySelectorAll('.dd-menu').forEach(m=>m.classList.remove('open'));
+    document.querySelectorAll('.dd-btn').forEach(b=>b.classList.remove('open'));
+  }
+});
+
+const ALL_VALS = {
+  tipo: ['CONVENCIONAL','MONTADO'],
+  setor: ['palmilha','sola','pintura'],
+  pool: POOL_ORDER,
+};
+function allVals(grupo){ return grupo==='material' ? MATERIAIS_ALL : ALL_VALS[grupo]; }
+
+function ddToggle(grupo, val){
+  const set = estado[grupo];
+  if(set.has(val)){ if(set.size>1) set.delete(val); }
+  else set.add(val);
+  updateDDUI(grupo);
+  render();
+}
+function ddSelectAll(grupo){
+  const set = estado[grupo];
+  const all = allVals(grupo);
+  if(set.size === all.length){ set.clear(); set.add(all[0]); }
+  else all.forEach(v=>set.add(v));
+  updateDDUI(grupo);
+  render();
+}
+const LABELS = {
+  CONVENCIONAL:'Convencional', MONTADO:'Montado',
+  palmilha:'Palmilha', sola:'Sola', pintura:'Pintura',
+  horizontal:'Horizontal', tiras:'Tiras', vertical:'Vertical', rotativa:'Rotativa', eva:'EVA',
+};
+function updateDDUI(grupo){
+  const set = estado[grupo];
+  const all = allVals(grupo);
+  const isAll = set.size === all.length;
+  const cbAll = document.getElementById('cb-'+grupo+'-all');
+  if(cbAll) cbAll.classList.toggle('checked', isAll);
+  all.forEach(v=>{
+    const cb = document.getElementById('cb-'+grupo+'-'+v);
+    if(cb) cb.classList.toggle('checked', set.has(v));
+  });
+  const txt = document.getElementById('dd-'+grupo+'-txt');
+  if(txt){
+    if(isAll) txt.textContent='Todos';
+    else if(set.size===1) txt.textContent = LABELS[[...set][0]] || [...set][0];
+    else txt.textContent = set.size+' selecionados';
+  }
+}
+
+function refPools(ref){ return Object.keys(ref.tempos_padrao_pool_min||{}); }
+function refSetores(ref){
+  const ca = ref.capacidades_apoio||{};
+  return Object.keys(ca).filter(k=>ca[k]!=null);
+}
+
+function render(){
+  if(!CAP) return;
+  const q = (document.getElementById('srch').value||'').toLowerCase();
+  const entries = Object.entries(CAP.referencias).filter(([key,ref])=>{
+    if(!estado.tipo.has(ref.tipo_montagem)) return false;
+    if(!estado.material.has(ref.material)) return false;
+    const setores = refSetores(ref);
+    if(setores.length && !setores.some(s=>estado.setor.has(s))) {
+      // ref has setores but none selected -> still show if estado.setor covers "nenhum"? keep simple: hide only if has setores none matching
+    }
+    if(setores.length>0 && !setores.some(s=>estado.setor.has(s))) return false;
+    const pools = refPools(ref);
+    if(pools.length>0 && !pools.some(p=>estado.pool.has(p))) return false;
+    if(q && !(key.toLowerCase().includes(q) || (ref.descricao||'').toLowerCase().includes(q) || (ref.referencia||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  entries.sort((a,b)=> (b[1].capacidade_montagem_dia||0) - (a[1].capacidade_montagem_dia||0));
+
+  document.getElementById('cnt').textContent = entries.length + ' referência(s)';
+  const tb = document.getElementById('tbody');
+  tb.innerHTML = entries.map(([key,ref])=>{
+    const tipoBadge = ref.tipo_montagem==='MONTADO'
+      ? '<span class="badge b-mont">MONTADO</span>'
+      : '<span class="badge b-conv">CONVENCIONAL</span>';
+    const setorBadges = refSetores(ref).map(s=>`<span class="badge b-setor">${LABELS[s]||s}</span>`).join('');
+    const poolBadges = refPools(ref).map(p=>`<span class="badge b-pool">${POOL_LABEL[p]||p}</span>`).join('');
+    return `<tr>
+      <td class="td-ref">${key}</td>
+      <td style="font-size:11px">${ref.descricao||''}</td>
+      <td>${ref.material||''}</td>
+      <td>${tipoBadge}</td>
+      <td class="tn">${f(ref.capacidade_montagem_dia)}</td>
+      <td>${setorBadges||'<span style="color:var(--txt-m);font-size:10px">—</span>'}</td>
+      <td>${poolBadges||'<span style="color:var(--txt-m);font-size:10px">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── BLOCO 5 — Validação de Cobertura ─────────────────────────────────
+function renderValidacao(){
+  const v = CAP.validacao_cobertura || {};
+  const card = document.getElementById('valid-card');
+  const semCap = v.refs_sem_capacidade || [];
+  const ok = !semCap.length || (v.pct_cobertura_volume!=null && v.pct_cobertura_volume >= 99.5);
+
+  card.className = 'valid-card ' + (ok ? 'valid-ok' : 'valid-warn');
+  document.getElementById('valid-title').textContent = ok
+    ? 'Cobertura completa — base de capacidade alinhada com a programação real'
+    : 'Atenção — referências programadas sem capacidade cadastrada';
+
+  document.getElementById('valid-body').innerHTML =
+    `${f(CAP.metadados.total_com_capacidade_montagem)} referências mapeadas cobrem
+     <b style="color:var(--txt)">${v.pct_cobertura_volume!=null ? v.pct_cobertura_volume.toLocaleString('pt-BR') : '–'}%</b>
+     do volume programado (${f(v.pares_cobertos)} de ${f(v.total_pares_periodo)} pares),
+     considerando ${v.refs_com_capacidade}/${v.refs_programacao_unicas} referências únicas
+     que aparecem na programação.`;
+
+  if(semCap.length){
+    document.getElementById('valid-list').innerHTML =
+      `<b>${semCap.length} referência(s) sem capacidade cadastrada:</b> ` +
+      semCap.map(r=>`${r.referencia} (${f(r.pares)} pares)`).join(' · ');
+  } else {
+    document.getElementById('valid-list').innerHTML = '';
+  }
+}
+</script>
+</body>
+</html>
