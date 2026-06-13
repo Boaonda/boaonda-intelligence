@@ -55,7 +55,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   position:relative;
   width:100%;max-width:1100px;
   margin:0 auto;
-  height:620px;
+  height:1120px;
   padding:0 40px;
 }
 .org-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
@@ -165,11 +165,6 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   color:var(--txt-m);opacity:.6
 }
 
-/* CAPACIDADE FABRIL — bloco isolado (sem cruzamento com vendas/estoque/programação) */
-.capacidade-row{max-width:1100px;margin:8px auto 0;padding:0 40px;display:flex;justify-content:center}
-.nó.capacidade{position:static;width:100%;max-width:320px;text-align:center}
-.nó.capacidade .nó-kpi-row{justify-content:center;gap:32px}
-
 /* FASES */
 .fases{
   max-width:1100px;margin:0 auto;padding:8px 40px 48px;
@@ -197,7 +192,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .alerta-val{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2);border-radius:5px;padding:4px 9px;font-size:8.5px;color:var(--coral);font-weight:600;margin-top:6px;display:inline-block}
 
 @media(max-width:900px){
-  .org-stage{height:auto;min-height:500px}
+  .org-stage{height:auto;min-height:1000px}
   .fases{grid-template-columns:1fr;padding:8px 16px 40px}
   .hero-title{font-size:26px}
 }
@@ -238,7 +233,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     <span class="sec-label" style="left:50%;transform:translateX(-50%);bottom:8px">Equilíbrio</span>
 
     <!-- SVG CONEXÕES -->
-    <svg class="org-svg" viewBox="0 0 1020 620" preserveAspectRatio="none">
+    <svg class="org-svg" viewBox="0 0 1020 1120" preserveAspectRatio="none">
       <defs>
         <marker id="ac" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
           <path d="M1 2L8 5L1 8" fill="none" stroke="#ed6842" stroke-width="1.5" stroke-linecap="round"/>
@@ -251,22 +246,20 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
         </marker>
       </defs>
 
-      <!-- Vendas → Estoque -->
-      <path d="M 225 150 Q 340 150 388 290" stroke="#6c9c37" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#av)"/>
-      <!-- Programação → Estoque -->
-      <path d="M 795 180 Q 670 180 632 290" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
+      <!-- Fluxo do mix: Vendas → Carteira → Programação → Capacidade → Estoque -->
+      <path d="M 250 160 Q 330 155 405 150" stroke="#6c9c37" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#av)"/>
+      <path d="M 615 150 Q 695 165 770 180" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
+      <path d="M 875 300 L 875 330" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
+      <path d="M 875 510 L 875 540" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
 
-      <!-- Estoque → IA -->
-      <path d="M 510 420 L 510 450" stroke="#ed6842" stroke-width="2" fill="none" stroke-dasharray="6 4" opacity=".6" marker-end="url(#ac)"/>
-      <!-- Vendas → IA (secundária) -->
-      <path d="M 225 200 Q 225 490 430 510" stroke="#6c9c37" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#av)"/>
-      <!-- Programação → IA (secundária) -->
-      <path d="M 795 240 Q 795 490 590 510" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
+      <!-- Tudo converge para a IA -->
+      <path d="M 145 260 Q 145 760 440 800" stroke="#6c9c37" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#av)"/>
+      <path d="M 510 240 L 510 800" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
+      <path d="M 875 740 Q 760 790 580 800" stroke="#ed6842" stroke-width="2" fill="none" stroke-dasharray="6 4" opacity=".6" marker-end="url(#ac)"/>
 
-      <!-- IA → Output Comercial -->
-      <path d="M 460 540 Q 350 540 320 555" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
-      <!-- IA → Output PCP -->
-      <path d="M 560 540 Q 670 540 700 555" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
+      <!-- IA → Outputs -->
+      <path d="M 450 960 Q 350 985 220 1005" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
+      <path d="M 570 960 Q 670 985 800 1005" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
     </svg>
 
     <!-- NÓ: VENDAS (esq topo) -->
@@ -281,28 +274,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-cta">Analisar vendas →</div>
     </div>
 
-    <!-- NÓ: PROGRAMAÇÃO (dir topo) -->
-    <div class="nó" style="right:40px;top:80px" onclick="abrirModulo('programacao')">
-      <span class="nó-icon">🏭</span>
-      <div class="nó-title">Programação</div>
-      <div class="nó-desc">PCP · dt_plano · 30k/sem</div>
-      <div class="nó-kpi" id="kpi-p-total">–</div>
-      <div class="nó-kpi-label">pares · <span id="kpi-p-mes">Jun/2026</span></div>
-      <div class="sems" id="sems-mini"></div>
-      <div class="nó-cta">Analisar programação →</div>
-    </div>
-
-    <!-- NÓ: CATÁLOGO (dir meio) -->
-    <div class="nó info" style="right:40px;top:340px">
-      <span class="nó-icon">📋</span>
-      <div class="nó-title">Catálogo</div>
-      <div class="nó-desc">271 referências · 2.932 SKUs</div>
-      <div class="nó-kpi">3</div>
-      <div class="nó-kpi-label">níveis hierárquicos</div>
-    </div>
-
-    <!-- NÓ: PEDIDO EM CARTEIRA (esq meio) -->
-    <div class="nó" style="left:40px;top:340px" onclick="abrirModulo('carteira')">
+    <!-- NÓ: PEDIDO EM CARTEIRA (centro topo — entre vendas e produção) -->
+    <div class="nó" style="left:50%;top:60px;transform:translateX(-50%)" onclick="abrirModulo('carteira')">
       <span class="nó-icon">🗂️</span>
       <div class="nó-title">Pedido em Carteira</div>
       <div class="nó-desc">MI · ME · sem plano de produção</div>
@@ -319,49 +292,19 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-cta">Analisar carteira →</div>
     </div>
 
-    <!-- NÓ CENTRAL: ESTOQUE -->
-    <div class="nó-central" style="left:50%;top:230px;transform:translateX(-50%)" onclick="abrirModulo('estoque')">
-      <div class="nó-central-icon">📦</div>
-      <div class="nó-central-label">Estoque PA — Disponível</div>
-      <div class="nó-central-kpi" id="kpi-e-livre">–</div>
-      <div class="nó-central-sub">pares livres para venda</div>
-      <div class="nó-central-bar"><div class="nó-central-fill" id="e-pct" style="width:0%"></div></div>
-      <div class="nó-central-stats">
-        <div>Físico <span id="kpi-e-fisico" style="color:var(--txt-s)">–</span></div>
-        <div>Reservas <span id="kpi-e-reservas" style="color:var(--txt-s)">–</span></div>
-      </div>
-      <div class="nó-central-cta">Analisar estoque →</div>
+    <!-- NÓ: PROGRAMAÇÃO (dir topo) -->
+    <div class="nó" style="right:40px;top:60px" onclick="abrirModulo('programacao')">
+      <span class="nó-icon">🏭</span>
+      <div class="nó-title">Programação</div>
+      <div class="nó-desc">PCP · dt_plano · 30k/sem</div>
+      <div class="nó-kpi" id="kpi-p-total">–</div>
+      <div class="nó-kpi-label">pares · <span id="kpi-p-mes">Jun/2026</span></div>
+      <div class="sems" id="sems-mini"></div>
+      <div class="nó-cta">Analisar programação →</div>
     </div>
 
-    <!-- NÓ IA (centro baixo) -->
-    <div class="nó-ia" style="left:50%;top:450px;transform:translateX(-50%)" onclick="abrirModulo('equilibrio')">
-      <div class="ia-main">IA</div>
-      <div class="ia-sub">Intelligence</div>
-      <div class="ia-label">Motor de equilíbrio</div>
-      <div class="ia-dots">
-        <div class="ia-dot"></div>
-        <div class="ia-dot"></div>
-        <div class="ia-dot"></div>
-      </div>
-    </div>
-
-    <!-- OUTPUT: COMERCIAL (esq baixo) -->
-    <div class="nó-output" style="left:120px;top:543px" onclick="abrirModulo('vendas')">
-      <div class="nó-output-title">Para Comercial</div>
-      <div class="nó-output-desc">O que vender · quando · para quem</div>
-    </div>
-
-    <!-- OUTPUT: PCP (dir baixo) -->
-    <div class="nó-output" style="right:120px;top:543px" onclick="abrirModulo('programacao')">
-      <div class="nó-output-title">Para PCP</div>
-      <div class="nó-output-desc">O que produzir · ordem · semana</div>
-    </div>
-
-  </div><!-- /stage -->
-
-  <!-- CAPACIDADE FABRIL (bloco isolado — sem cruzamento com vendas/estoque/programação nesta fase) -->
-  <div class="capacidade-row">
-    <div class="nó capacidade" onclick="abrirModulo('capacidade')">
+    <!-- NÓ: CAPACIDADE FABRIL (abaixo da programação — futura ligação p/ ocupação/eficiência) -->
+    <div class="nó" style="right:40px;top:330px" onclick="abrirModulo('capacidade')">
       <span class="nó-icon">⚙️</span>
       <div class="nó-title">Capacidade Fabril</div>
       <div class="nó-desc">Atelier · Pool de injetados · Setores de apoio</div>
@@ -377,7 +320,46 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       </div>
       <div class="nó-cta">Ver capacidade fabril →</div>
     </div>
-  </div>
+
+    <!-- NÓ CENTRAL: ESTOQUE (abaixo da capacidade fabril) -->
+    <div class="nó-central" style="right:25px;top:540px" onclick="abrirModulo('estoque')">
+      <div class="nó-central-icon">📦</div>
+      <div class="nó-central-label">Estoque PA — Disponível</div>
+      <div class="nó-central-kpi" id="kpi-e-livre">–</div>
+      <div class="nó-central-sub">pares livres para venda</div>
+      <div class="nó-central-bar"><div class="nó-central-fill" id="e-pct" style="width:0%"></div></div>
+      <div class="nó-central-stats">
+        <div>Físico <span id="kpi-e-fisico" style="color:var(--txt-s)">–</span></div>
+        <div>Reservas <span id="kpi-e-reservas" style="color:var(--txt-s)">–</span></div>
+      </div>
+      <div class="nó-central-cta">Analisar estoque →</div>
+    </div>
+
+    <!-- NÓ IA (base — conecta tudo) -->
+    <div class="nó-ia" style="left:50%;top:800px;transform:translateX(-50%)" onclick="abrirModulo('equilibrio')">
+      <div class="ia-main">IA</div>
+      <div class="ia-sub">Intelligence</div>
+      <div class="ia-label">Motor de equilíbrio</div>
+      <div class="ia-dots">
+        <div class="ia-dot"></div>
+        <div class="ia-dot"></div>
+        <div class="ia-dot"></div>
+      </div>
+    </div>
+
+    <!-- OUTPUT: COMERCIAL (esq baixo) -->
+    <div class="nó-output" style="left:140px;top:1000px" onclick="abrirModulo('vendas')">
+      <div class="nó-output-title">Para Comercial</div>
+      <div class="nó-output-desc">O que vender · quando · para quem</div>
+    </div>
+
+    <!-- OUTPUT: PCP (dir baixo) -->
+    <div class="nó-output" style="right:140px;top:1000px" onclick="abrirModulo('programacao')">
+      <div class="nó-output-title">Para PCP</div>
+      <div class="nó-output-desc">O que produzir · ordem · semana</div>
+    </div>
+
+  </div><!-- /stage -->
 
   <!-- FASES -->
   <div class="fases">
