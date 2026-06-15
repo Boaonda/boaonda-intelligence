@@ -56,7 +56,8 @@ SELECT
     pos_item        AS pos_item,
     etapa_atual     AS etapa,
     LocalEstoque    AS local,
-    CorPalmilha     AS tipomontagem
+    CorPalmilha     AS tipomontagem,
+    {col_valor}     AS vlr
 FROM mould.v_entradapedidos_extended v
 WHERE v.dt_entrada >= date_format(date_sub(current_date, interval 1 year), '%Y/01/01')
 """
@@ -192,7 +193,14 @@ def carregar_linhas_3ys(arquivo_3ys=None):
     if os.environ.get('MYSQL_HOST'):
         import db_mysql
         print("    Lendo 3YS do MySQL...")
-        db_rows = db_mysql.consultar(QUERY_3YS)
+        col_valor = db_mysql.achar_coluna_valor_liquido()
+        if col_valor:
+            col_valor_sql = f'v.`{col_valor}`'
+        else:
+            print("    AVISO: coluna 'valor líquido' não encontrada na view "
+                  "— vendas em R$ ficarão zeradas")
+            col_valor_sql = '0'
+        db_rows = db_mysql.consultar(QUERY_3YS.format(col_valor=col_valor_sql))
         print(f"    {len(db_rows):,} linhas carregadas do MySQL")
         return [_linha_de_db_row(r) for r in db_rows]
 
@@ -210,14 +218,22 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
     print("\n  Processando vendas...")
     canais_mes = {'MI':0,'ME':0,'ECOM':0,'GRUPO_MOULD':0}
     canais_total = {'MI':0,'ME':0,'ECOM':0,'GRUPO_MOULD':0}
+    canais_mes_valor = {'MI':0.0,'ME':0.0,'ECOM':0.0,'GRUPO_MOULD':0.0}
+    canais_total_valor = {'MI':0.0,'ME':0.0,'ECOM':0.0,'GRUPO_MOULD':0.0}
     tipos_mes = {'MI':defaultdict(int),'ME':defaultdict(int),'ECOM':defaultdict(int)}
     mensal = defaultdict(lambda: {'MI':defaultdict(int),'ME':defaultdict(int),
                                    'ECOM':defaultdict(int),'GRUPO_MOULD':0})
+    mensal_valor = defaultdict(lambda: {'MI':defaultdict(float),'ME':defaultdict(float),
+                                         'ECOM':defaultdict(float),'GRUPO_MOULD':0.0})
     linha_canal = defaultdict(lambda: defaultdict(int))
     refs = Counter()
     refs_mi = Counter()
     refs_me = Counter()
     refs_ec = Counter()
+    refs_valor = Counter()
+    refs_mi_valor = Counter()
+    refs_me_valor = Counter()
+    refs_ec_valor = Counter()
     holdings = defaultdict(lambda: defaultdict(int))
 
     for row in linhas:
@@ -229,6 +245,8 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
         try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
         except: qtd = 0
         if qtd <= 0: continue
+        try: valor = float(g(row, IDX['vlr']).replace(',','.'))
+        except: valor = 0.0
         anomes = g(row, IDX['anomes'])
         ref = g(row, IDX['ref'])
         linha = g(row, IDX['linha'])
@@ -236,19 +254,29 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
         holding = g(row, IDX['nomeholder']) or g(row, IDX['razao'])[:40]
 
         canais_total[canal] += qtd
+        canais_total_valor[canal] += valor
         if anomes == mes_atual:
             canais_mes[canal] += qtd
+            canais_mes_valor[canal] += valor
             if tipo: tipos_mes[canal][tipo] += qtd
         if anomes and len(anomes) == 6 and anomes.isdigit():
-            if tipo: mensal[anomes][canal][tipo] += qtd
-            else: mensal[anomes][canal] += qtd
+            if tipo:
+                mensal[anomes][canal][tipo] += qtd
+                mensal_valor[anomes][canal][tipo] += valor
+            else:
+                mensal[anomes][canal] += qtd
+                mensal_valor[anomes][canal] += valor
         if ln != 'OUTROS':
             linha_canal[ln][canal] += qtd
         if ref:
             refs[ref] += qtd
-            if canal == 'MI': refs_mi[ref] += qtd
-            elif canal == 'ME': refs_me[ref] += qtd
-            elif canal == 'ECOM': refs_ec[ref] += qtd
+            refs_valor[ref] += valor
+            if canal == 'MI':
+                refs_mi[ref] += qtd; refs_mi_valor[ref] += valor
+            elif canal == 'ME':
+                refs_me[ref] += qtd; refs_me_valor[ref] += valor
+            elif canal == 'ECOM':
+                refs_ec[ref] += qtd; refs_ec_valor[ref] += valor
         holdings[holding][canal] += qtd
 
     # Volume "calçados" (MI+ME+ECOM) — Grupo Mould é outra unidade de negócio
@@ -265,6 +293,19 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
         }
     tipos_mes_out = {c: dict(t) for c, t in tipos_mes.items()}
 
+    total_mes_valor = round(canais_mes_valor['MI'] + canais_mes_valor['ME'] + canais_mes_valor['ECOM'], 2)
+
+    mensal_valor_out = {}
+    for k, v in sorted(mensal_valor.items()):
+        mensal_valor_out[k] = {
+            'MI': {t: round(x,2) for t,x in v['MI'].items()},
+            'ME': {t: round(x,2) for t,x in v['ME'].items()},
+            'ECOM': {t: round(x,2) for t,x in v['ECOM'].items()},
+            'GRUPO_MOULD': round(v['GRUPO_MOULD'],2),
+        }
+    canais_mes_valor = {c: round(x,2) for c,x in canais_mes_valor.items()}
+    canais_total_valor = {c: round(x,2) for c,x in canais_total_valor.items()}
+
     # Gravar dados_vendas.json
     dados_vend = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
@@ -274,10 +315,19 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
         'canais_total': canais_total,
         'total_mes': total_mes,
         'mensal': mensal_out,
+        'canais_mes_valor': canais_mes_valor,
+        'canais_total_valor': canais_total_valor,
+        'total_mes_valor': total_mes_valor,
+        'mensal_valor': mensal_valor_out,
         'refs_top20': {
             'MI': refs_mi.most_common(20) if hasattr(refs_mi,'most_common') else [],
             'ME': refs_me.most_common(20) if hasattr(refs_me,'most_common') else [],
             'EC': refs_ec.most_common(20) if hasattr(refs_ec,'most_common') else [],
+        },
+        'refs_top20_valor': {
+            'MI': [(r, round(v,2)) for r,v in refs_mi_valor.most_common(20)],
+            'ME': [(r, round(v,2)) for r,v in refs_me_valor.most_common(20)],
+            'EC': [(r, round(v,2)) for r,v in refs_ec_valor.most_common(20)],
         },
         'pendente_validacao': canais_mes.get('MI',0) < 10000,
     }

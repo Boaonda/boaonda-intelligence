@@ -182,6 +182,24 @@ tr:hover td{background:var(--card2);color:var(--txt)}
     </div>
   </div>
 
+  <!-- Unidade: Pares ou Valor (R$) -->
+  <div class="dd-wrap" id="ddw-unidade">
+    <div class="dd-btn" id="ddb-unidade" onclick="toggleDD('unidade')">
+      <span><span class="dd-label">Visão </span><span id="dd-unidade-txt">Pares</span></span>
+      <span class="dd-arrow">▼</span>
+    </div>
+    <div class="dd-menu" id="ddm-unidade">
+      <div class="dd-item" onclick="selecionarUnidade('pares')">
+        <div class="dd-cb checked" id="cb-unidade-pares"></div>
+        <span>Pares</span>
+      </div>
+      <div class="dd-item" onclick="selecionarUnidade('valor')">
+        <div class="dd-cb" id="cb-unidade-valor"></div>
+        <span>Valor (R$)</span>
+      </div>
+    </div>
+  </div>
+
     </div>
     <div class="h-meta">Atualizado: <strong id="hdr-data">–</strong></div>
   </div>
@@ -205,7 +223,7 @@ tr:hover td{background:var(--card2);color:var(--txt)}
   <div class="stitle">Top referências — <span id="stitle-refs" style="font-weight:400;text-transform:none;letter-spacing:0">período selecionado</span></div>
   <div class="tcard">
     <table>
-      <thead><tr><th>#</th><th>Referência</th><th>Pares</th><th>Volume</th></tr></thead>
+      <thead><tr><th>#</th><th>Referência</th><th id="th-unidade">Pares</th><th>Volume</th></tr></thead>
       <tbody id="tb-refs"></tbody>
     </table>
   </div>
@@ -213,14 +231,39 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 
 <script>
 const f=n=>(Math.round(n)||0).toLocaleString('pt-BR');
+const fmoeda=n=>'R$ '+(Math.round(n)||0).toLocaleString('pt-BR');
+const fmtv=n=>estado.unidade==='valor'?fmoeda(n):f(n);
 const pct=(a,b)=>b?Math.round(a/b*100):0;
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
 const TIP={backgroundColor:'#161922',borderColor:'#262b3a',borderWidth:1,titleColor:'#f3f0eb',bodyColor:'#b6b3ac',padding:12,cornerRadius:8};
 
+// Plugin: desenha o total empilhado de cada mês acima da barra
+const totalLabelsPlugin={
+  id:'totalLabels',
+  afterDatasetsDraw(chart){
+    const {ctx,scales:{x,y}}=chart;
+    ctx.save();
+    ctx.font="700 10px 'Montserrat',sans-serif";
+    ctx.fillStyle='#f3f0eb';
+    ctx.textAlign='center';
+    ctx.textBaseline='bottom';
+    chart.data.labels.forEach((_,i)=>{
+      let total=0;
+      chart.data.datasets.forEach((ds,dsIndex)=>{
+        if(chart.isDatasetVisible(dsIndex)) total+=(ds.data[i]||0);
+      });
+      if(total<=0) return;
+      ctx.fillText(fmtv(total), x.getPixelForValue(i), y.getPixelForValue(total)-4);
+    });
+    ctx.restore();
+  }
+};
+
 // ── DADOS ──────────────────────────────────────────────────────────
 const MESES_ALL=['202501','202502','202503','202504','202505','202506','202507','202508','202509','202510','202511','202512','202601','202602','202603','202604','202605','202606'];
 let DADOS={}, REFS_MI=[], REFS_ME=[], REFS_EC=[];
+let DADOS_VALOR={}, REFS_MI_VALOR=[], REFS_ME_VALOR=[], REFS_EC_VALOR=[];
 
 // Carregar JSON externo — gerado pelo atualizar.py
 fetch('dados_vendas.json?_='+Date.now())
@@ -244,6 +287,21 @@ fetch('dados_vendas.json?_='+Date.now())
     REFS_MI = d.refs_top20?.MI || [];
     REFS_ME = d.refs_top20?.ME || [];
     REFS_EC = d.refs_top20?.EC || [];
+
+    // Visão em valor (R$) — mesma adaptação, a partir de "mensal_valor"
+    DADOS_VALOR = {};
+    const mensalValor = d.mensal_valor || {};
+    for(const m in mensalValor){
+      const v = mensalValor[m] || {};
+      DADOS_VALOR[m] = {
+        MI: {PROG: v.MI?.PROG||0, PE: v.MI?.PE||0, MISTA: v.MI?.MISTA||0},
+        ME: {ME: soma(v.ME)},
+        EC: {EC: soma(v.ECOM)}
+      };
+    }
+    REFS_MI_VALOR = d.refs_top20_valor?.MI || [];
+    REFS_ME_VALOR = d.refs_top20_valor?.ME || [];
+    REFS_EC_VALOR = d.refs_top20_valor?.EC || [];
     // Atualizar header
     const hdr=document.getElementById('hdr-data');
     if(hdr) hdr.textContent=d.gerado_em||'–';
@@ -257,7 +315,25 @@ const estado = {
   canal: new Set(['MI','ME','EC']),  // todos
   tipo:  new Set(TIPOS_ALL),          // todos
   meses: new Set([MESES_ALL[MESES_ALL.length-1]]),  // mês atual (mais recente)
+  unidade: 'pares',                   // 'pares' ou 'valor'
 };
+
+function dadosAtual(){ return estado.unidade==='valor'?DADOS_VALOR:DADOS; }
+function refsAtual(canal){
+  if(estado.unidade==='valor')
+    return canal==='MI'?REFS_MI_VALOR:canal==='ME'?REFS_ME_VALOR:REFS_EC_VALOR;
+  return canal==='MI'?REFS_MI:canal==='ME'?REFS_ME:REFS_EC;
+}
+
+function selecionarUnidade(val){
+  estado.unidade=val;
+  document.getElementById('cb-unidade-pares').classList.toggle('checked',val==='pares');
+  document.getElementById('cb-unidade-valor').classList.toggle('checked',val==='valor');
+  document.getElementById('dd-unidade-txt').textContent=val==='valor'?'Valor (R$)':'Pares';
+  document.getElementById('th-unidade').textContent=val==='valor'?'Valor (R$)':'Pares';
+  toggleDD('unidade');
+  render();
+}
 
 let chartEv=null, chartMix=null;
 
@@ -368,11 +444,13 @@ function calcValMes(m, canais, tipos){
 // ── RENDER ──────────────────────────────────────────────────────────
 function render(){
   const canais=estado.canal, tipos=estado.tipo, meses=estado.meses;
+  const D=dadosAtual();
+  const unidLabel=estado.unidade==='valor'?'em R$ no período':'pares no período';
 
   // Totais para KPIs (respeitam todos os filtros)
   let mi_prog=0,mi_pe=0,mi_mista=0,me=0,ec=0;
   [...meses].sort().forEach(m=>{
-    const d=DADOS[m]||{};
+    const d=D[m]||{};
     if(canais.has('MI')){
       if(tipos.has('PROG')) mi_prog+=(d.MI||{}).PROG||0;
       if(tipos.has('PE'))   mi_pe+=(d.MI||{}).PE||0;
@@ -385,12 +463,12 @@ function render(){
 
   // KPIs
   let kpiHTML='';
-  kpiHTML+=kpi('destaque','Total selecionado',f(total),'pares no período');
-  if(canais.has('MI') && tipos.has('PROG'))  kpiHTML+=kpi('','MI — Programação',f(mi_prog),pct(mi_prog,total)+'% do total');
-  if(canais.has('MI') && tipos.has('PE'))    kpiHTML+=kpi('','MI — Pronta Entrega',f(mi_pe),pct(mi_pe,total)+'% do total');
-  if(canais.has('MI') && tipos.has('MISTA')) kpiHTML+=kpi('','MI — Venda Mista',f(mi_mista),pct(mi_mista,total)+'% do total');
-  if(canais.has('ME')) kpiHTML+=kpi('','Mercado Externo',f(me),pct(me,total)+'% do total');
-  if(canais.has('EC')) kpiHTML+=kpi('','E-commerce',f(ec),pct(ec,total)+'% do total');
+  kpiHTML+=kpi('destaque','Total selecionado',fmtv(total),unidLabel);
+  if(canais.has('MI') && tipos.has('PROG'))  kpiHTML+=kpi('','MI — Programação',fmtv(mi_prog),pct(mi_prog,total)+'% do total');
+  if(canais.has('MI') && tipos.has('PE'))    kpiHTML+=kpi('','MI — Pronta Entrega',fmtv(mi_pe),pct(mi_pe,total)+'% do total');
+  if(canais.has('MI') && tipos.has('MISTA')) kpiHTML+=kpi('','MI — Venda Mista',fmtv(mi_mista),pct(mi_mista,total)+'% do total');
+  if(canais.has('ME')) kpiHTML+=kpi('','Mercado Externo',fmtv(me),pct(me,total)+'% do total');
+  if(canais.has('EC')) kpiHTML+=kpi('','E-commerce',fmtv(ec),pct(ec,total)+'% do total');
   kpiHTML+=kpi('','Meses',meses.size,meses.size===MESES_ALL.length?'todos':'de '+MESES_ALL.length);
   document.getElementById('kpi-area').innerHTML=kpiHTML;
 
@@ -413,6 +491,7 @@ function kpi(cls,label,val,sub){
 function renderCharts(canais, tipos){
   if(chartEv){chartEv.destroy();chartEv=null;}
   if(chartMix){chartMix.destroy();chartMix=null;}
+  const D=dadosAtual();
 
   // Evolução — TODOS os meses, filtra canal
   const labels=MESES_ALL.map(mesLabel);
@@ -420,26 +499,28 @@ function renderCharts(canais, tipos){
 
   if(canais.has('MI')){
     if(tipos.has('PROG'))
-      datasets.push({label:'MI Programação',data:MESES_ALL.map(m=>(DADOS[m]?.MI?.PROG||0)),backgroundColor:'#4994c7cc',borderRadius:3});
+      datasets.push({label:'MI Programação',data:MESES_ALL.map(m=>(D[m]?.MI?.PROG||0)),backgroundColor:'#4994c7cc',borderRadius:3});
     if(tipos.has('PE'))
-      datasets.push({label:'MI Pronta Entrega',data:MESES_ALL.map(m=>(DADOS[m]?.MI?.PE||0)),backgroundColor:'#4994c744',borderRadius:3,borderColor:'#4994c7',borderWidth:1});
+      datasets.push({label:'MI Pronta Entrega',data:MESES_ALL.map(m=>(D[m]?.MI?.PE||0)),backgroundColor:'#4994c744',borderRadius:3,borderColor:'#4994c7',borderWidth:1});
     if(tipos.has('MISTA'))
-      datasets.push({label:'MI Venda Mista',data:MESES_ALL.map(m=>(DADOS[m]?.MI?.MISTA||0)),backgroundColor:'#ed684288',borderRadius:3,borderColor:'#ed6842',borderWidth:1});
+      datasets.push({label:'MI Venda Mista',data:MESES_ALL.map(m=>(D[m]?.MI?.MISTA||0)),backgroundColor:'#ed684288',borderRadius:3,borderColor:'#ed6842',borderWidth:1});
   }
   if(canais.has('ME'))
-    datasets.push({label:'Mercado Externo',data:MESES_ALL.map(m=>(DADOS[m]?.ME?.ME||0)),backgroundColor:'#71706fcc',borderRadius:3});
+    datasets.push({label:'Mercado Externo',data:MESES_ALL.map(m=>(D[m]?.ME?.ME||0)),backgroundColor:'#71706fcc',borderRadius:3});
   if(canais.has('EC'))
-    datasets.push({label:'E-commerce',data:MESES_ALL.map(m=>(DADOS[m]?.EC?.EC||0)),backgroundColor:'#6c9c37cc',borderRadius:3});
+    datasets.push({label:'E-commerce',data:MESES_ALL.map(m=>(D[m]?.EC?.EC||0)),backgroundColor:'#6c9c37cc',borderRadius:3});
 
   chartEv=new Chart(document.getElementById('c-ev'),{type:'bar',data:{labels,datasets},
+    plugins:[totalLabelsPlugin],
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},tooltip:{...TIP,mode:'index'}},
-      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:v=>f(v)}}}}});
+      layout:{padding:{top:18}},
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},tooltip:{...TIP,mode:'index',callbacks:{label:ctx=>ctx.dataset.label+': '+fmtv(ctx.raw)}}},
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:v=>fmtv(v)}}}}});
 
   // Mix — usa totais de todos os meses filtrados pelo canal
   let totMI_P=0,totMI_PE=0,totMI_M=0,totME=0,totEC=0;
   MESES_ALL.forEach(m=>{
-    const d=DADOS[m]||{};
+    const d=D[m]||{};
     if(canais.has('MI')){
       if(tipos.has('PROG')) totMI_P+=(d.MI||{}).PROG||0;
       if(tipos.has('PE'))   totMI_PE+=(d.MI||{}).PE||0;
@@ -460,15 +541,15 @@ function renderCharts(canais, tipos){
     data:{labels:mixLabels,datasets:[{data:mixData,backgroundColor:mixColors,borderWidth:0,hoverOffset:6}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:'right',labels:{boxWidth:10,font:{size:10}}},
-        tooltip:{callbacks:{label:ctx=>ctx.label+': '+f(ctx.raw)+' ('+pct(ctx.raw,mixTotal)+'%)'}}}}}); 
+        tooltip:{callbacks:{label:ctx=>ctx.label+': '+fmtv(ctx.raw)+' ('+pct(ctx.raw,mixTotal)+'%)'}}}}});
 }
 
 // ── REFS ─────────────────────────────────────────────────────────────
 function renderRefs(canais, tipos, meses){
   const all={};
-  if(canais.has('MI')) REFS_MI.forEach(([r,q])=>all[r]=(all[r]||0)+q);
-  if(canais.has('ME')) REFS_ME.forEach(([r,q])=>all[r]=(all[r]||0)+q);
-  if(canais.has('EC')) REFS_EC.forEach(([r,q])=>all[r]=(all[r]||0)+q);
+  if(canais.has('MI')) refsAtual('MI').forEach(([r,q])=>all[r]=(all[r]||0)+q);
+  if(canais.has('ME')) refsAtual('ME').forEach(([r,q])=>all[r]=(all[r]||0)+q);
+  if(canais.has('EC')) refsAtual('EC').forEach(([r,q])=>all[r]=(all[r]||0)+q);
   const refs=Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,15);
   const mx=refs.length?refs[0][1]:1;
   const tb=document.getElementById('tb-refs');
@@ -477,7 +558,7 @@ function renderRefs(canais, tipos, meses){
     const tr=document.createElement('tr');
     tr.innerHTML='<td style="color:var(--txt-m);font-size:10px">'+(i+1)+'</td>'+
       '<td class="td-ref">'+ref+'</td>'+
-      '<td class="td-num">'+f(qtd)+'</td>'+
+      '<td class="td-num">'+fmtv(qtd)+'</td>'+
       '<td style="min-width:100px"><div class="mbar" style="width:'+Math.round(qtd/mx*100)+'%;background:'+(i<3?'var(--coral)':'var(--azul)')+'"></div></td>';
     tb.appendChild(tr);
   });
