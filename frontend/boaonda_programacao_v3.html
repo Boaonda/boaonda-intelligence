@@ -83,6 +83,24 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .sc-ocup-fill{height:100%;border-radius:2px}
 .sc-ocup-val{font-size:9px;font-weight:700;color:var(--txt-s);width:32px;text-align:right;flex-shrink:0}
 .sc-ocup-gargalo{margin-top:6px}
+.sc-ocup-toggle{margin-top:8px;width:100%;background:var(--card2);border:1px solid var(--line2);border-radius:5px;padding:4px 8px;font-size:9px;font-weight:700;color:var(--txt-s);cursor:pointer;font-family:'Montserrat',sans-serif;text-align:center;transition:.15s}
+.sc-ocup-toggle:hover{border-color:var(--coral);color:var(--coral)}
+.sc-ocup-toggle.active{background:var(--coral);color:#fff;border-color:var(--coral)}
+/* Accordion de ocupação (drill-down) */
+.ocup-drill{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:24px}
+.ocup-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px}
+.ocup-title{font-size:13px;font-weight:800;color:var(--txt)}
+.ocup-eficiencia{font-size:11px;font-weight:700;color:var(--txt-s)}
+.ocup-sub{font-size:10px;color:var(--txt-m);margin-top:2px}
+.ocup-gargalo{margin-bottom:14px}
+.ocup-grupo{margin-bottom:12px}
+.ocup-grupo:last-child{margin-bottom:0}
+.ocup-grupo-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--txt-m);margin-bottom:6px}
+.ocup-pills{display:flex;gap:8px;flex-wrap:wrap}
+.ocup-pill{padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;background:var(--card2)}
+.ocup-pill.ok{color:var(--verde)}
+.ocup-pill.warn{color:var(--coral)}
+.ocup-pill.crit{color:#ef4444}
 .sem-card{cursor:pointer;transition:border-color .15s}
 .sem-card:hover{border-color:var(--coral2)}
 .sem-card.ativa{border-color:var(--coral);border-width:2px}
@@ -207,6 +225,7 @@ table.top-refs tr:hover td{background:var(--card2);color:var(--txt)}
   <div class="kpi-grid" id="kpi-area"><div class="loading">Carregando dados...</div></div>
   <div id="view-semana"><div class="cards-grid" id="cards-semana"></div><div id="sem-drill"></div></div>
   <div id="view-mes" style="display:none"><div id="cards-mes"></div></div>
+  <div id="ocup-drill"></div>
   <div class="crow">
     <div class="ccard"><div class="ctitle" id="chart-title">Evolução semanal por linha de produção</div><div style="position:relative;height:260px"><canvas id="c-ev"></canvas></div></div>
     <div class="ccard"><div class="ctitle">Mix de linhas — período atual</div><div style="position:relative;height:260px"><canvas id="c-mix"></canvas></div></div>
@@ -276,6 +295,12 @@ const GARGALO_LABELS={
 };
 const ocupCls=p=>p>100?'crit':(p>=85?'warn':'ok');
 const ocupCor=p=>p>100?'#ef4444':(p>=85?'var(--coral)':'var(--verde)');
+
+// Accordion de ocupação (drill-down semana/mês)
+let ocupAtiva=null, ocupTipo='semana';
+const POOL_LABELS={horizontal:'Horizontal',tiras:'Tiras',vertical:'Vertical',rotativa:'Rotativa',eva:'EVA'};
+const SETOR_LABELS={filial_palmilha:'Palmilha',filial_sola:'Sola',pintura:'Pintura'};
+const ocupPillCls=p=>p>=100?'crit':(p>=70?'warn':'ok');
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
@@ -359,6 +384,7 @@ const periodosMes=()=>Object.keys(MESES).sort();
 
 function setModo(m){
   modo=m;
+  ocupAtiva=null;
   document.getElementById('btn-semana').classList.toggle('active',m==='semana');
   document.getElementById('btn-mes').classList.toggle('active',m==='mes');
   document.getElementById('view-semana').style.display=m==='semana'?'block':'none';
@@ -431,10 +457,12 @@ function renderSemanas(){
         (d.pe?'<span class="sc-tag pe">PE '+f(d.pe)+' ('+d.pct_pe+'%)</span>':'')+
       '</div>'+
       '<div class="sc-info">'+d.pedidos+' ped · top: '+top+'</div>'+
-      renderOcupacaoCard(k);
+      renderOcupacaoCard(k)+
+      ocupToggleBtn('semana',k);
     grid.appendChild(el);
   });
   renderSemDrill();
+  renderOcupacaoDrill();
 }
 
 // Painel "saúde da semana" (ocupação Atelier + gargalo) — seção 5.1
@@ -452,6 +480,59 @@ function renderOcupacaoCard(k){
       '<span class="sc-ocup-val">'+Math.round(mont)+'%</span></div>'+
     '<div class="sc-ocup-gargalo"><span class="badge '+ocupCls(o.eficiencia_pct)+'">Gargalo: '+gargaloNome+' '+Math.round(o.eficiencia_pct)+'%</span></div>'+
   '</div>';
+}
+
+// Botão "Ocupação ▾/▴" — abre/fecha o accordion #ocup-drill (independente
+// do modal de Pedidos/Planos/Clientes, por isso o stopPropagation)
+function ocupToggleBtn(tipo,key){
+  if(!(OCUPACAO[tipo==='semana'?'semanas':'meses']||{})[key]) return '';
+  const ativo=ocupAtiva===key&&ocupTipo===tipo;
+  return '<button class="sc-ocup-toggle'+(ativo?' active':'')+'" onclick="event.stopPropagation();toggleOcupacao(\''+tipo+'\',\''+key+'\')">Ocupação '+(ativo?'▴':'▾')+'</button>';
+}
+
+function toggleOcupacao(tipo,key){
+  ocupAtiva=(ocupAtiva===key&&ocupTipo===tipo)?null:key;
+  ocupTipo=tipo;
+  if(modo==='semana') renderSemanas(); else renderMeses();
+}
+
+// Painel accordion com os 11 indicadores (drill-down semana/mês)
+function renderOcupacaoDrill(){
+  const wrap=document.getElementById('ocup-drill');
+  if(!wrap) return;
+  const o=ocupAtiva&&(OCUPACAO[ocupTipo==='semana'?'semanas':'meses']||{})[ocupAtiva];
+  if(!o){wrap.innerHTML='';return;}
+
+  let titulo, sub='';
+  if(ocupTipo==='semana'){
+    const sem=SEMANAS[ocupAtiva];
+    titulo='Ocupação — semana '+(sem?sem.label:ocupAtiva);
+  }else{
+    const mes=MESES[ocupAtiva];
+    titulo='Ocupação — '+(mes?mes.label:ocupAtiva);
+    sub=o.dias_uteis+' dias úteis no mês';
+  }
+  const gargaloNome=GARGALO_LABELS[o.gargalo]||o.gargalo;
+
+  wrap.innerHTML='<div class="ocup-drill">'+
+    '<div class="ocup-head"><div><div class="ocup-title">'+titulo+'</div>'+
+      (sub?'<div class="ocup-sub">'+sub+'</div>':'')+'</div>'+
+      '<div class="ocup-eficiencia">Eficiência '+Math.round(o.eficiencia_pct)+'%</div></div>'+
+    '<div class="ocup-gargalo"><span class="badge '+ocupPillCls(o.eficiencia_pct)+'">Gargalo: '+gargaloNome+' a '+Math.round(o.eficiencia_pct)+'%</span></div>'+
+    '<div class="ocup-grupo"><div class="ocup-grupo-label">Atelier</div><div class="ocup-pills">'+
+      ocupPill('Convencional',o.atelier.convencional.pct)+ocupPill('Montado',o.atelier.montado.pct)+
+    '</div></div>'+
+    '<div class="ocup-grupo"><div class="ocup-grupo-label">Máquinas de injetados</div><div class="ocup-pills">'+
+      Object.entries(POOL_LABELS).map(([k,lbl])=>ocupPill(lbl,(o.pools_injetados[k]||{}).pct||0)).join('')+
+    '</div></div>'+
+    '<div class="ocup-grupo"><div class="ocup-grupo-label">Setores de apoio</div><div class="ocup-pills">'+
+      Object.entries(SETOR_LABELS).map(([k,lbl])=>ocupPill(lbl,(o.setores_apoio[k]||{}).pct||0)).join('')+
+    '</div></div>'+
+  '</div>';
+}
+
+function ocupPill(label,pct){
+  return '<span class="ocup-pill '+ocupPillCls(pct)+'">'+label+' '+Math.round(pct)+'%</span>';
 }
 
 function kpiBox(cls,label,val,sub){
@@ -638,9 +719,11 @@ function renderMeses(){
         (d.pe?mcSub('pe','Armazém / PE',d.pe,d.pct_pe):'')+
         (d.convencional?mcSub('conv','Convencional',d.convencional,d.pct_conv):'')+
         (d.montado?mcSub('mont','Montado',d.montado,d.pct_mont):'')+
-      '</div>';
+      '</div>'+
+      ocupToggleBtn('mes',k);
     cont.appendChild(el);
   });
+  renderOcupacaoDrill();
 }
 
 function mcSub(cls,label,val,p){

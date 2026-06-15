@@ -6,10 +6,11 @@ Nenhum dos dois arquivos de origem é modificado — este módulo apenas lê
 ambos e expõe os indicadores (ver
 "capacidade fabril/ESPECIFICACAO_ocupacao_eficiencia_semanal.md").
 """
+import calendar
 import json
 import os
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), 'frontend')
 
@@ -179,19 +180,126 @@ def calcular(cap, prog_detalhe):
     return semanas_out
 
 
+def _mes_ref(semana):
+    """Mês 'dono' de uma semana = mês da sexta-feira (último dia útil),
+    espelhando mesRef() do frontend."""
+    ano, mes, dia = (int(p) for p in semana.split('-'))
+    sexta = date(ano, mes, dia) + timedelta(days=4)
+    return f'{sexta.year:04d}-{sexta.month:02d}'
+
+
+def _dias_uteis_mes(ano, mes):
+    _, ultimo_dia = calendar.monthrange(ano, mes)
+    return sum(1 for dia in range(1, ultimo_dia + 1) if date(ano, mes, dia).weekday() < 5)
+
+
+def agregar_meses(semanas_out, cap):
+    """Agrega os indicadores semanais por mês (seção 3 da especificação de
+    drill-down): consumo somado das semanas do mês contra a capacidade
+    diária de cada teto multiplicada pelos dias úteis reais do mês.
+    """
+    cap_atelier = cap['teto_atelier_semanal']
+    cap_pools_dia = {pool: dados['min_dia_total']
+                      for pool, dados in cap['pool_maquinas_injetados'].items()}
+    setores_apoio = cap['setores_apoio']
+
+    cap_dia = {
+        'atelier.convencional': cap_atelier['convencional_pares_semana'] / DIAS_UTEIS_SEMANA,
+        'atelier.montado': cap_atelier['montado_pares_semana'] / DIAS_UTEIS_SEMANA,
+        'setores_apoio.filial_palmilha': setores_apoio['filial_palmilha']['capacidade_dia'],
+        'setores_apoio.filial_sola': setores_apoio['filial_sola']['capacidade_dia'],
+        'setores_apoio.pintura': setores_apoio['capacidade_dia_observada']['pintura'],
+    }
+
+    acumulado = {}
+    for semana, dados in semanas_out.items():
+        mes = _mes_ref(semana)
+        ac = acumulado.setdefault(mes, {
+            'total_pares': 0,
+            'atelier.convencional': 0,
+            'atelier.montado': 0,
+            'setores_apoio.filial_palmilha': 0,
+            'setores_apoio.filial_sola': 0,
+            'setores_apoio.pintura': 0,
+            'pools_min': defaultdict(float),
+        })
+        ac['total_pares'] += dados['total_pares']
+        ac['atelier.convencional'] += dados['atelier']['convencional']['consumo']
+        ac['atelier.montado'] += dados['atelier']['montado']['consumo']
+        ac['setores_apoio.filial_palmilha'] += dados['setores_apoio']['filial_palmilha']['consumo']
+        ac['setores_apoio.filial_sola'] += dados['setores_apoio']['filial_sola']['consumo']
+        ac['setores_apoio.pintura'] += dados['setores_apoio']['pintura']['consumo']
+        for pool, pdados in dados['pools_injetados'].items():
+            ac['pools_min'][pool] += pdados['consumo_min_dia'] * DIAS_UTEIS_SEMANA
+
+    meses_out = {}
+    for mes, ac in acumulado.items():
+        ano, mes_num = (int(p) for p in mes.split('-'))
+        dias_uteis = _dias_uteis_mes(ano, mes_num)
+
+        atelier = {}
+        for chave, campo in (('convencional', 'atelier.convencional'), ('montado', 'atelier.montado')):
+            consumo = ac[campo]
+            capacidade = round(cap_dia[campo] * dias_uteis, 1)
+            atelier[chave] = {'consumo': consumo, 'capacidade': capacidade, 'pct': _pct(consumo, capacidade)}
+
+        pools_out = {}
+        for pool, cap_min_dia in cap_pools_dia.items():
+            consumo_min_dia = round(ac['pools_min'].get(pool, 0.0) / dias_uteis, 1) if dias_uteis else 0.0
+            pools_out[pool] = {
+                'consumo_min_dia': consumo_min_dia,
+                'capacidade_min_dia': cap_min_dia,
+                'pct': _pct(consumo_min_dia, cap_min_dia),
+            }
+
+        setores_out = {}
+        for setor, campo in (('filial_palmilha', 'setores_apoio.filial_palmilha'),
+                              ('filial_sola', 'setores_apoio.filial_sola'),
+                              ('pintura', 'setores_apoio.pintura')):
+            consumo = ac[campo]
+            capacidade = round(cap_dia[campo] * dias_uteis, 1)
+            setores_out[setor] = {'consumo': consumo, 'capacidade': capacidade, 'pct': _pct(consumo, capacidade)}
+
+        indicadores = {
+            'atelier.convencional': atelier['convencional']['pct'],
+            'atelier.montado': atelier['montado']['pct'],
+            'setores_apoio.filial_palmilha': setores_out['filial_palmilha']['pct'],
+            'setores_apoio.filial_sola': setores_out['filial_sola']['pct'],
+            'setores_apoio.pintura': setores_out['pintura']['pct'],
+        }
+        for pool, dados in pools_out.items():
+            indicadores['pools_injetados.' + pool] = dados['pct']
+
+        gargalo, eficiencia_pct = max(indicadores.items(), key=lambda kv: kv[1])
+
+        meses_out[mes] = {
+            'total_pares': ac['total_pares'],
+            'dias_uteis': dias_uteis,
+            'atelier': atelier,
+            'pools_injetados': pools_out,
+            'setores_apoio': setores_out,
+            'eficiencia_pct': eficiencia_pct,
+            'gargalo': gargalo,
+        }
+
+    return meses_out
+
+
 def gerar(saida='dados_ocupacao_semanal.json'):
     cap = _carregar_json('dados_capacidade.json')
     prog_detalhe = _carregar_json('dados_programacao_detalhe.json')
 
+    semanas = calcular(cap, prog_detalhe)
     out = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y'),
-        'semanas': calcular(cap, prog_detalhe),
+        'semanas': semanas,
+        'meses': agregar_meses(semanas, cap),
     }
 
     caminho = os.path.join(FRONTEND_DIR, saida)
     with open(caminho, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False)
-    print(f"    {caminho} gerado com {len(out['semanas'])} semanas")
+    print(f"    {caminho} gerado com {len(out['semanas'])} semanas e {len(out['meses'])} meses")
     return out
 
 
