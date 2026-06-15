@@ -10,6 +10,7 @@
 :root{
   --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
   --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --amarelo:#eab308;--roxo:#a78bfa;--vermelho:#ef4444;
   --bg:#0e1014;--card:#161922;--card2:#1c2030;
   --line:#262b3a;--line2:#333a4d;
   --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
@@ -92,15 +93,28 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .ocup-title{font-size:13px;font-weight:800;color:var(--txt)}
 .ocup-eficiencia{font-size:11px;font-weight:700;color:var(--txt-s)}
 .ocup-sub{font-size:10px;color:var(--txt-m);margin-top:2px}
-.ocup-gargalo{margin-bottom:14px}
-.ocup-grupo{margin-bottom:12px}
+.ocup-gargalo{margin-bottom:18px}
+.ocup-grupo{margin-bottom:18px}
 .ocup-grupo:last-child{margin-bottom:0}
-.ocup-grupo-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--txt-m);margin-bottom:6px}
-.ocup-pills{display:flex;gap:8px;flex-wrap:wrap}
-.ocup-pill{padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;background:var(--card2)}
-.ocup-pill.ok{color:var(--verde)}
-.ocup-pill.warn{color:var(--coral)}
-.ocup-pill.crit{color:#ef4444}
+.ocup-grupo-label{font-size:13px;font-weight:700;color:var(--txt);margin-bottom:10px}
+.ocup-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.ocup-card{background:var(--card2);border-radius:10px;padding:14px}
+.ocup-card-label{font-size:11px;font-weight:700;color:var(--txt-s);margin-bottom:12px}
+.ocup-card-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.ocup-card-fill{height:100%;border-radius:3px}
+.ocup-card-pct{font-size:1.1rem;font-weight:800}
+.vermelho{color:var(--vermelho)}
+.amarelo{color:var(--amarelo)}
+.verde{color:var(--verde)}
+.roxo{color:var(--roxo)}
+.ocup-card-fill.vermelho{background:var(--vermelho)}
+.ocup-card-fill.amarelo{background:var(--amarelo)}
+.ocup-card-fill.verde{background:var(--verde)}
+.ocup-card-fill.roxo{background:var(--roxo)}
+.badge.vermelho{background:rgba(239,68,68,.1)}
+.badge.amarelo{background:rgba(234,179,8,.1)}
+.badge.verde{background:rgba(108,156,55,.1)}
+.badge.roxo{background:rgba(167,139,250,.1)}
 .sem-card{cursor:pointer;transition:border-color .15s}
 .sem-card:hover{border-color:var(--coral2)}
 .sem-card.ativa{border-color:var(--coral);border-width:2px}
@@ -300,7 +314,7 @@ const ocupCor=p=>p>100?'#ef4444':(p>=85?'var(--coral)':'var(--verde)');
 let ocupAtiva=null, ocupTipo='semana';
 const POOL_LABELS={horizontal:'Horizontal',tiras:'Tiras',vertical:'Vertical',rotativa:'Rotativa',eva:'EVA'};
 const SETOR_LABELS={filial_palmilha:'Palmilha',filial_sola:'Sola',pintura:'Pintura'};
-const ocupPillCls=p=>p>=100?'crit':(p>=70?'warn':'ok');
+const ocupNivel=p=>p>105?'roxo':(p>=90?'verde':(p>=80?'amarelo':'vermelho'));
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
@@ -518,21 +532,25 @@ function renderOcupacaoDrill(){
     '<div class="ocup-head"><div><div class="ocup-title">'+titulo+'</div>'+
       (sub?'<div class="ocup-sub">'+sub+'</div>':'')+'</div>'+
       '<div class="ocup-eficiencia">Eficiência '+Math.round(o.eficiencia_pct)+'%</div></div>'+
-    '<div class="ocup-gargalo"><span class="badge '+ocupPillCls(o.eficiencia_pct)+'">Gargalo: '+gargaloNome+' a '+Math.round(o.eficiencia_pct)+'%</span></div>'+
-    '<div class="ocup-grupo"><div class="ocup-grupo-label">Atelier</div><div class="ocup-pills">'+
-      ocupPill('Convencional',o.atelier.convencional.pct)+ocupPill('Montado',o.atelier.montado.pct)+
+    '<div class="ocup-gargalo"><span class="badge '+ocupNivel(o.eficiencia_pct)+'">Gargalo: '+gargaloNome+' a '+Math.round(o.eficiencia_pct)+'%</span></div>'+
+    '<div class="ocup-grupo"><div class="ocup-grupo-label">Atelier</div><div class="ocup-cards">'+
+      ocupCard('Convencional',o.atelier.convencional.pct,o.atelier.convencional.consumo,o.atelier.convencional.capacidade)+
+      ocupCard('Montado',o.atelier.montado.pct,o.atelier.montado.consumo,o.atelier.montado.capacidade)+
     '</div></div>'+
-    '<div class="ocup-grupo"><div class="ocup-grupo-label">Máquinas de injetados</div><div class="ocup-pills">'+
-      Object.entries(POOL_LABELS).map(([k,lbl])=>ocupPill(lbl,(o.pools_injetados[k]||{}).pct||0)).join('')+
+    '<div class="ocup-grupo"><div class="ocup-grupo-label">Máquinas de injetados</div><div class="ocup-cards">'+
+      Object.entries(POOL_LABELS).map(([k,lbl])=>ocupCard(lbl,(o.pools_injetados[k]||{}).pct||0)).join('')+
     '</div></div>'+
-    '<div class="ocup-grupo"><div class="ocup-grupo-label">Setores de apoio</div><div class="ocup-pills">'+
-      Object.entries(SETOR_LABELS).map(([k,lbl])=>ocupPill(lbl,(o.setores_apoio[k]||{}).pct||0)).join('')+
+    '<div class="ocup-grupo"><div class="ocup-grupo-label">Setores de apoio</div><div class="ocup-cards">'+
+      Object.entries(SETOR_LABELS).map(([k,lbl])=>ocupCard(lbl,(o.setores_apoio[k]||{}).pct||0)).join('')+
     '</div></div>'+
   '</div>';
 }
 
-function ocupPill(label,pct){
-  return '<span class="ocup-pill '+ocupPillCls(pct)+'">'+label+' '+Math.round(pct)+'%</span>';
+function ocupCard(label,pct,consumo,capacidade){
+  const sub=(consumo!=null)?' · '+f(consumo)+' / '+f(capacidade):'';
+  return '<div class="ocup-card"><div class="ocup-card-label">'+label+sub+'</div>'+
+    '<div class="ocup-card-bar"><div class="ocup-card-fill '+ocupNivel(pct)+'" style="width:'+Math.min(pct,100)+'%"></div></div>'+
+    '<div class="ocup-card-pct '+ocupNivel(pct)+'">'+Math.round(pct)+'%</div></div>';
 }
 
 function kpiBox(cls,label,val,sub){
