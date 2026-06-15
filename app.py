@@ -27,7 +27,7 @@ DATA_FILES = (
     'dados_programacao_detalhe.json',
     'dados_refs_tabela.json', 'dados_vendas.json', 'dados_carteira.json',
     'boaonda_dados_completos.json', 'config_producao.json',
-    'dados_capacidade.json',
+    'dados_capacidade.json', 'dados_ocupacao_semanal.json',
 )
 
 # Primeira execução com volume vazio: semeia com os JSONs versionados no repo

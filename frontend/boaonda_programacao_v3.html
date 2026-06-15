@@ -76,6 +76,13 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .sc-tags{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
 .sc-tag{padding:2px 7px;border-radius:3px;font-size:8px;font-weight:700;background:var(--card2);color:var(--txt-s)}
 .sc-info{font-size:8.5px;color:var(--txt-m);margin-top:5px}
+.sc-ocup{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+.sc-ocup-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.sc-ocup-lbl{font-size:8.5px;color:var(--txt-m);width:60px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em}
+.sc-ocup-bar{flex:1;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.sc-ocup-fill{height:100%;border-radius:2px}
+.sc-ocup-val{font-size:9px;font-weight:700;color:var(--txt-s);width:32px;text-align:right;flex-shrink:0}
+.sc-ocup-gargalo{margin-top:6px}
 .sem-card{cursor:pointer;transition:border-color .15s}
 .sem-card:hover{border-color:var(--coral2)}
 .sem-card.ativa{border-color:var(--coral);border-width:2px}
@@ -251,8 +258,24 @@ let chartEv=null, chartMix=null, chartMontBar=null, chartMontDonut=null;
 let CONFIG={prazo_producao_dias:45};
 let semanaRefKey='', semanaRefLabel='';
 let DETALHE={semanas:{},cutoff:null};
+let OCUPACAO={semanas:{}};
 let semanaAtiva=null, progTab='cliente', itemAtivo=null;
 let PD_REF=[];
+
+const GARGALO_LABELS={
+  'atelier.convencional':'Atelier Conv.',
+  'atelier.montado':'Atelier Mont.',
+  'pools_injetados.horizontal':'Pool Horizontal',
+  'pools_injetados.tiras':'Pool Tiras',
+  'pools_injetados.vertical':'Pool Vertical',
+  'pools_injetados.rotativa':'Pool Rotativa',
+  'pools_injetados.eva':'Pool EVA',
+  'setores_apoio.filial_palmilha':'Filial Palmilha',
+  'setores_apoio.filial_sola':'Filial Sola',
+  'setores_apoio.pintura':'Pintura',
+};
+const ocupCls=p=>p>100?'crit':(p>=85?'warn':'ok');
+const ocupCor=p=>p>100?'#ef4444':(p>=85?'var(--coral)':'var(--verde)');
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
@@ -323,9 +346,11 @@ Promise.all([
   fetch('dados_refs_tabela.json?_='+Date.now()).then(r=>r.ok?r.json():_REFS).catch(()=>_REFS),
   fetch('config_producao.json?_='+Date.now()).then(r=>r.ok?r.json():{}).catch(()=>({})),
   fetch('dados_programacao_detalhe.json?_='+Date.now()).then(r=>r.ok?r.json():{semanas:{},cutoff:null}).catch(()=>({semanas:{},cutoff:null})),
-]).then(([d,rt,cfg,det])=>{
+  fetch('dados_ocupacao_semanal.json?_='+Date.now()).then(r=>r.ok?r.json():{semanas:{}}).catch(()=>({semanas:{}})),
+]).then(([d,rt,cfg,det,ocup])=>{
   if(cfg&&cfg.prazo_producao_dias) CONFIG.prazo_producao_dias=cfg.prazo_producao_dias;
   DETALHE=det||{semanas:{},cutoff:null};
+  OCUPACAO=ocup||{semanas:{}};
   inicializar(d,rt);
 });
 
@@ -405,10 +430,28 @@ function renderSemanas(){
         (d.export?'<span class="sc-tag ex">ME '+f(d.export)+' ('+d.pct_export+'%)</span>':'')+
         (d.pe?'<span class="sc-tag pe">PE '+f(d.pe)+' ('+d.pct_pe+'%)</span>':'')+
       '</div>'+
-      '<div class="sc-info">'+d.pedidos+' ped · top: '+top+'</div>';
+      '<div class="sc-info">'+d.pedidos+' ped · top: '+top+'</div>'+
+      renderOcupacaoCard(k);
     grid.appendChild(el);
   });
   renderSemDrill();
+}
+
+// Painel "saúde da semana" (ocupação Atelier + gargalo) — seção 5.1
+function renderOcupacaoCard(k){
+  const o=(OCUPACAO.semanas||{})[k];
+  if(!o) return '';
+  const conv=o.atelier.convencional.pct, mont=o.atelier.montado.pct;
+  const gargaloNome=GARGALO_LABELS[o.gargalo]||o.gargalo;
+  return '<div class="sc-ocup">'+
+    '<div class="sc-ocup-row"><span class="sc-ocup-lbl">Atelier Conv</span>'+
+      '<div class="sc-ocup-bar"><div class="sc-ocup-fill" style="width:'+Math.min(conv,100)+'%;background:'+ocupCor(conv)+'"></div></div>'+
+      '<span class="sc-ocup-val">'+Math.round(conv)+'%</span></div>'+
+    '<div class="sc-ocup-row"><span class="sc-ocup-lbl">Atelier Mont</span>'+
+      '<div class="sc-ocup-bar"><div class="sc-ocup-fill" style="width:'+Math.min(mont,100)+'%;background:'+ocupCor(mont)+'"></div></div>'+
+      '<span class="sc-ocup-val">'+Math.round(mont)+'%</span></div>'+
+    '<div class="sc-ocup-gargalo"><span class="badge '+ocupCls(o.eficiencia_pct)+'">Gargalo: '+gargaloNome+' '+Math.round(o.eficiencia_pct)+'%</span></div>'+
+  '</div>';
 }
 
 function kpiBox(cls,label,val,sub){
