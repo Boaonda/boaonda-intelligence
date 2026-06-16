@@ -141,6 +141,16 @@ tr:last-child td{border:none}
   </div>
   <div class="h-right">
     <div class="h-meta">Base: Programação_GERAL · Atualizado em <strong id="hdr-data">–</strong></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="exportarExcel()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--card2);border:1.5px solid var(--line2);border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;color:var(--txt-s);font-family:'Montserrat',sans-serif;transition:.15s" onmouseover="this.style.borderColor='var(--coral)';this.style.color='var(--coral)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--txt-s)'">
+        ⬇ Exportar Excel
+      </button>
+      <label style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--card2);border:1.5px solid var(--line2);border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;color:var(--txt-s);font-family:'Montserrat',sans-serif;transition:.15s" onmouseover="this.style.borderColor='var(--azul)';this.style.color='var(--azul)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--txt-s)'">
+        ⬆ Importar Excel
+        <input type="file" accept=".xlsx" style="display:none" onchange="importarExcel(this)">
+      </label>
+    </div>
+    <div id="cap-import-msg" style="font-size:10px;text-align:right;min-height:14px"></div>
   </div>
 </div>
 
@@ -601,6 +611,40 @@ function renderValidacao(){
   } else {
     document.getElementById('valid-list').innerHTML = '';
   }
+}
+
+function exportarExcel(){
+  const a=document.createElement('a');
+  a.href='/api/capacidade/exportar';
+  a.download='Boaonda_Capacidade_Fabril.xlsx';
+  a.click();
+}
+
+function importarExcel(input){
+  const file=input.files[0];
+  if(!file) return;
+  const msg=document.getElementById('cap-import-msg');
+  msg.style.color='var(--txt-m)';
+  msg.textContent='Enviando e validando…';
+  const fd=new FormData();
+  fd.append('arquivo',file);
+  fetch('/api/capacidade/importar',{method:'POST',body:fd})
+    .then(r=>r.json())
+    .then(res=>{
+      if(res.status==='ok'){
+        msg.style.color='var(--verde)';
+        msg.textContent=`✓ ${res.refs_importadas} referências importadas. Recarregue a página.`;
+      } else {
+        msg.style.color='#ef4444';
+        msg.textContent='✗ Erro: '+res.mensagem;
+        console.error('Importação rejeitada:', res.mensagem);
+      }
+    })
+    .catch(e=>{
+      msg.style.color='#ef4444';
+      msg.textContent='✗ Erro de comunicação: '+e.message;
+    })
+    .finally(()=>{ input.value=''; });
 }
 </script>
 </body>

@@ -422,6 +422,49 @@ def recarregar():
     return render_template_string(_RECARREGAR_HTML, message=message, ok=ok, disabled=False)
 
 
+@app.route('/api/capacidade/exportar')
+def capacidade_exportar():
+    from processador_capacidade import exportar_capacidade_excel
+    from flask import send_file
+    dados_path = DATA_DIR / 'dados_capacidade.json'
+    if not dados_path.exists():
+        return jsonify({'erro': 'dados_capacidade.json não encontrado'}), 404
+    try:
+        buf = exportar_capacidade_excel(str(dados_path))
+        return send_file(
+            buf,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='Boaonda_Capacidade_Fabril.xlsx',
+        )
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'erro': str(ex)}), 500
+
+
+@app.route('/api/capacidade/importar', methods=['POST'])
+def capacidade_importar():
+    from processador_capacidade import importar_capacidade_excel
+    f = request.files.get('arquivo')
+    if not f or not f.filename:
+        return jsonify({'status': 'erro', 'mensagem': 'Nenhum arquivo enviado.'}), 400
+    path_xlsx = UPLOADS_DIR / 'capacidade_import.xlsx'
+    f.save(str(path_xlsx))
+    try:
+        resultado = importar_capacidade_excel(
+            str(path_xlsx),
+            str(DATA_DIR / 'dados_capacidade.json'),
+            str(DATA_DIR),
+        )
+        return jsonify(resultado)
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'status': 'erro', 'mensagem': str(ex)}), 500
+    finally:
+        if path_xlsx.exists():
+            path_xlsx.unlink()
+
+
 @app.route('/version')
 def version():
     import subprocess
