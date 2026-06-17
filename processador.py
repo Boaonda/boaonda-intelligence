@@ -673,9 +673,11 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
     wb = xlrd.open_workbook(arquivo_esqt)
     ws = wb.sheet_by_index(0)
     estoque = defaultdict(lambda: {
-        'descricaoCompleta':'','fisico':0,'reservas':0,'livre':0,
-        'vlr_fisico':0.0,'vlr_livre':0.0,'locais':set(),
-        'combinacoes': defaultdict(lambda: {'fisico':0,'reservas':0,'livre':0})
+        'fisico':0,'reservas':0,'livre':0,'vlr_fisico':0.0,'vlr_livre':0.0,'locais':set(),
+        'linhas': defaultdict(lambda: {
+            'fisico':0,'reservas':0,'livre':0,'locais':set(),
+            'combinacoes': defaultdict(lambda: {'fisico':0,'reservas':0,'livre':0})
+        })
     })
 
     for r in range(1, ws.nrows):
@@ -695,13 +697,16 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
         try: vlr_l   = float(ge(12)) if ge(12) else 0.0
         except: vlr_l = 0.0
         e = estoque[ref]
-        if not e['descricaoCompleta'] and descr: e['descricaoCompleta'] = descr
         e['fisico'] += fisico; e['reservas'] += reservas; e['livre'] += livre
         e['vlr_fisico'] += vlr_f; e['vlr_livre'] += vlr_l; e['locais'].add(local)
-        if comb:
-            e['combinacoes'][comb]['fisico'] += fisico
-            e['combinacoes'][comb]['reservas'] += reservas
-            e['combinacoes'][comb]['livre'] += livre
+        if descr:
+            ln = e['linhas'][descr]
+            ln['fisico'] += fisico; ln['reservas'] += reservas; ln['livre'] += livre
+            ln['locais'].add(local)
+            if comb:
+                ln['combinacoes'][comb]['fisico'] += fisico
+                ln['combinacoes'][comb]['reservas'] += reservas
+                ln['combinacoes'][comb]['livre'] += livre
 
     total_f = sum(d['fisico'] for d in estoque.values())
     total_r = sum(d['reservas'] for d in estoque.values())
@@ -710,13 +715,24 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
 
     estoque_out = {}
     for ref, d in sorted(estoque.items(), key=lambda x: -x[1]['livre']):
+        linhas_sorted = sorted(d['linhas'].items(), key=lambda x: -x[1]['livre'])
+        descr_principal = linhas_sorted[0][0] if linhas_sorted else ''
+        all_locais = sorted(set().union(*[ln['locais'] for ln in d['linhas'].values()]) if d['linhas'] else set())
+        total_combs = sum(len(ln['combinacoes']) for ln in d['linhas'].values())
         estoque_out[ref] = {
-            'descricaoCompleta':d['descricaoCompleta'],
+            'descricaoCompleta': descr_principal,
             'fisico':int(d['fisico']),'reservas':int(d['reservas']),'livre':int(d['livre']),
             'vlr_fisico':round(d['vlr_fisico'],2),'vlr_livre':round(d['vlr_livre'],2),
-            'locais':sorted(list(d['locais'])),'qtd_combinacoes':len(d['combinacoes']),
-            'combinacoes':{k:{kk:int(vv) for kk,vv in v.items()}
-                for k,v in sorted(d['combinacoes'].items(), key=lambda x:-x[1]['livre'])}
+            'locais': all_locais, 'qtd_combinacoes': total_combs,
+            'linhas': {
+                descr: {
+                    'fisico':int(ln['fisico']),'reservas':int(ln['reservas']),'livre':int(ln['livre']),
+                    'locais':sorted(list(ln['locais'])),'qtd_combinacoes':len(ln['combinacoes']),
+                    'combinacoes':{k:{kk:int(vv) for kk,vv in v.items()}
+                        for k,v in sorted(ln['combinacoes'].items(), key=lambda x:-x[1]['livre'])}
+                }
+                for descr, ln in linhas_sorted
+            }
         }
     totais_est = {
         'fisico':int(total_f),'reservas':int(total_r),'livre':int(total_l),

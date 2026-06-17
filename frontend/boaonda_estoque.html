@@ -207,9 +207,10 @@ let DATA = {};
 let chartTop = null, chartStk = null;
 
 // Estado drill-down: modelo → linha → combinações
-let nivel = 1;         // 1=modelos, 2=linhas, 3=combinações
-let modeloAtivo = null; // nome do modelo, ex: "NELLIE"
-let refAtiva = null;    // chave do DATA, ex: "1317 NELLIE"
+let nivel = 1;          // 1=modelos, 2=linhas, 3=combinações
+let modeloAtivo = null;  // nome do modelo, ex: "NELLIE"
+let refAtiva = null;     // chave do DATA, ex: "1317 NELLIE"
+let linhaAtiva = null;   // descricaoCompleta da linha, ex: "SANDALIA FEM TR (162)"
 let searchQ = '';
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
@@ -283,13 +284,30 @@ function renderCharts(t){
   });
 }
 
+// ── Helpers de combinação ──────────────────────────────────
+// "001 (PRETO/PRETO)" → "Preto" | "004 (BAUNILHA/AMORA)" → "Baunilha / Amora"
+function combDisplayName(key){
+  const m = key.match(/\((.+)\)/);
+  if(!m) return key;
+  const isFl = key.startsWith('[FL]') || key.startsWith('[PL]');
+  const prefix = isFl ? key.match(/^\[.+?\]/)[0]+' ' : '';
+  const parts = m[1].split('/').map(s=>s.trim().split(' ')
+    .map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' '));
+  return prefix + (parts[0]===parts[1] ? parts[0] : parts.join(' / '));
+}
+// Status de combinação: verde se livre>0, amber se baixo, vermelho se zero
+function combBrd(livre,fisico){
+  const pL = fisico?Math.round(livre/fisico*100):0;
+  return livre===0?'brd-crit':pL<20?'brd-warn':'brd-ok';
+}
+
 // ── Navegação ──────────────────────────────────────────────
 function navModelo(nm){ modeloAtivo=nm; nivel=2; renderDrill(); }
-function navLinha(refKey){ refAtiva=refKey; nivel=3; renderDrill(); }
+function navLinha(refKey, linhaDescr){ refAtiva=refKey; linhaAtiva=linhaDescr; nivel=3; renderDrill(); }
 function navBack(n){
   nivel=n;
-  if(n===1){ modeloAtivo=null; refAtiva=null; }
-  if(n===2){ refAtiva=null; }
+  if(n===1){ modeloAtivo=null; refAtiva=null; linhaAtiva=null; }
+  if(n===2){ refAtiva=null; linhaAtiva=null; }
   renderDrill();
 }
 
@@ -304,9 +322,8 @@ function renderBreadcrumb(){
       ? `<span class="bc-cur">${modeloAtivo}</span>`
       : `<span class="bc-link" onclick="navBack(2)">${modeloAtivo}</span>`;
   }
-  if(nivel===3 && refAtiva){
-    const d=DATA[refAtiva];
-    h += `<span class="bc-sep">›</span><span class="bc-cur">${numLinha(d.descricaoCompleta)}</span>`;
+  if(nivel===3 && linhaAtiva){
+    h += `<span class="bc-sep">›</span><span class="bc-cur">${numLinha(linhaAtiva)}</span>`;
   }
   return h;
 }
@@ -335,17 +352,16 @@ function filtrar(){
 
 function renderModelos(c){
   const mmap = buildModelMap();
-  // Agregar totais por modelo
   let modelos = Object.entries(mmap).map(([nm,refs])=>{
     const fisico=refs.reduce((s,[,d])=>s+d.fisico,0);
     const reservas=refs.reduce((s,[,d])=>s+d.reservas,0);
     const livre=refs.reduce((s,[,d])=>s+d.livre,0);
+    // Contar linhas reais do novo formato (d.linhas) ou fallback para 1
+    const qtdLinhas=refs.reduce((s,[,d])=>s+(d.linhas?Object.keys(d.linhas).length:1),0);
     const qtdCombs=refs.reduce((s,[,d])=>s+(d.qtd_combinacoes||0),0);
-    return {nm,fisico,reservas,livre,qtdCombs,refs};
+    return {nm,fisico,reservas,livre,qtdLinhas,qtdCombs,refs};
   });
-  // Filtrar por busca
   if(searchQ) modelos=modelos.filter(m=>m.nm.toLowerCase().includes(searchQ));
-  // Ordenar por livre desc
   modelos.sort((a,b)=>b.livre-a.livre);
 
   const wrap = document.createElement('div');
@@ -356,7 +372,7 @@ function renderModelos(c){
     return `<div class="dr-row ${brd}" onclick="navModelo('${m.nm.replace(/'/g,"\\'")}')">
       <div class="dr-left">
         <div class="dr-name">${m.nm}</div>
-        <div class="dr-sub">${m.refs.length} linha${m.refs.length>1?'s':''} · ${m.qtdCombs} combinações</div>
+        <div class="dr-sub">${m.qtdLinhas} linha${m.qtdLinhas!==1?'s':''} · ${m.qtdCombs} combinações</div>
       </div>
       <div class="dr-right">
         <span class="dr-livre">${f(m.livre)}</span>
@@ -383,22 +399,39 @@ function renderLinhas(c){
   const refs = (mmap[modeloAtivo]||[]);
   if(!refs.length){ navBack(1); return; }
 
-  // Ordenar por livre desc
-  const sorted = [...refs].sort(([,a],[,b])=>b.livre-a.livre);
+  // Achatar todas as linhas de todas as refs deste modelo
+  let linhas = []; // [{refKey, linhaDescr, fisico, reservas, livre, locais, qtdCombs}]
+  refs.forEach(([key,d])=>{
+    if(d.linhas && Object.keys(d.linhas).length>0){
+      Object.entries(d.linhas).forEach(([ld,ln])=>{
+        linhas.push({refKey:key,linhaDescr:ld,
+          fisico:ln.fisico,reservas:ln.reservas,livre:ln.livre,
+          locais:ln.locais||[],qtdCombs:ln.qtd_combinacoes||0});
+      });
+    } else {
+      // Fallback: JSON antigo sem linhas
+      linhas.push({refKey:key,linhaDescr:d.descricaoCompleta,
+        fisico:d.fisico,reservas:d.reservas,livre:d.livre,
+        locais:d.locais||[],qtdCombs:d.qtd_combinacoes||0});
+    }
+  });
+  linhas.sort((a,b)=>b.livre-a.livre);
 
-  const rows = sorted.map(([key,d])=>{
-    const pL=d.fisico?Math.round(d.livre/d.fisico*100):0;
-    const brd=statusBrd(d.livre,pL);
+  const rows = linhas.map(ln=>{
+    const pL=ln.fisico?Math.round(ln.livre/ln.fisico*100):0;
+    const brd=statusBrd(ln.livre,pL);
     const pCor=statusPctCor(pL);
-    const linha=numLinha(d.descricaoCompleta);
-    const tipo=tipoDescr(d.descricaoCompleta);
-    return `<div class="dr-row ${brd}" onclick="navLinha('${key.replace(/'/g,"\\'")}')">
+    const nLinha=numLinha(ln.linhaDescr);
+    const tipo=tipoDescr(ln.linhaDescr);
+    const rk=ln.refKey.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const ld=ln.linhaDescr.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="dr-row ${brd}" onclick="navLinha('${rk}','${ld}')">
       <div class="dr-left">
-        <div class="dr-name">${linha}</div>
-        <div class="dr-sub">${tipo} · ${d.qtd_combinacoes} combinações · Locais: ${(d.locais||[]).join(', ')}</div>
+        <div class="dr-name">${nLinha}</div>
+        <div class="dr-sub">${tipo} · ${ln.qtdCombs} combinações · Locais: ${ln.locais.join(', ')}</div>
       </div>
       <div class="dr-right">
-        <span class="dr-livre">${f(d.livre)}</span>
+        <span class="dr-livre">${f(ln.livre)}</span>
         <span class="dr-pct" style="color:${pCor}">${pL}%</span>
         <span class="dr-arrow">›</span>
       </div>
@@ -409,31 +442,46 @@ function renderLinhas(c){
   wrap.innerHTML = `
     <div class="drill-sec-title">Linhas — ${modeloAtivo}</div>
     ${LEGENDA}
-    <div class="drill-list">${rows}</div>`;
+    <div class="drill-list">${rows||'<div style="padding:16px;color:var(--txt-m)">Sem linhas</div>'}</div>`;
   c.appendChild(wrap);
 }
 
-// ── Nível 3 — Combinações ──────────────────────────────────
+// ── Nível 3 — Combinações (lista estilo analytics hub) ────
 function renderCombinacoes(c){
   const d = DATA[refAtiva];
   if(!d){ navBack(1); return; }
-  const combs = d.combinacoes || {};
+
+  // Ler combinações da linha específica (novo formato) ou fallback
+  let combs = {};
+  if(d.linhas && d.linhas[linhaAtiva]){
+    combs = d.linhas[linhaAtiva].combinacoes || {};
+  } else {
+    combs = d.combinacoes || {};
+  }
   const sorted = Object.entries(combs).sort(([,a],[,b])=>b.livre-a.livre);
 
-  const combsHtml = sorted.map(([comb,cv])=>`
-    <div class="comb-card ${cv.livre===0?'comb-zero':''}">
-      <div class="comb-card-name">${comb}</div>
-      <div class="comb-card-nums">
-        <span class="comb-livre">${f(cv.livre)}</span>
-        ${cv.reservas?`<span class="comb-res">res: ${f(cv.reservas)}</span>`:''}
+  const rows = sorted.map(([comb,cv])=>{
+    const brd=combBrd(cv.livre,cv.fisico);
+    const nome=combDisplayName(comb);
+    const pCor=cv.livre===0?'var(--red)':cv.livre<50?'var(--amber)':'var(--verde)';
+    return `<div class="dr-row ${brd}">
+      <div class="dr-left">
+        <div class="dr-name">${nome}</div>
       </div>
-    </div>`).join('');
+      <div class="dr-right">
+        <span class="dr-livre" style="color:${pCor}">${f(cv.livre)}</span>
+        ${cv.reservas?`<span style="font-size:10px;color:var(--amber)">res: ${f(cv.reservas)}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
 
+  const tipo=tipoDescr(linhaAtiva||'');
+  const nLinha=numLinha(linhaAtiva||'');
   const wrap = document.createElement('div');
   wrap.innerHTML = `
-    <div class="drill-sec-title">Combinações — ${modeloAtivo} / Linha ${numLinha(d.descricaoCompleta)}</div>
-    <div style="font-size:11px;color:var(--txt-m);margin-bottom:16px">${tipoDescr(d.descricaoCompleta)} · ${d.qtd_combinacoes} combinações · Locais: ${(d.locais||[]).join(', ')}</div>
-    <div class="combs-grid-v2">${combsHtml||'<span style="color:var(--txt-m);font-size:11px">Sem combinações</span>'}</div>`;
+    <div class="drill-sec-title">Cores — ${modeloAtivo} / Linha ${nLinha}</div>
+    <div style="font-size:10px;color:var(--txt-m);margin-bottom:14px;text-transform:uppercase;letter-spacing:.08em">${tipo} · ${sorted.length} combinações</div>
+    <div class="drill-list">${rows||'<div style="padding:16px;color:var(--txt-m)">Sem combinações</div>'}</div>`;
   c.appendChild(wrap);
 }
 
