@@ -342,6 +342,40 @@ function mondayKey(date){
   return mon.toISOString().slice(0,10);
 }
 
+// Número de semana ISO (1–53) a partir da chave "YYYY-MM-DD" (segunda-feira)
+function isoWeek(semKey){
+  const [y,m,d]=semKey.split('-').map(Number);
+  const thu=new Date(y,m-1,d+3); // quinta-feira determina o ano ISO
+  const anoStart=new Date(thu.getFullYear(),0,1);
+  return Math.ceil(((thu-anoStart)/864e5+1)/7);
+}
+
+// Label legível da semana a partir da chave Monday (YYYY-MM-DD)
+function labelSemana(semKey){
+  const [y,m,d]=semKey.split('-').map(Number);
+  const MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const fri=new Date(y,m-1,d+4);
+  const p=n=>String(n).padStart(2,'0');
+  return p(d)+'/'+MN[m-1]+'-'+p(fri.getDate())+'/'+MN[fri.getMonth()];
+}
+
+// Todas as chaves de semana (YYYY-MM-DD) cujo mês "dono" (sexta-feira) é mesKey
+function semanasDoMes(mesKey){
+  const [y,m]=mesKey.split('-').map(Number);
+  const ref=new Date(y,m-1,1);
+  const dow=ref.getDay();
+  // segunda-feira da semana antes da primeira semana do mês
+  const ini=new Date(ref);
+  ini.setDate(1-(dow===0?6:dow-1)-7);
+  const fim=new Date(y,m,0); // último dia do mês
+  const keys=[];
+  for(let cur=new Date(ini);cur<=fim;cur.setDate(cur.getDate()+7)){
+    const k=cur.toISOString().slice(0,10);
+    if(mesRef(k,null)===mesKey) keys.push(k);
+  }
+  return keys.sort();
+}
+
 // Simulador: para cada opção de prazo, mostra a semana (label, último dia
 // = sexta) que seria a "semana de referência" caso o prazo fosse esse.
 const PRAZOS_SIMULADOR=[35,40,45,50];
@@ -422,19 +456,22 @@ function renderTudo(){
 
 // SEMANAS
 function renderSemanas(){
-  const sems=Object.entries(SEMANAS).filter(([k,v])=>mesRef(k,v)===periodoAtual);
+  // Todas as semanas do período — incluindo as sem programação
+  const todasKeys=semanasDoMes(periodoAtual);
+  const sems=todasKeys.map(k=>[k, SEMANAS[k]||null]);
+
   const [ano,mesN]=periodoAtual.split('-');
   const mn=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   document.getElementById('periodo-label').textContent=mn[parseInt(mesN)-1]+'/'+ano;
 
-  const totP=sems.reduce((s,[,v])=>s+v.total,0);
+  const totP=sems.reduce((s,[,v])=>s+(v?v.total:0),0);
   const metaP=sems.length*META;
-  const totMI=sems.reduce((s,[,v])=>s+(v.mi||0),0);
-  const totEx=sems.reduce((s,[,v])=>s+(v.export||0),0);
-  const totPE=sems.reduce((s,[,v])=>s+(v.pe||0),0);
-  const totCV=sems.reduce((s,[,v])=>s+(v.convencional||0),0);
-  const totMT=sems.reduce((s,[,v])=>s+(v.montado||0),0);
-  const semsOk=sems.filter(([,v])=>v.ok).length;
+  const totMI=sems.reduce((s,[,v])=>s+(v?v.mi||0:0),0);
+  const totEx=sems.reduce((s,[,v])=>s+(v?v.export||0:0),0);
+  const totPE=sems.reduce((s,[,v])=>s+(v?v.pe||0:0),0);
+  const totCV=sems.reduce((s,[,v])=>s+(v?v.convencional||0:0),0);
+  const totMT=sems.reduce((s,[,v])=>s+(v?v.montado||0:0),0);
+  const semsOk=sems.filter(([,v])=>v&&v.ok).length;
 
   const pctMetaP=metaP?Math.round(totP/metaP*100):0;
   document.getElementById('kpi-area').innerHTML=
@@ -452,27 +489,40 @@ function renderSemanas(){
   grid.innerHTML='';
   if(!sems.length){grid.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:20px">Nenhuma semana para este período.</div>';return;}
   sems.forEach(([k,d])=>{
-    const diff=d.total-META;
-    const cor=d.ok?'var(--verde)':d.pct_meta>=85?'var(--coral)':'#ef4444';
-    const cls=d.ok?'ok':d.pct_meta>=85?'warn':'crit';
-    const top=d.top_refs&&d.top_refs[0]?d.top_refs[0][0].split(' ').slice(0,2).join(' '):'–';
     const el=document.createElement('div');
-    el.className='sem-card '+cls+(k===hojeKey?' atual':'')+(k===semanaRefKey?' foco':'')+(k===semanaAtiva?' ativa':'');
-    el.onclick=()=>toggleSemana(k);
-    el.innerHTML=
-      '<div class="sc-num">Semana</div>'+
-      '<div class="sc-range">'+d.label+'</div>'+
-      '<div class="sc-total">'+f(d.total)+'</div>'+
-      '<div class="sc-delta '+cls+'">'+(diff>=0?'▲ +':'▼ ')+f(Math.abs(diff))+'</div>'+
-      '<div class="sc-bar"><div class="sc-fill" style="width:'+Math.min(d.pct_meta,130)+'%;background:'+cor+'"></div></div>'+
-      '<div class="sc-tags">'+
-        (d.mi?'<span class="sc-tag mi">MI '+f(d.mi)+' ('+d.pct_mi+'%)</span>':'')+
-        (d.export?'<span class="sc-tag ex">ME '+f(d.export)+' ('+d.pct_export+'%)</span>':'')+
-        (d.pe?'<span class="sc-tag pe">PE '+f(d.pe)+' ('+d.pct_pe+'%)</span>':'')+
-      '</div>'+
-      '<div class="sc-info">'+d.pedidos+' ped · top: '+top+'</div>'+
-      renderOcupacaoCard(k)+
-      ocupToggleBtn('semana',k);
+    const semNum='Semana '+isoWeek(k);
+    if(!d){
+      // Semana sem programação — visível mas vazia
+      el.className='sem-card crit'+(k===hojeKey?' atual':'')+(k===semanaRefKey?' foco':'');
+      el.innerHTML=
+        '<div class="sc-num">'+semNum+'</div>'+
+        '<div class="sc-range">'+labelSemana(k)+'</div>'+
+        '<div class="sc-total" style="color:var(--txt-m)">0</div>'+
+        '<div class="sc-delta crit">▼ -'+f(META)+'</div>'+
+        '<div class="sc-bar"><div class="sc-fill" style="width:0%;background:#ef4444"></div></div>'+
+        '<div class="sc-info" style="color:var(--txt-m);font-style:italic">Sem programação</div>';
+    } else {
+      const diff=d.total-META;
+      const cor=d.ok?'var(--verde)':d.pct_meta>=85?'var(--coral)':'#ef4444';
+      const cls=d.ok?'ok':d.pct_meta>=85?'warn':'crit';
+      const top=d.top_refs&&d.top_refs[0]?d.top_refs[0][0].split(' ').slice(0,2).join(' '):'–';
+      el.className='sem-card '+cls+(k===hojeKey?' atual':'')+(k===semanaRefKey?' foco':'')+(k===semanaAtiva?' ativa':'');
+      el.onclick=()=>toggleSemana(k);
+      el.innerHTML=
+        '<div class="sc-num">'+semNum+'</div>'+
+        '<div class="sc-range">'+d.label+'</div>'+
+        '<div class="sc-total">'+f(d.total)+'</div>'+
+        '<div class="sc-delta '+cls+'">'+(diff>=0?'▲ +':'▼ ')+f(Math.abs(diff))+'</div>'+
+        '<div class="sc-bar"><div class="sc-fill" style="width:'+Math.min(d.pct_meta,130)+'%;background:'+cor+'"></div></div>'+
+        '<div class="sc-tags">'+
+          (d.mi?'<span class="sc-tag mi">MI '+f(d.mi)+' ('+d.pct_mi+'%)</span>':'')+
+          (d.export?'<span class="sc-tag ex">ME '+f(d.export)+' ('+d.pct_export+'%)</span>':'')+
+          (d.pe?'<span class="sc-tag pe">PE '+f(d.pe)+' ('+d.pct_pe+'%)</span>':'')+
+        '</div>'+
+        '<div class="sc-info">'+d.pedidos+' ped · top: '+top+'</div>'+
+        renderOcupacaoCard(k)+
+        ocupToggleBtn('semana',k);
+    }
     grid.appendChild(el);
   });
   renderSemDrill();
