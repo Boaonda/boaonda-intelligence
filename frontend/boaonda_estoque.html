@@ -394,13 +394,17 @@ function renderModelos(c){
 }
 
 // ── Nível 2 — Linhas ───────────────────────────────────────
+let linhaSort = 'livre'; // 'livre' | 'nome'
+
+function sortLinhas(modo){ linhaSort=modo; renderDrill(); }
+
 function renderLinhas(c){
   const mmap = buildModelMap();
   const refs = (mmap[modeloAtivo]||[]);
   if(!refs.length){ navBack(1); return; }
 
   // Achatar todas as linhas de todas as refs deste modelo
-  let linhas = []; // [{refKey, linhaDescr, fisico, reservas, livre, locais, qtdCombs}]
+  let linhas = [];
   refs.forEach(([key,d])=>{
     if(d.linhas && Object.keys(d.linhas).length>0){
       Object.entries(d.linhas).forEach(([ld,ln])=>{
@@ -409,13 +413,20 @@ function renderLinhas(c){
           locais:ln.locais||[],qtdCombs:ln.qtd_combinacoes||0});
       });
     } else {
-      // Fallback: JSON antigo sem linhas
       linhas.push({refKey:key,linhaDescr:d.descricaoCompleta,
         fisico:d.fisico,reservas:d.reservas,livre:d.livre,
         locais:d.locais||[],qtdCombs:d.qtd_combinacoes||0});
     }
   });
-  linhas.sort((a,b)=>b.livre-a.livre);
+
+  // Totalizador
+  const totalLivre = linhas.reduce((s,ln)=>s+ln.livre,0);
+  const totalFisico = linhas.reduce((s,ln)=>s+ln.fisico,0);
+  const totalPL = totalFisico?Math.round(totalLivre/totalFisico*100):0;
+
+  // Ordenação
+  if(linhaSort==='nome') linhas.sort((a,b)=>numLinha(a.linhaDescr).localeCompare(numLinha(b.linhaDescr),(undefined,{numeric:true})));
+  else linhas.sort((a,b)=>b.livre-a.livre);
 
   const rows = linhas.map(ln=>{
     const pL=ln.fisico?Math.round(ln.livre/ln.fisico*100):0;
@@ -427,7 +438,7 @@ function renderLinhas(c){
     const ld=ln.linhaDescr.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     return `<div class="dr-row ${brd}" onclick="navLinha('${rk}','${ld}')">
       <div class="dr-left">
-        <div class="dr-name">${nLinha}</div>
+        <div class="dr-name">${modeloAtivo} ${nLinha}</div>
         <div class="dr-sub">${tipo} · ${ln.qtdCombs} combinações · Locais: ${ln.locais.join(', ')}</div>
       </div>
       <div class="dr-right">
@@ -442,6 +453,16 @@ function renderLinhas(c){
   wrap.innerHTML = `
     <div class="drill-sec-title">Linhas — ${modeloAtivo}</div>
     ${LEGENDA}
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-size:1.4rem;font-weight:800;color:var(--coral)">${f(totalLivre)}</span>
+        <span style="font-size:10px;color:var(--txt-m)">pares livres · ${totalPL}% do físico · ${linhas.length} linha${linhas.length!==1?'s':''}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="sortLinhas('nome')" style="background:${linhaSort==='nome'?'var(--coral)':'var(--card2)'};border:1px solid ${linhaSort==='nome'?'var(--coral)':'var(--border)'};color:${linhaSort==='nome'?'#fff':'var(--txt-s)'};border-radius:6px;padding:4px 12px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">Nome</button>
+        <button onclick="sortLinhas('livre')" style="background:${linhaSort==='livre'?'var(--coral)':'var(--card2)'};border:1px solid ${linhaSort==='livre'?'var(--coral)':'var(--border)'};color:${linhaSort==='livre'?'#fff':'var(--txt-s)'};border-radius:6px;padding:4px 12px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">Volume</button>
+      </div>
+    </div>
     <div class="drill-list">${rows||'<div style="padding:16px;color:var(--txt-m)">Sem linhas</div>'}</div>`;
   c.appendChild(wrap);
 }
