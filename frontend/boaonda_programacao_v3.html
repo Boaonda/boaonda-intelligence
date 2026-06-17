@@ -98,7 +98,20 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .ocup-grupo:last-child{margin-bottom:0}
 .ocup-grupo-label{font-size:13px;font-weight:700;color:var(--txt);margin-bottom:10px}
 .ocup-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.ocup-card{background:var(--card2);border-radius:10px;padding:14px}
+.ocup-card{background:var(--card2);border-radius:10px;padding:14px;cursor:pointer;transition:background .12s,box-shadow .15s}
+.ocup-card:hover{background:rgba(255,255,255,.04)}
+.ocup-card.ativo{box-shadow:0 0 0 2px var(--coral);background:rgba(237,104,66,.08)}
+/* Setor refs drill */
+.setor-refs{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-top:12px}
+.setor-refs-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.setor-refs-title{font-size:11px;font-weight:700;color:var(--txt)}
+.setor-refs-close{font-size:10px;color:var(--txt-m);cursor:pointer}
+.setor-refs-close:hover{color:var(--coral)}
+.setor-refs-total{font-size:10px;color:var(--txt-m);margin-bottom:10px}
+.setor-ref-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.setor-ref-row:last-child{border-bottom:none}
+.setor-ref-name{color:var(--txt-s);font-weight:600}
+.setor-ref-pares{color:var(--coral);font-weight:800}
 .ocup-card-label{font-size:11px;font-weight:700;color:var(--txt-s);margin-bottom:12px}
 .ocup-card-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:8px}
 .ocup-card-fill{height:100%;border-radius:3px}
@@ -312,8 +325,11 @@ const ocupCor=p=>p>100?'#ef4444':(p>=85?'var(--coral)':'var(--verde)');
 
 // Accordion de ocupação (drill-down semana/mês)
 let ocupAtiva=null, ocupTipo='semana';
+let CAPACIDADE=null, REF_SECTOR_MAP={}, setorDrillAtivo=null;
 const POOL_LABELS={horizontal:'Horizontal',tiras:'Tiras',vertical:'Vertical',rotativa:'Rotativa',eva:'EVA'};
 const SETOR_LABELS={filial_palmilha:'Palmilha',filial_sola:'Sola',pintura:'Pintura'};
+const SETOR_TO_CAP={filial_palmilha:'palmilha',filial_sola:'sola',pintura:'pintura'};
+const SETOR_DRILL_LABELS={conv:'Convencional',mont:'Montado','pool.horizontal':'Horizontal','pool.tiras':'Tiras','pool.vertical':'Vertical','pool.rotativa':'Rotativa','pool.eva':'EVA','apoio.palmilha':'Palmilha','apoio.sola':'Sola','apoio.pintura':'Pintura'};
 const ocupNivel=p=>p>105?'roxo':(p>=90?'verde':(p>=80?'amarelo':'vermelho'));
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
@@ -420,10 +436,13 @@ Promise.all([
   fetch('config_producao.json?_='+Date.now()).then(r=>r.ok?r.json():{}).catch(()=>({})),
   fetch('dados_programacao_detalhe.json?_='+Date.now()).then(r=>r.ok?r.json():{semanas:{},cutoff:null}).catch(()=>({semanas:{},cutoff:null})),
   fetch('dados_ocupacao_semanal.json?_='+Date.now()).then(r=>r.ok?r.json():{semanas:{}}).catch(()=>({semanas:{}})),
-]).then(([d,rt,cfg,det,ocup])=>{
+  fetch('dados_capacidade.json?_='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
+]).then(([d,rt,cfg,det,ocup,cap])=>{
   if(cfg&&cfg.prazo_producao_dias) CONFIG.prazo_producao_dias=cfg.prazo_producao_dias;
   DETALHE=det||{semanas:{},cutoff:null};
   OCUPACAO=ocup||{semanas:{}};
+  CAPACIDADE=cap;
+  buildRefSectorMap();
   inicializar(d,rt);
 });
 
@@ -555,10 +574,58 @@ function ocupToggleBtn(tipo,key){
 }
 
 function toggleOcupacao(tipo,key){
-  ocupAtiva=(ocupAtiva===key&&ocupTipo===tipo)?null:key;
+  const mesmaKey=ocupAtiva===key&&ocupTipo===tipo;
+  ocupAtiva=mesmaKey?null:key;
   ocupTipo=tipo;
+  setorDrillAtivo=null;
   if(modo==='semana') renderSemanas(); else renderMeses();
 }
+
+function buildRefSectorMap(){
+  REF_SECTOR_MAP={};
+  if(!CAPACIDADE||!CAPACIDADE.referencias) return;
+  Object.entries(CAPACIDADE.referencias).forEach(([key,r])=>{
+    const refName=key.split('/')[0];
+    if(!REF_SECTOR_MAP[refName]) REF_SECTOR_MAP[refName]={tipo:r.tipo_montagem,pools:new Set(),setores:new Set()};
+    const e=REF_SECTOR_MAP[refName];
+    Object.keys(r.tempos_padrao_pool_min||{}).forEach(pool=>e.pools.add(pool));
+    Object.entries(r.capacidades_apoio||{}).forEach(([s,v])=>{if(v!=null)e.setores.add(s);});
+  });
+}
+
+function getRefsSetor(setorId){
+  const refData=ocupTipo==='semana'
+    ?(REFS_TABELA.semanas[ocupAtiva]||{}).refs||{}
+    :(REFS_TABELA.meses[ocupAtiva]||{}).refs||{};
+  return Object.entries(refData).filter(([ref])=>{
+    const info=REF_SECTOR_MAP[ref];
+    if(!info) return false;
+    if(setorId==='conv') return info.tipo==='CONVENCIONAL';
+    if(setorId==='mont') return info.tipo==='MONTADO';
+    if(setorId.startsWith('pool.')) return info.pools.has(setorId.replace('pool.',''));
+    if(setorId.startsWith('apoio.')) return info.setores.has(setorId.replace('apoio.',''));
+    return false;
+  }).sort((a,b)=>b[1]-a[1]);
+}
+
+function renderSetorDrill(){
+  if(!setorDrillAtivo) return '';
+  const entries=getRefsSetor(setorDrillAtivo);
+  const label=SETOR_DRILL_LABELS[setorDrillAtivo]||setorDrillAtivo;
+  const sid=setorDrillAtivo;
+  if(!entries.length) return '<div class="setor-refs"><div class="setor-refs-total">Sem referências mapeadas para este setor nesta semana.</div></div>';
+  const total=entries.reduce((s,[,q])=>s+q,0);
+  const rows=entries.map(([ref,pares])=>
+    `<div class="setor-ref-row"><span class="setor-ref-name">${ref}</span><span class="setor-ref-pares">${f(pares)} pares</span></div>`
+  ).join('');
+  return `<div class="setor-refs"><div class="setor-refs-head"><span class="setor-refs-title">${label}</span><span class="setor-refs-close" onclick="toggleSetorDrill('${sid}')">✕ fechar</span></div><div class="setor-refs-total">${entries.length} referências · ${f(total)} pares totais</div>${rows}</div>`;
+}
+
+function toggleSetorDrill(id){
+  setorDrillAtivo=setorDrillAtivo===id?null:id;
+  renderOcupacaoDrill();
+}
+window.toggleSetorDrill=toggleSetorDrill;
 
 // Painel accordion com os 11 indicadores (drill-down semana/mês)
 function renderOcupacaoDrill(){
@@ -578,29 +645,35 @@ function renderOcupacaoDrill(){
   }
   const gargaloNome=GARGALO_LABELS[o.gargalo]||o.gargalo;
 
+  const drillAtelier=(setorDrillAtivo==='conv'||setorDrillAtivo==='mont')?renderSetorDrill():'';
+  const drillPool=(setorDrillAtivo&&setorDrillAtivo.startsWith('pool.'))?renderSetorDrill():'';
+  const drillApoio=(setorDrillAtivo&&setorDrillAtivo.startsWith('apoio.'))?renderSetorDrill():'';
+
   wrap.innerHTML='<div class="ocup-drill">'+
     '<div class="ocup-head"><div><div class="ocup-title">'+titulo+'</div>'+
       (sub?'<div class="ocup-sub">'+sub+'</div>':'')+'</div>'+
       '<div class="ocup-eficiencia">Eficiência '+Math.round(o.eficiencia_pct)+'%</div></div>'+
     '<div class="ocup-gargalo"><span class="badge '+ocupNivel(o.eficiencia_pct)+'">Gargalo: '+gargaloNome+' a '+Math.round(o.eficiencia_pct)+'%</span></div>'+
     '<div class="ocup-grupo"><div class="ocup-grupo-label">Atelier</div><div class="ocup-cards">'+
-      ocupCard('Convencional',o.atelier.convencional.pct,o.atelier.convencional.consumo,o.atelier.convencional.capacidade)+
-      ocupCard('Montado',o.atelier.montado.pct,o.atelier.montado.consumo,o.atelier.montado.capacidade)+
-    '</div></div>'+
+      ocupCard('Convencional',o.atelier.convencional.pct,o.atelier.convencional.consumo,o.atelier.convencional.capacidade,'conv')+
+      ocupCard('Montado',o.atelier.montado.pct,o.atelier.montado.consumo,o.atelier.montado.capacidade,'mont')+
+    '</div>'+drillAtelier+'</div>'+
     '<div class="ocup-grupo"><div class="ocup-grupo-label">Máquinas de injetados</div><div class="ocup-cards">'+
-      Object.entries(POOL_LABELS).map(([k,lbl])=>ocupCard(lbl,(o.pools_injetados[k]||{}).pct||0)).join('')+
-    '</div></div>'+
+      Object.entries(POOL_LABELS).map(([k,lbl])=>ocupCard(lbl,(o.pools_injetados[k]||{}).pct||0,null,null,'pool.'+k)).join('')+
+    '</div>'+drillPool+'</div>'+
     '<div class="ocup-grupo"><div class="ocup-grupo-label">Setores de apoio</div><div class="ocup-cards">'+
-      Object.entries(SETOR_LABELS).map(([k,lbl])=>ocupCard(lbl,(o.setores_apoio[k]||{}).pct||0)).join('')+
-    '</div></div>'+
+      Object.entries(SETOR_LABELS).map(([k,lbl])=>ocupCard(lbl,(o.setores_apoio[k]||{}).pct||0,null,null,'apoio.'+(SETOR_TO_CAP[k]||k))).join('')+
+    '</div>'+drillApoio+'</div>'+
   '</div>';
 }
 
-function ocupCard(label,pct,consumo,capacidade){
+function ocupCard(label,pct,consumo,capacidade,setorId){
   const sub=(consumo!=null)?' · '+f(consumo)+' / '+f(capacidade):'';
-  return '<div class="ocup-card"><div class="ocup-card-label">'+label+sub+'</div>'+
-    '<div class="ocup-card-bar"><div class="ocup-card-fill '+ocupNivel(pct)+'" style="width:'+Math.min(pct,100)+'%"></div></div>'+
-    '<div class="ocup-card-pct '+ocupNivel(pct)+'">'+Math.round(pct)+'%</div></div>';
+  const ativo=setorDrillAtivo===setorId;
+  const onclick=setorId?` onclick="toggleSetorDrill('${setorId}')"` :'';
+  return `<div class="ocup-card${ativo?' ativo':''}"${onclick}><div class="ocup-card-label">${label}${sub}</div>`+
+    `<div class="ocup-card-bar"><div class="ocup-card-fill ${ocupNivel(pct)}" style="width:${Math.min(pct,100)}%"></div></div>`+
+    `<div class="ocup-card-pct ${ocupNivel(pct)}">${Math.round(pct)}%</div></div>`;
 }
 
 function kpiBox(cls,label,val,sub){
