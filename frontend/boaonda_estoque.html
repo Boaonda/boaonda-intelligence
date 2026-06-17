@@ -95,17 +95,29 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .bc-sep{color:var(--border)}
 .bc-cur{color:var(--txt);font-weight:600}
 
-/* NÍVEL 2 — Descrição */
-.ref-header{margin-bottom:20px}
-.ref-header-name{font-size:1.1rem;font-weight:800;color:var(--txt)}
-.ref-header-meta{font-size:11px;color:var(--txt-m);margin-top:4px}
-.descr-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:22px 26px;cursor:pointer;transition:border-color .2s,box-shadow .2s}
-.descr-card:hover{border-color:var(--coral);box-shadow:0 0 0 1px rgba(237,104,66,.2)}
-.descr-card-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--txt-m);margin-bottom:8px}
-.descr-card-val{font-size:1.35rem;font-weight:800;color:var(--txt);margin-bottom:14px}
-.descr-card-nums{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--txt-s);margin-bottom:12px}
-.descr-card-nums .sep{color:var(--line2)}
-.descr-card-hint{font-size:11px;color:var(--txt-m);font-style:italic}
+/* DRILL ROWS — modelo e linha */
+.drill-sec-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:var(--txt-m);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.drill-sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.drill-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:10px;color:var(--txt-m)}
+.drill-legend span{display:flex;align-items:center;gap:5px}
+.drill-legend .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.drill-list{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.dr-row{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.04);border-left:3px solid transparent;cursor:pointer;transition:background .12s;gap:12px}
+.dr-row:last-child{border-bottom:none}
+.dr-row:hover{background:rgba(255,255,255,.03)}
+.dr-row.brd-ok{border-left-color:var(--verde)}
+.dr-row.brd-warn{border-left-color:var(--amber)}
+.dr-row.brd-crit{border-left-color:var(--red)}
+.dr-left{min-width:0}
+.dr-name{font-size:13px;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-sub{font-size:10px;color:var(--txt-m);margin-top:2px}
+.dr-right{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.dr-livre{font-size:13px;font-weight:800;color:var(--coral)}
+.dr-pct{font-size:11px;font-weight:600}
+.dr-arrow{color:var(--txt-m);font-size:11px}
+/* Nível 1 search */
+.drill-search-wrap{margin-bottom:14px;display:flex;gap:10px;align-items:center}
+.drill-cnt{font-size:10px;color:var(--txt-m);white-space:nowrap}
 
 /* NÍVEL 3 — Combinações */
 .combs-grid-v2{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
@@ -192,14 +204,13 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 
 <script>
 let DATA = {};
-let currentData = {};
 let chartTop = null, chartStk = null;
 
-// Estado do drill-down
-let nivel = 1;       // 1=refs, 2=descricao, 3=combinacoes
-let refAtiva = null;
-let sortKey = 'livre';
-let sortDir = -1;
+// Estado drill-down: modelo → linha → combinações
+let nivel = 1;         // 1=modelos, 2=linhas, 3=combinações
+let modeloAtivo = null; // nome do modelo, ex: "NELLIE"
+let refAtiva = null;    // chave do DATA, ex: "1317 NELLIE"
+let searchQ = '';
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
@@ -207,11 +218,34 @@ const TIP={backgroundColor:'#161922',borderColor:'#262b3a',borderWidth:1,titleCo
 function f(n){return(n||0).toLocaleString('pt-BR')}
 function pct(a,b){return b?Math.round(a/b*100):0}
 
+// ── Helpers de parsing ─────────────────────────────────────
+// "1317 NELLIE" → "NELLIE"
+function nomeModelo(key){ return key.replace(/^\d+\s+/,''); }
+// "SANDALIA FEM TR (162)" → "162"
+function numLinha(desc){ const m=desc.match(/\((\w+)\)/); return m?m[1]:'–'; }
+// "SANDALIA FEM TR (162)" → "SANDALIA FEM TR"
+function tipoDescr(desc){ return desc.replace(/\s*\(\w+\)/,'').trim(); }
+
+// Agrupa DATA por nome de modelo → { "NELLIE": [["1317 NELLIE", {...}], ...] }
+function buildModelMap(){
+  const map={};
+  Object.entries(DATA).forEach(([key,d])=>{
+    const nm=nomeModelo(key);
+    if(!map[nm]) map[nm]=[];
+    map[nm].push([key,d]);
+  });
+  return map;
+}
+
+// ── Status helpers ─────────────────────────────────────────
+function statusBrd(livre,pL){ return livre===0?'brd-crit':pL<30?'brd-warn':'brd-ok'; }
+function statusPctCor(pL){ return pL<30?'var(--red)':pL<60?'var(--amber)':'var(--verde)'; }
+
+// ── Fetch ──────────────────────────────────────────────────
 fetch('dados_estoque.json?_=' + Date.now())
   .then(r => { if(!r.ok) throw new Error(); return r.json(); })
   .then(d => {
     DATA = d.refs || {};
-    currentData = {...DATA};
     const t = d.totais || {};
     document.getElementById('k-livre').textContent = f(t.livre);
     document.getElementById('k-fisico').textContent = f(t.fisico);
@@ -231,7 +265,7 @@ function renderCharts(t){
   const top15 = refs.slice(0,15);
   if(chartTop) chartTop.destroy();
   chartTop = new Chart(document.getElementById('c-top'),{type:'bar',data:{
-    labels:top15.map(r=>r.split(' ').slice(0,2).join(' ')),
+    labels:top15.map(r=>nomeModelo(r)),
     datasets:[
       {label:'Livre',data:top15.map(r=>DATA[r].livre),backgroundColor:'#10B98188',borderRadius:3},
       {label:'Reservas',data:top15.map(r=>DATA[r].reservas),backgroundColor:'#F59E0B55',borderRadius:3},
@@ -250,147 +284,142 @@ function renderCharts(t){
 }
 
 // ── Navegação ──────────────────────────────────────────────
-function navRef(ref){ refAtiva=ref; nivel=2; renderDrill(); }
-function navDescr(){ nivel=3; renderDrill(); }
-function navBack(n){ nivel=n; if(n===1) refAtiva=null; renderDrill(); }
+function navModelo(nm){ modeloAtivo=nm; nivel=2; renderDrill(); }
+function navLinha(refKey){ refAtiva=refKey; nivel=3; renderDrill(); }
+function navBack(n){
+  nivel=n;
+  if(n===1){ modeloAtivo=null; refAtiva=null; }
+  if(n===2){ refAtiva=null; }
+  renderDrill();
+}
 
 // ── Breadcrumb ─────────────────────────────────────────────
 function renderBreadcrumb(){
-  let html = nivel===1
-    ? '<span class="bc-cur">Referências</span>'
-    : '<span class="bc-link" onclick="navBack(1)">Referências</span>';
-  if(nivel>=2 && refAtiva){
-    html += '<span class="bc-sep">›</span>';
-    html += nivel===2
-      ? `<span class="bc-cur">${refAtiva}</span>`
-      : `<span class="bc-link" onclick="navBack(2)">${refAtiva}</span>`;
+  let h = nivel===1
+    ? '<span class="bc-cur">Modelos</span>'
+    : '<span class="bc-link" onclick="navBack(1)">Modelos</span>';
+  if(nivel>=2 && modeloAtivo){
+    h += '<span class="bc-sep">›</span>';
+    h += nivel===2
+      ? `<span class="bc-cur">${modeloAtivo}</span>`
+      : `<span class="bc-link" onclick="navBack(2)">${modeloAtivo}</span>`;
   }
   if(nivel===3 && refAtiva){
-    const d = DATA[refAtiva];
-    html += `<span class="bc-sep">›</span><span class="bc-cur">${d.descricaoCompleta}</span>`;
+    const d=DATA[refAtiva];
+    h += `<span class="bc-sep">›</span><span class="bc-cur">${numLinha(d.descricaoCompleta)}</span>`;
   }
-  return html;
+  return h;
 }
+
+// ── Legenda de status ──────────────────────────────────────
+const LEGENDA = `<div class="drill-legend">
+  <span><span class="dot" style="background:var(--red)"></span>Crítico — livre = 0</span>
+  <span><span class="dot" style="background:var(--amber)"></span>Atenção — livre &lt; 30% do físico</span>
+  <span><span class="dot" style="background:var(--verde)"></span>OK — livre ≥ 30% do físico</span>
+</div>`;
 
 // ── Controller ─────────────────────────────────────────────
 function renderDrill(){
-  const container = document.getElementById('drill-container');
-  container.innerHTML = `<div class="breadcrumb">${renderBreadcrumb()}</div>`;
-  if(nivel===1) renderNivel1(container);
-  else if(nivel===2) renderNivel2(container);
-  else renderNivel3(container);
+  const c = document.getElementById('drill-container');
+  c.innerHTML = `<div class="breadcrumb">${renderBreadcrumb()}</div>`;
+  if(nivel===1) renderModelos(c);
+  else if(nivel===2) renderLinhas(c);
+  else renderCombinacoes(c);
 }
 
-// ── Nível 1 — Referências ──────────────────────────────────
-function sort(key){
-  if(sortKey===key) sortDir*=-1; else{sortKey=key;sortDir=-1;}
-  renderDrill();
-}
-
+// ── Nível 1 — Modelos ──────────────────────────────────────
 function filtrar(){
-  const q = document.getElementById('srch').value.toLowerCase();
-  currentData = {};
-  Object.entries(DATA).forEach(([ref,d])=>{
-    if(!q || ref.toLowerCase().includes(q) || d.descricaoCompleta.toLowerCase().includes(q))
-      currentData[ref]=d;
-  });
+  searchQ = (document.getElementById('srch')||{value:''}).value.toLowerCase();
   renderDrill();
 }
 
-function renderNivel1(container){
-  const allVals = Object.values(DATA);
-  const maxL = allVals.length ? Math.max(...allVals.map(d=>d.livre)) : 1;
-  let entries = Object.entries(currentData);
-  entries.sort(([ra,a],[rb,b])=>{
-    const va = sortKey==='ref'?ra:a[sortKey]||0;
-    const vb = sortKey==='ref'?rb:b[sortKey]||0;
-    return sortDir*(typeof va==='string'?va.localeCompare(vb):vb-va);
+function renderModelos(c){
+  const mmap = buildModelMap();
+  // Agregar totais por modelo
+  let modelos = Object.entries(mmap).map(([nm,refs])=>{
+    const fisico=refs.reduce((s,[,d])=>s+d.fisico,0);
+    const reservas=refs.reduce((s,[,d])=>s+d.reservas,0);
+    const livre=refs.reduce((s,[,d])=>s+d.livre,0);
+    const qtdCombs=refs.reduce((s,[,d])=>s+(d.qtd_combinacoes||0),0);
+    return {nm,fisico,reservas,livre,qtdCombs,refs};
   });
+  // Filtrar por busca
+  if(searchQ) modelos=modelos.filter(m=>m.nm.toLowerCase().includes(searchQ));
+  // Ordenar por livre desc
+  modelos.sort((a,b)=>b.livre-a.livre);
 
   const wrap = document.createElement('div');
-  wrap.innerHTML = `
-    <div class="search-bar">
-      <input class="search-inp" id="srch" type="text" placeholder="Buscar referência ou descrição..." oninput="filtrar()">
-      <div class="cnt" id="cnt">${entries.length} referências</div>
-    </div>
-    <table>
-      <thead><tr>
-        <th onclick="sort('ref')">Referência</th>
-        <th onclick="sort('fisico')">Físico</th>
-        <th onclick="sort('reservas')">Reservas</th>
-        <th onclick="sort('livre')" style="color:var(--gold)">Livre ↓</th>
-        <th>% Livre</th>
-        <th>Volume</th>
-        <th>Status</th>
-      </tr></thead>
-      <tbody id="tbody"></tbody>
-    </table>`;
-  container.appendChild(wrap);
+  const rows = modelos.map(m=>{
+    const pL=m.fisico?Math.round(m.livre/m.fisico*100):0;
+    const brd=statusBrd(m.livre,pL);
+    const pCor=statusPctCor(pL);
+    return `<div class="dr-row ${brd}" onclick="navModelo('${m.nm.replace(/'/g,"\\'")}')">
+      <div class="dr-left">
+        <div class="dr-name">${m.nm}</div>
+        <div class="dr-sub">${m.refs.length} linha${m.refs.length>1?'s':''} · ${m.qtdCombs} combinações</div>
+      </div>
+      <div class="dr-right">
+        <span class="dr-livre">${f(m.livre)}</span>
+        <span class="dr-pct" style="color:${pCor}">${pL}%</span>
+        <span class="dr-arrow">›</span>
+      </div>
+    </div>`;
+  }).join('');
 
-  const tb = document.getElementById('tbody');
-  entries.forEach(([ref,d])=>{
-    const pL = d.fisico?Math.round(d.livre/d.fisico*100):0;
-    const barW = Math.round(d.livre/maxL*100);
-    const status = d.livre===0?`<span class="tag tag-zer">ZERADO</span>`:
-                   pL<30?`<span class="tag tag-res">CRÍTICO</span>`:
-                   `<span class="tag tag-ok">OK</span>`;
-    const tr = document.createElement('tr');
-    tr.className='expandable';
-    tr.onclick=()=>navRef(ref);
-    tr.innerHTML=`
-      <td><div class="td-ref">${ref}</div></td>
-      <td class="tn">${f(d.fisico)}</td>
-      <td class="tn">${f(d.reservas)}</td>
-      <td class="tn">${f(d.livre)}</td>
-      <td style="font-size:11px;color:${pL<30?'var(--red)':pL<60?'var(--amber)':'var(--green)'}">${pL}%</td>
-      <td class="mbar-wrap"><div class="mbar" style="width:${barW}%;background:${d.livre>5000?'var(--green)':d.livre>1000?'var(--amber)':'var(--red)'}"></div></td>
-      <td>${status}</td>`;
-    tb.appendChild(tr);
-  });
+  wrap.innerHTML = `
+    <div class="drill-sec-title">Modelos — clique para detalhar</div>
+    ${LEGENDA}
+    <div class="drill-search-wrap">
+      <input class="search-inp" id="srch" type="text" placeholder="Buscar modelo..." oninput="filtrar()" value="${searchQ}">
+      <span class="drill-cnt">${modelos.length} modelos</span>
+    </div>
+    <div class="drill-list">${rows||'<div style="padding:16px;color:var(--txt-m);font-size:12px">Nenhum modelo encontrado</div>'}</div>`;
+  c.appendChild(wrap);
 }
 
-// ── Nível 2 — Descrição ────────────────────────────────────
-function renderNivel2(container){
-  const d = DATA[refAtiva];
-  if(!d){ navBack(1); return; }
-  const pL = d.fisico?Math.round(d.livre/d.fisico*100):0;
-  const pCls = pL<30?'var(--red)':pL<60?'var(--amber)':'var(--green)';
-  const statusCls = d.livre===0?'tag-zer':pL<30?'tag-res':'tag-ok';
-  const statusTxt = d.livre===0?'ZERADO':pL<30?'CRÍTICO':'OK';
+// ── Nível 2 — Linhas ───────────────────────────────────────
+function renderLinhas(c){
+  const mmap = buildModelMap();
+  const refs = (mmap[modeloAtivo]||[]);
+  if(!refs.length){ navBack(1); return; }
+
+  // Ordenar por livre desc
+  const sorted = [...refs].sort(([,a],[,b])=>b.livre-a.livre);
+
+  const rows = sorted.map(([key,d])=>{
+    const pL=d.fisico?Math.round(d.livre/d.fisico*100):0;
+    const brd=statusBrd(d.livre,pL);
+    const pCor=statusPctCor(pL);
+    const linha=numLinha(d.descricaoCompleta);
+    const tipo=tipoDescr(d.descricaoCompleta);
+    return `<div class="dr-row ${brd}" onclick="navLinha('${key.replace(/'/g,"\\'")}')">
+      <div class="dr-left">
+        <div class="dr-name">${linha}</div>
+        <div class="dr-sub">${tipo} · ${d.qtd_combinacoes} combinações · Locais: ${(d.locais||[]).join(', ')}</div>
+      </div>
+      <div class="dr-right">
+        <span class="dr-livre">${f(d.livre)}</span>
+        <span class="dr-pct" style="color:${pCor}">${pL}%</span>
+        <span class="dr-arrow">›</span>
+      </div>
+    </div>`;
+  }).join('');
 
   const wrap = document.createElement('div');
   wrap.innerHTML = `
-    <div class="ref-header">
-      <div class="ref-header-name">${refAtiva}</div>
-      <div class="ref-header-meta">${d.qtd_combinacoes} combinações · Locais: ${(d.locais||[]).join(', ')}</div>
-    </div>
-    <div class="descr-card" onclick="navDescr()">
-      <div class="descr-card-lbl">Descrição</div>
-      <div class="descr-card-val">${d.descricaoCompleta}</div>
-      <div class="descr-card-nums">
-        <span>${f(d.fisico)} físico</span>
-        <span class="sep">·</span>
-        <span>${f(d.reservas)} reservas</span>
-        <span class="sep">·</span>
-        <span style="color:var(--gold);font-weight:700">${f(d.livre)} livre</span>
-        <span class="sep">·</span>
-        <span style="color:${pCls};font-weight:600">${pL}%</span>
-        <span class="sep">·</span>
-        <span class="tag ${statusCls}">${statusTxt}</span>
-      </div>
-      <div class="descr-card-hint">Clique para ver as ${d.qtd_combinacoes} combinações →</div>
-    </div>`;
-  container.appendChild(wrap);
+    <div class="drill-sec-title">Linhas — ${modeloAtivo}</div>
+    ${LEGENDA}
+    <div class="drill-list">${rows}</div>`;
+  c.appendChild(wrap);
 }
 
 // ── Nível 3 — Combinações ──────────────────────────────────
-function renderNivel3(container){
+function renderCombinacoes(c){
   const d = DATA[refAtiva];
   if(!d){ navBack(1); return; }
   const combs = d.combinacoes || {};
   const sorted = Object.entries(combs).sort(([,a],[,b])=>b.livre-a.livre);
 
-  const wrap = document.createElement('div');
   const combsHtml = sorted.map(([comb,cv])=>`
     <div class="comb-card ${cv.livre===0?'comb-zero':''}">
       <div class="comb-card-name">${comb}</div>
@@ -400,13 +429,12 @@ function renderNivel3(container){
       </div>
     </div>`).join('');
 
+  const wrap = document.createElement('div');
   wrap.innerHTML = `
-    <div class="ref-header" style="margin-bottom:16px">
-      <div class="ref-header-name">${refAtiva} — ${d.descricaoCompleta}</div>
-      <div class="ref-header-meta">${d.qtd_combinacoes} combinações · Locais: ${(d.locais||[]).join(', ')}</div>
-    </div>
-    <div class="combs-grid-v2">${combsHtml||'<span style="font-size:11px;color:var(--txt-m)">Sem combinações</span>'}</div>`;
-  container.appendChild(wrap);
+    <div class="drill-sec-title">Combinações — ${modeloAtivo} / Linha ${numLinha(d.descricaoCompleta)}</div>
+    <div style="font-size:11px;color:var(--txt-m);margin-bottom:16px">${tipoDescr(d.descricaoCompleta)} · ${d.qtd_combinacoes} combinações · Locais: ${(d.locais||[]).join(', ')}</div>
+    <div class="combs-grid-v2">${combsHtml||'<span style="color:var(--txt-m);font-size:11px">Sem combinações</span>'}</div>`;
+  c.appendChild(wrap);
 }
 
 renderDrill();
