@@ -88,6 +88,35 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .tag-res{background:rgba(245,158,11,.12);color:var(--amber)}
 .tag-zer{background:rgba(100,116,139,.1);color:var(--txt-m)}
 
+/* BREADCRUMB */
+.breadcrumb{display:flex;align-items:center;gap:7px;font-size:12px;margin-bottom:18px}
+.bc-link{color:var(--coral);cursor:pointer;font-weight:600}
+.bc-link:hover{text-decoration:underline}
+.bc-sep{color:var(--border)}
+.bc-cur{color:var(--txt);font-weight:600}
+
+/* NÍVEL 2 — Descrição */
+.ref-header{margin-bottom:20px}
+.ref-header-name{font-size:1.1rem;font-weight:800;color:var(--txt)}
+.ref-header-meta{font-size:11px;color:var(--txt-m);margin-top:4px}
+.descr-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:22px 26px;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.descr-card:hover{border-color:var(--coral);box-shadow:0 0 0 1px rgba(237,104,66,.2)}
+.descr-card-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--txt-m);margin-bottom:8px}
+.descr-card-val{font-size:1.35rem;font-weight:800;color:var(--txt);margin-bottom:14px}
+.descr-card-nums{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--txt-s);margin-bottom:12px}
+.descr-card-nums .sep{color:var(--line2)}
+.descr-card-hint{font-size:11px;color:var(--txt-m);font-style:italic}
+
+/* NÍVEL 3 — Combinações */
+.combs-grid-v2{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.comb-card{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.comb-card.comb-zero{opacity:.4}
+.comb-card-name{font-size:11px;font-weight:600;color:var(--txt-s);margin-bottom:8px;line-height:1.4}
+.comb-card-nums{display:flex;align-items:baseline;gap:6px}
+.comb-livre{font-size:1.1rem;font-weight:800;color:var(--green)}
+.comb-card.comb-zero .comb-livre{color:var(--txt-m)}
+.comb-res{font-size:10px;color:var(--amber)}
+
 @media(max-width:800px){.crow{grid-template-columns:1fr}.main{padding:14px}}
 </style>
 </head>
@@ -157,33 +186,20 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
   </div>
 </div>
 
-<div class="stitle">Estoque por referência — clique para ver combinações</div>
-<div class="tcard">
-  <div class="search-bar">
-    <input class="search-inp" id="srch" type="text" placeholder="Buscar referência ou descrição..." oninput="filtrar()">
-    <div class="cnt" id="cnt">38 referências</div>
-  </div>
-  <table id="tbl">
-    <thead><tr>
-      <th onclick="sort('ref')">Referência</th>
-      <th onclick="sort('descr')">Descrição</th>
-      <th onclick="sort('fisico')">Físico</th>
-      <th onclick="sort('reservas')">Reservas</th>
-      <th onclick="sort('livre')" style="color:var(--gold)">Livre ↓</th>
-      <th>% Livre</th>
-      <th>Volume</th>
-      <th>Status</th>
-    </tr></thead>
-    <tbody id="tbody"></tbody>
-  </table>
-</div>
+<div class="tcard" id="drill-container"></div>
 
 </div>
 
 <script>
 let DATA = {};
 let currentData = {};
-let chartTop=null, chartStk=null;
+let chartTop = null, chartStk = null;
+
+// Estado do drill-down
+let nivel = 1;       // 1=refs, 2=descricao, 3=combinacoes
+let refAtiva = null;
+let sortKey = 'livre';
+let sortDir = -1;
 
 Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
@@ -191,13 +207,11 @@ const TIP={backgroundColor:'#161922',borderColor:'#262b3a',borderWidth:1,titleCo
 function f(n){return(n||0).toLocaleString('pt-BR')}
 function pct(a,b){return b?Math.round(a/b*100):0}
 
-// Carregar dados do JSON externo
 fetch('dados_estoque.json?_=' + Date.now())
   .then(r => { if(!r.ok) throw new Error(); return r.json(); })
   .then(d => {
     DATA = d.refs || {};
     currentData = {...DATA};
-    // Atualizar KPIs com dados novos
     const t = d.totais || {};
     document.getElementById('k-livre').textContent = f(t.livre);
     document.getElementById('k-fisico').textContent = f(t.fisico);
@@ -207,16 +221,12 @@ fetch('dados_estoque.json?_=' + Date.now())
     document.getElementById('k-refs').textContent = Object.keys(DATA).length;
     document.getElementById('hdr-data').textContent = d.gerado_em || '–';
     renderCharts(t);
-    render();
+    renderDrill();
   })
-  .catch(() => {
-    // Fallback: usar dados embutidos
-    render();
-  })
+  .catch(() => renderDrill());
 
 function renderCharts(t){
   t = t || {};
-  // Top 15 chart
   const refs = Object.keys(DATA);
   const top15 = refs.slice(0,15);
   if(chartTop) chartTop.destroy();
@@ -229,8 +239,6 @@ function renderCharts(t){
       plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},tooltip:{...TIP,mode:'index'}},
       scales:{x:{stacked:true,ticks:{callback:v=>f(v)}},y:{stacked:true,grid:{display:false},ticks:{font:{size:10}}}}}
   });
-
-  // Físico x Reservas x Livre totais
   if(chartStk) chartStk.destroy();
   chartStk = new Chart(document.getElementById('c-stk'),{type:'doughnut',data:{
     labels:['Livre','Reservas'],
@@ -241,37 +249,86 @@ function renderCharts(t){
   });
 }
 
-// Tabela
-let sortKey = 'livre';
-let sortDir = -1;
+// ── Navegação ──────────────────────────────────────────────
+function navRef(ref){ refAtiva=ref; nivel=2; renderDrill(); }
+function navDescr(){ nivel=3; renderDrill(); }
+function navBack(n){ nivel=n; if(n===1) refAtiva=null; renderDrill(); }
 
+// ── Breadcrumb ─────────────────────────────────────────────
+function renderBreadcrumb(){
+  let html = nivel===1
+    ? '<span class="bc-cur">Referências</span>'
+    : '<span class="bc-link" onclick="navBack(1)">Referências</span>';
+  if(nivel>=2 && refAtiva){
+    html += '<span class="bc-sep">›</span>';
+    html += nivel===2
+      ? `<span class="bc-cur">${refAtiva}</span>`
+      : `<span class="bc-link" onclick="navBack(2)">${refAtiva}</span>`;
+  }
+  if(nivel===3 && refAtiva){
+    const d = DATA[refAtiva];
+    html += `<span class="bc-sep">›</span><span class="bc-cur">${d.descricaoCompleta}</span>`;
+  }
+  return html;
+}
+
+// ── Controller ─────────────────────────────────────────────
+function renderDrill(){
+  const container = document.getElementById('drill-container');
+  container.innerHTML = `<div class="breadcrumb">${renderBreadcrumb()}</div>`;
+  if(nivel===1) renderNivel1(container);
+  else if(nivel===2) renderNivel2(container);
+  else renderNivel3(container);
+}
+
+// ── Nível 1 — Referências ──────────────────────────────────
 function sort(key){
   if(sortKey===key) sortDir*=-1; else{sortKey=key;sortDir=-1;}
-  render();
+  renderDrill();
 }
 
 function filtrar(){
   const q = document.getElementById('srch').value.toLowerCase();
   currentData = {};
   Object.entries(DATA).forEach(([ref,d])=>{
-    if(!q||ref.toLowerCase().includes(q)||d.descricaoCompleta.toLowerCase().includes(q))
+    if(!q || ref.toLowerCase().includes(q) || d.descricaoCompleta.toLowerCase().includes(q))
       currentData[ref]=d;
   });
-  render();
+  renderDrill();
 }
 
-function render(){
-  const maxL = Math.max(...Object.values(DATA).map(d=>d.livre));
+function renderNivel1(container){
+  const allVals = Object.values(DATA);
+  const maxL = allVals.length ? Math.max(...allVals.map(d=>d.livre)) : 1;
   let entries = Object.entries(currentData);
   entries.sort(([ra,a],[rb,b])=>{
-    const va = sortKey==='ref'?ra:sortKey==='descr'?a.descricaoCompleta:a[sortKey]||0;
-    const vb = sortKey==='ref'?rb:sortKey==='descr'?b.descricaoCompleta:b[sortKey]||0;
+    const va = sortKey==='ref'?ra:a[sortKey]||0;
+    const vb = sortKey==='ref'?rb:b[sortKey]||0;
     return sortDir*(typeof va==='string'?va.localeCompare(vb):vb-va);
   });
-  document.getElementById('cnt').textContent = entries.length+' referências';
+
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="search-bar">
+      <input class="search-inp" id="srch" type="text" placeholder="Buscar referência ou descrição..." oninput="filtrar()">
+      <div class="cnt" id="cnt">${entries.length} referências</div>
+    </div>
+    <table>
+      <thead><tr>
+        <th onclick="sort('ref')">Referência</th>
+        <th onclick="sort('fisico')">Físico</th>
+        <th onclick="sort('reservas')">Reservas</th>
+        <th onclick="sort('livre')" style="color:var(--gold)">Livre ↓</th>
+        <th>% Livre</th>
+        <th>Volume</th>
+        <th>Status</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>`;
+  container.appendChild(wrap);
+
   const tb = document.getElementById('tbody');
-  tb.innerHTML='';
-  entries.forEach(([ref,d],i)=>{
+  entries.forEach(([ref,d])=>{
     const pL = d.fisico?Math.round(d.livre/d.fisico*100):0;
     const barW = Math.round(d.livre/maxL*100);
     const status = d.livre===0?`<span class="tag tag-zer">ZERADO</span>`:
@@ -279,43 +336,80 @@ function render(){
                    `<span class="tag tag-ok">OK</span>`;
     const tr = document.createElement('tr');
     tr.className='expandable';
-    tr.onclick=()=>toggleDet(ref);
+    tr.onclick=()=>navRef(ref);
     tr.innerHTML=`
       <td><div class="td-ref">${ref}</div></td>
-      <td style="color:var(--txt-s);font-size:11px">${d.descricaoCompleta}</td>
       <td class="tn">${f(d.fisico)}</td>
-      <td class="tn tr2">${f(d.reservas)}</td>
-      <td class="tn tl">${f(d.livre)}</td>
+      <td class="tn">${f(d.reservas)}</td>
+      <td class="tn">${f(d.livre)}</td>
       <td style="font-size:11px;color:${pL<30?'var(--red)':pL<60?'var(--amber)':'var(--green)'}">${pL}%</td>
       <td class="mbar-wrap"><div class="mbar" style="width:${barW}%;background:${d.livre>5000?'var(--green)':d.livre>1000?'var(--amber)':'var(--red)'}"></div></td>
       <td>${status}</td>`;
     tb.appendChild(tr);
-
-    // Linha de detalhe
-    const det = document.createElement('tr');
-    det.className='det-row';
-    det.id='det-'+ref.replace(/\s/g,'_');
-    const combs = d.combinacoes || {};
-    const combHtml = Object.entries(combs).map(([comb,cv])=>`
-      <span class="comb-pill ${cv.livre===0?'comb-zero':''}">
-        <span class="comb-ref">${comb}</span>
-        <span class="comb-livre">${f(cv.livre)}</span>
-        ${cv.reservas?`<span class="comb-res">res:${f(cv.reservas)}</span>`:''}
-      </span>`).join('');
-    det.innerHTML=`<td colspan="8"><div class="det-inner">
-      <div class="det-title">Nível 3 — Combinações (${d.qtd_combinacoes} total) · Locais: ${(d.locais||[]).join(', ')}</div>
-      <div class="combs-grid">${combHtml||'<span style="font-size:11px;color:var(--txt-m)">Detalhamento não disponível</span>'}</div>
-    </div></td>`;
-    tb.appendChild(det);
   });
 }
 
-function toggleDet(ref){
-  const el = document.getElementById('det-'+ref.replace(/\s/g,'_'));
-  if(el) el.classList.toggle('open');
+// ── Nível 2 — Descrição ────────────────────────────────────
+function renderNivel2(container){
+  const d = DATA[refAtiva];
+  if(!d){ navBack(1); return; }
+  const pL = d.fisico?Math.round(d.livre/d.fisico*100):0;
+  const pCls = pL<30?'var(--red)':pL<60?'var(--amber)':'var(--green)';
+  const statusCls = d.livre===0?'tag-zer':pL<30?'tag-res':'tag-ok';
+  const statusTxt = d.livre===0?'ZERADO':pL<30?'CRÍTICO':'OK';
+
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="ref-header">
+      <div class="ref-header-name">${refAtiva}</div>
+      <div class="ref-header-meta">${d.qtd_combinacoes} combinações · Locais: ${(d.locais||[]).join(', ')}</div>
+    </div>
+    <div class="descr-card" onclick="navDescr()">
+      <div class="descr-card-lbl">Descrição</div>
+      <div class="descr-card-val">${d.descricaoCompleta}</div>
+      <div class="descr-card-nums">
+        <span>${f(d.fisico)} físico</span>
+        <span class="sep">·</span>
+        <span>${f(d.reservas)} reservas</span>
+        <span class="sep">·</span>
+        <span style="color:var(--gold);font-weight:700">${f(d.livre)} livre</span>
+        <span class="sep">·</span>
+        <span style="color:${pCls};font-weight:600">${pL}%</span>
+        <span class="sep">·</span>
+        <span class="tag ${statusCls}">${statusTxt}</span>
+      </div>
+      <div class="descr-card-hint">Clique para ver as ${d.qtd_combinacoes} combinações →</div>
+    </div>`;
+  container.appendChild(wrap);
 }
 
-render();
+// ── Nível 3 — Combinações ──────────────────────────────────
+function renderNivel3(container){
+  const d = DATA[refAtiva];
+  if(!d){ navBack(1); return; }
+  const combs = d.combinacoes || {};
+  const sorted = Object.entries(combs).sort(([,a],[,b])=>b.livre-a.livre);
+
+  const wrap = document.createElement('div');
+  const combsHtml = sorted.map(([comb,cv])=>`
+    <div class="comb-card ${cv.livre===0?'comb-zero':''}">
+      <div class="comb-card-name">${comb}</div>
+      <div class="comb-card-nums">
+        <span class="comb-livre">${f(cv.livre)}</span>
+        ${cv.reservas?`<span class="comb-res">res: ${f(cv.reservas)}</span>`:''}
+      </div>
+    </div>`).join('');
+
+  wrap.innerHTML = `
+    <div class="ref-header" style="margin-bottom:16px">
+      <div class="ref-header-name">${refAtiva} — ${d.descricaoCompleta}</div>
+      <div class="ref-header-meta">${d.qtd_combinacoes} combinações · Locais: ${(d.locais||[]).join(', ')}</div>
+    </div>
+    <div class="combs-grid-v2">${combsHtml||'<span style="font-size:11px;color:var(--txt-m)">Sem combinações</span>'}</div>`;
+  container.appendChild(wrap);
+}
+
+renderDrill();
 </script>
 </body>
 </html>
