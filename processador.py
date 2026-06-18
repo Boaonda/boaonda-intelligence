@@ -749,8 +749,124 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
     print(f"    ✓ dados_estoque.json gerado ({len(estoque_out)} refs)")
     return {'refs': estoque_out, 'totais': totais_est}
 
+# ─── FATURAMENTO ─────────────────────────────────────────────────────
+ANOMESFATURA_COL = 19  # coluna anomesfatura no CSV 3YS (yyyymm da emissão NF)
+
+def classifica_faturamento(cod, abr):
+    """Retorna (canal, tipo) para a área de Faturamento.
+
+    MI PROG  → cod=1   + (MERCADO INTERNO ou ISENTO em abr_grp)
+    MI PE    → cod=22  + (MERCADO INTERNO ou ISENTO em abr_grp)
+    MI MISTA → cod=31  + (MERCADO INTERNO ou ISENTO em abr_grp)
+    ME       → cod=17 OU 'EXPORTA' em abr_grp, sem 'MOULD'
+    EC       → cod=32 OU 'ECOMMERCE'/'E-COMMERCE' em abr_grp
+    """
+    is_ec_abr  = 'ECOMMERCE' in abr or 'E-COMMERCE' in abr
+    is_exporta = 'EXPORTA' in abr and 'MOULD' not in abr
+    is_mi_abr  = ('MERCADO INTERNO' in abr or 'ISENTO' in abr) and 'EXPORTA' not in abr
+
+    if cod == '32' or is_ec_abr:        return 'EC', 'EC'
+    if cod == '17' or is_exporta:       return 'ME', 'ME'
+    if is_mi_abr:
+        if cod == '1':  return 'MI', 'PROG'
+        if cod == '22': return 'MI', 'PE'
+        if cod == '31': return 'MI', 'MISTA'
+    return None, None
+
+def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
+    """Gera dados_faturamento.json — faturamento realizado e previsto por
+    canal/espécie e mês de referência, com suporte a taxa de câmbio ME."""
+    print("\n  Processando faturamento...")
+
+    def zero_mi(): return {'fat_pares':0,'fat_vlr':0.0,'prev_pares':0,'prev_vlr':0.0}
+    def zero_me(): return {'fat_pares':0,'fat_vlr_usd':0.0,'fat_vlr_brl':0.0,
+                            'prev_pares':0,'prev_vlr_usd':0.0,'prev_vlr_brl':0.0}
+    def zero_ec(): return {'fat_pares':0,'fat_vlr':0.0,'prev_pares':0,'prev_vlr':0.0}
+
+    dados    = defaultdict(lambda: {'MI':defaultdict(zero_mi),'ME':defaultdict(zero_me),'EC':defaultdict(zero_ec)})
+    sem_data = {'MI':defaultdict(zero_mi),'ME':defaultdict(zero_me),'EC':defaultdict(zero_ec)}
+    total_fat = total_prev = sem_data_count = 0
+
+    for row in linhas:
+        pos = g(row, IDX['pos_item']).strip().upper()
+        if pos == 'CANCELADO': continue
+        if pos == 'FATURADO':                               status = 'fat'
+        elif pos in ('NADA FATURADO','PARCIALMENTE FATURADO'): status = 'prev'
+        else: continue
+
+        abr = g(row, IDX['abr_grp']).upper()
+        cod = g(row, IDX['cod_esp'])
+        canal, tipo = classifica_faturamento(cod, abr)
+        if not canal: continue
+
+        try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
+        except: qtd = 0
+        if qtd <= 0: continue
+
+        try: vlr = float(g(row, IDX['vlr']).replace(',','.'))
+        except: vlr = 0.0
+
+        # Mês de referência
+        if status == 'fat':
+            anomes_fat = g(row, ANOMESFATURA_COL)
+            if anomes_fat and len(anomes_fat) == 6 and anomes_fat.isdigit():
+                mes_ref = anomes_fat
+            else:
+                dt_f = parse_date(g(row, IDX['dt_fat']))
+                mes_ref = dt_f.strftime('%Y%m') if dt_f else None
+        else:
+            dt_f = parse_date(g(row, IDX['dt_fat']))
+            dt_p = parse_date(g(row, IDX['dt_plano']))
+            if dt_f and dt_p:   mes_ref = max(dt_f, dt_p).strftime('%Y%m')
+            elif dt_f:          mes_ref = dt_f.strftime('%Y%m')
+            elif dt_p:          mes_ref = dt_p.strftime('%Y%m')
+            else:               mes_ref = None
+
+        tgt = dados[mes_ref] if mes_ref else sem_data
+        if not mes_ref: sem_data_count += 1
+
+        if canal == 'ME':
+            e = tgt['ME'][tipo]
+            if status == 'fat':
+                e['fat_pares'] += qtd; e['fat_vlr_usd'] += vlr; e['fat_vlr_brl'] += vlr*taxa_cambio_me; total_fat += qtd
+            else:
+                e['prev_pares'] += qtd; e['prev_vlr_usd'] += vlr; e['prev_vlr_brl'] += vlr*taxa_cambio_me
+                if mes_ref: total_prev += qtd
+        else:
+            e = tgt[canal][tipo]
+            if status == 'fat':
+                e['fat_pares'] += qtd; e['fat_vlr'] += vlr; total_fat += qtd
+            else:
+                e['prev_pares'] += qtd; e['prev_vlr'] += vlr
+                if mes_ref: total_prev += qtd
+
+    print(f"    Faturado: {total_fat:,} pares | Previsto: {total_prev:,} pares | Sem data: {sem_data_count}")
+
+    def ser_mi(d): return {k:{'fat_pares':int(v['fat_pares']),'fat_vlr':round(v['fat_vlr'],2),
+                                'prev_pares':int(v['prev_pares']),'prev_vlr':round(v['prev_vlr'],2)} for k,v in d.items()}
+    def ser_me(d): return {k:{'fat_pares':int(v['fat_pares']),'fat_vlr_usd':round(v['fat_vlr_usd'],2),
+                                'fat_vlr_brl':round(v['fat_vlr_brl'],2),'prev_pares':int(v['prev_pares']),
+                                'prev_vlr_usd':round(v['prev_vlr_usd'],2),'prev_vlr_brl':round(v['prev_vlr_brl'],2)} for k,v in d.items()}
+    def ser_ec(d): return {k:{'fat_pares':int(v['fat_pares']),'fat_vlr':round(v['fat_vlr'],2),
+                                'prev_pares':int(v['prev_pares']),'prev_vlr':round(v['prev_vlr'],2)} for k,v in d.items()}
+
+    dados_out = {k:{'MI':ser_mi(m['MI']),'ME':ser_me(m['ME']),'EC':ser_ec(m['EC'])}
+                 for k,m in sorted(dados.items())}
+    sem_data_out = {
+        'MI': ser_mi({k:v for k,v in sem_data['MI'].items() if v['fat_pares']+v['prev_pares']>0}),
+        'ME': ser_me({k:v for k,v in sem_data['ME'].items() if v['fat_pares']+v['prev_pares']>0}),
+        'EC': ser_ec({k:v for k,v in sem_data['EC'].items() if v['fat_pares']+v['prev_pares']>0}),
+    }
+
+    result = {'gerado_em':datetime.now().strftime('%d/%m/%Y %H:%M'),
+              'taxa_cambio_me':taxa_cambio_me, 'dados':dados_out, 'sem_data':sem_data_out}
+    with open(os.path.join(output_dir,'dados_faturamento.json'),'w',encoding='utf-8') as f_:
+        json.dump(result, f_, ensure_ascii=False, default=str)
+    print(f"    ✓ dados_faturamento.json gerado ({len(dados_out)} meses)")
+    return result
+
 # ─── JSON PORTAL ─────────────────────────────────────────────────────
-def gerar_json_portal(vendas, prog, estoque, carteira, mes_atual, mes_label, output_dir='.'):
+def gerar_json_portal(vendas, prog, estoque, carteira, mes_atual, mes_label, output_dir='.', fat=None):
     agora = datetime.now()
     ano = int(mes_atual[:4]); mes = int(mes_atual[4:])
     mes_ref_atual = f"{ano}-{mes:02d}"
@@ -758,6 +874,17 @@ def gerar_json_portal(vendas, prog, estoque, carteira, mes_atual, mes_label, out
     # — ver 'mes_ref' calculado em processar_programacao.
     sems_mes = {k:v for k,v in prog['semanas'].items()
                 if v.get('mes_ref')==mes_ref_atual}
+
+    # Faturamento — resumo do mês atual para o card da home
+    fat_dados = (fat or {}).get('dados', {})
+    mes_fat_d  = fat_dados.get(mes_atual, {})
+    fat_mes_vlr = prev_mes_vlr = fat_mes_pares = prev_mes_pares = 0
+    for canal_k, canal_d in mes_fat_d.items():
+        for tp in canal_d.values():
+            fat_mes_vlr   += tp.get('fat_vlr_brl' if canal_k=='ME' else 'fat_vlr', 0)
+            prev_mes_vlr  += tp.get('prev_vlr_brl' if canal_k=='ME' else 'prev_vlr', 0)
+            fat_mes_pares  += tp.get('fat_pares', 0)
+            prev_mes_pares += tp.get('prev_pares', 0)
 
     dados = {
         'gerado_em': agora.strftime('%d/%m/%Y %H:%M'),
@@ -778,6 +905,13 @@ def gerar_json_portal(vendas, prog, estoque, carteira, mes_atual, mes_label, out
         'carteira': {
             'total_pedidos': carteira.get('total_pedidos', 0),
             'total_pares': carteira.get('total_pares', 0),
+        },
+        'faturamento': {
+            'mes_label': mes_label,
+            'fat_mes_vlr': round(fat_mes_vlr, 2),
+            'prev_mes_vlr': round(prev_mes_vlr, 2),
+            'fat_mes_pares': int(fat_mes_pares),
+            'prev_mes_pares': int(prev_mes_pares),
         },
     }
     with open(os.path.join(output_dir, 'dados_portal.json'), 'w', encoding='utf-8') as f_:
@@ -842,6 +976,13 @@ def _carregar_vendas_prog_existentes(output_dir):
 
     return vendas, prog, carteira
 
+def _carregar_faturamento_existente(output_dir):
+    try:
+        with open(os.path.join(output_dir,'dados_faturamento.json'),encoding='utf-8') as f_:
+            return json.load(f_)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {'gerado_em':'','taxa_cambio_me':5.0,'dados':{},'sem_data':{}}
+
 # ─── ORQUESTRADOR ────────────────────────────────────────────────────
 def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
     """Roda o pipeline completo. Retorna um resumo (dict) do que foi gerado.
@@ -867,10 +1008,12 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         vendas   = processar_vendas(linhas, mes_atual, output_dir)
         prog     = processar_programacao(linhas, output_dir)
         carteira = processar_carteira(linhas, output_dir)
+        fat      = processar_faturamento(linhas, output_dir)
     else:
         vendas, prog, carteira = _carregar_vendas_prog_existentes(output_dir)
+        fat = _carregar_faturamento_existente(output_dir)
 
-    gerar_json_portal(vendas, prog, estoque, carteira, mes_atual, mes_label, output_dir)
+    gerar_json_portal(vendas, prog, estoque, carteira, mes_atual, mes_label, output_dir, fat=fat)
     gerar_dados_completos(vendas, prog, estoque, carteira, output_dir)
 
     cm = vendas['canais_mes']
@@ -882,7 +1025,7 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         'estoque_totais': t,
         'arquivos': ['dados_portal.json','dados_programacao.json','dados_programacao_detalhe.json',
                       'dados_refs_tabela.json','dados_vendas.json','dados_estoque.json',
-                      'dados_carteira.json','boaonda_dados_completos.json'],
+                      'dados_carteira.json','dados_faturamento.json','boaonda_dados_completos.json'],
     }
 
 # ─── CLI ─────────────────────────────────────────────────────────────

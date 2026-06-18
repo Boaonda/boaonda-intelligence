@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Faturamento</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --border:#262b3a;--line:#262b3a;--line2:#333a4d;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:20px 32px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.breadcrumb{font-size:10px;color:var(--txt-m);margin-bottom:6px;letter-spacing:.04em}
+.h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:1.4rem;font-weight:800;color:var(--txt)}
+.h-sub{font-size:11px;color:var(--txt-s);margin-top:4px}
+.h-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.h-meta strong{color:var(--txt-s)}
+
+.cambio-box{display:flex;align-items:center;gap:8px;background:rgba(73,148,199,.08);border:1px solid rgba(73,148,199,.25);border-radius:8px;padding:8px 14px}
+.cambio-lbl{font-size:9px;color:var(--azul);font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.cambio-inp{background:transparent;border:none;outline:none;font-family:'Montserrat',sans-serif;font-size:15px;font-weight:800;color:var(--txt);width:64px;text-align:right}
+.cambio-unit{font-size:10px;color:var(--txt-m);font-weight:600}
+
+.main{padding:24px 32px;max-width:1500px;margin:0 auto}
+.stitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--line2);border-radius:10px;padding:16px}
+.kpi.destaque{border-top-color:var(--coral)}
+.kpi.azul{border-top-color:var(--azul)}
+.kpi.verde{border-top-color:var(--verde)}
+.kpi.cinza{border-top-color:var(--cinza)}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
+.kpi-v{font-size:1.6rem;font-weight:800;color:var(--txt);line-height:1}
+.kpi-v.coral{color:var(--coral)}
+.kpi-v.azul{color:var(--azul)}
+.kpi-v.verde{color:var(--verde)}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
+
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;align-items:center}
+.filter-group{display:flex;align-items:center;gap:8px}
+.filter-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
+.filter-sel{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:7px;padding:6px 10px;font-size:11px;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
+.filter-sel:focus{border-color:var(--coral)}
+
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px}
+.chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--txt-s)}
+.leg-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.leg-line{width:18px;height:2px;border-radius:1px;flex-shrink:0;border-top:2px dashed}
+.chart-inner{position:relative;height:320px}
+
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px}
+.table-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.table-title{font-size:11px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.12em}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--card2)}
+th{padding:9px 12px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);border-bottom:1px solid var(--border);white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:9px 12px;text-align:right;font-size:11px;color:var(--txt-s);border-bottom:1px solid rgba(255,255,255,.04)}
+td:first-child{text-align:left;color:var(--txt);font-weight:600}
+tr:hover td{background:rgba(255,255,255,.02)}
+tr:last-child td{border-bottom:none}
+.td-val{color:var(--txt);font-weight:700}
+.td-me{color:var(--azul)}
+.td-ec{color:var(--coral2)}
+.td-tot{color:var(--coral);font-weight:800}
+.td-prev{color:var(--cinza)}
+.status-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:8.5px;font-weight:700;white-space:nowrap}
+.st-done{background:rgba(108,156,55,.12);color:var(--verde)}
+.st-open{background:rgba(237,104,66,.12);color:var(--coral)}
+.st-prev{background:rgba(113,112,111,.12);color:var(--cinza)}
+tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid var(--border);background:var(--card2);border-bottom:none}
+
+.semdata-card{background:var(--card);border:1px solid rgba(237,104,66,.25);border-radius:12px;padding:20px;margin-bottom:24px}
+.semdata-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.semdata-title{font-size:12px;font-weight:800;color:var(--coral)}
+.semdata-sub{font-size:10px;color:var(--txt-m);margin-top:3px}
+.semdata-kpis{display:flex;gap:24px}
+.semdata-kpi-v{font-size:18px;font-weight:800;color:var(--coral2)}
+.semdata-kpi-l{font-size:8.5px;color:var(--txt-m);text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
+.semdata-table{width:100%;border-collapse:collapse;font-size:11px}
+.semdata-table th{padding:7px 10px;text-align:left;color:var(--txt-m);font-size:9px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border)}
+.semdata-table td{padding:7px 10px;color:var(--txt-s);border-bottom:1px solid rgba(255,255,255,.03)}
+.semdata-table td:last-child,.semdata-table th:last-child{text-align:right}
+.semdata-table tr:last-child td{border-bottom:none}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:12px;color:var(--txt-m)}
+.empty-icon{font-size:42px}
+.empty-msg{font-size:13px;font-weight:600}
+.empty-sub{font-size:10px;text-align:center;max-width:340px;line-height:1.8}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="breadcrumb">Boaonda Intelligence › Faturamento</div>
+    <div class="h-badge">💰 Faturamento</div>
+    <div class="h-title">Faturamento</div>
+    <div class="h-sub">Realizado · Previsto · MI · ME · E-commerce</div>
+  </div>
+  <div class="h-right">
+    <div class="cambio-box">
+      <span class="cambio-lbl">Câmbio ME</span>
+      <span class="cambio-unit">R$</span>
+      <input class="cambio-inp" id="cambio-inp" type="number" step="0.01" min="1" value="5.00">
+      <span class="cambio-unit">/USD</span>
+    </div>
+    <div class="h-meta">Base: 3YS · ESQT<br>Gerado: <strong id="hdr-data">–</strong></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="stitle">Resumo — mês atual</div>
+  <div class="kpi-grid">
+    <div class="kpi destaque">
+      <div class="kpi-l">Realizado MI</div>
+      <div class="kpi-v coral" id="kpi-mi-real">–</div>
+      <div class="kpi-s" id="kpi-mi-sub">–</div>
+    </div>
+    <div class="kpi azul">
+      <div class="kpi-l">Realizado ME (BRL)</div>
+      <div class="kpi-v azul" id="kpi-me-real">–</div>
+      <div class="kpi-s" id="kpi-me-sub">–</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-l">Realizado E-commerce</div>
+      <div class="kpi-v" id="kpi-ec-real">–</div>
+      <div class="kpi-s" id="kpi-ec-sub">E-commerce</div>
+    </div>
+    <div class="kpi verde">
+      <div class="kpi-l">Total Realizado</div>
+      <div class="kpi-v verde" id="kpi-tot-real">–</div>
+      <div class="kpi-s" id="kpi-tot-sub">mês atual</div>
+    </div>
+    <div class="kpi cinza">
+      <div class="kpi-l">Previsto</div>
+      <div class="kpi-v" id="kpi-prev">–</div>
+      <div class="kpi-s" id="kpi-prev-sub">aguardando faturar</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-lbl">Período</span>
+      <select class="filter-sel" id="filter-periodo">
+        <option value="6">Últimos 6 meses</option>
+        <option value="12" selected>Últimos 12 meses</option>
+        <option value="24">Últimos 24 meses</option>
+        <option value="0">Todos</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-lbl">Canal</span>
+      <select class="filter-sel" id="filter-canal">
+        <option value="TODOS">Todos os canais</option>
+        <option value="MI">MI</option>
+        <option value="ME">ME</option>
+        <option value="EC">E-commerce</option>
+      </select>
+    </div>
+    <div class="filter-group" id="filter-especie-group">
+      <span class="filter-lbl">Espécie MI</span>
+      <select class="filter-sel" id="filter-especie">
+        <option value="TODOS">Todas</option>
+        <option value="PROG">PROG</option>
+        <option value="PE">PE</option>
+        <option value="MISTA">MISTA</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#ed6842"></div>MI Realizado</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#4994c7"></div>ME Realizado (BRL)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#dd7051"></div>EC Realizado</div>
+      <div class="leg-item"><div class="leg-line" style="border-color:#6c9c37"></div>Total Previsto</div>
+    </div>
+    <div class="chart-inner">
+      <canvas id="fat-chart"></canvas>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-head">
+      <div class="table-title">Detalhamento mensal</div>
+      <div style="font-size:9px;color:var(--txt-m)" id="table-info">–</div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Mês</th>
+            <th>MI PROG</th>
+            <th>MI PE</th>
+            <th>MI MISTA</th>
+            <th>Total MI</th>
+            <th>ME (USD)</th>
+            <th>ME (BRL)</th>
+            <th>E-commerce</th>
+            <th>Total Realiz.</th>
+            <th>Previsto</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+        <tfoot><tr id="tfoot"></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="semdata-card" id="semdata-card" style="display:none">
+    <div class="semdata-head">
+      <div>
+        <div class="semdata-title">⚠️ Itens sem data de faturamento</div>
+        <div class="semdata-sub">Pedidos sem dt_faturam e sem dt_plano — não entram na competência mensal</div>
+      </div>
+      <div class="semdata-kpis" id="semdata-kpis"></div>
+    </div>
+    <div id="semdata-body"></div>
+  </div>
+
+</div>
+
+<script>
+Chart.defaults.color='#7d7c79';
+Chart.defaults.borderColor='#262b3a';
+Chart.defaults.font.family="'Montserrat',sans-serif";
+
+let DATA=null, CAMBIO=5.00, fatChart=null;
+
+function R(n){return Math.round(n||0)}
+function fBRL(n){return'R$ '+R(n).toLocaleString('pt-BR')}
+function fUSD(n){return'US$ '+R(n).toLocaleString('pt-BR')}
+function fK(n){const v=R(n);return v>=1e6?'R$ '+(v/1e6).toFixed(1).replace('.',',')+'M':v>=1e3?'R$ '+(v/1e3).toFixed(0)+'k':'R$ '+v.toLocaleString('pt-BR')}
+
+function mesLabel(yyyymm){
+  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return meses[parseInt(yyyymm.slice(4,6))-1]+'/'+yyyymm.slice(2,4);
+}
+
+function mesAtual(){
+  const d=new Date();
+  return String(d.getFullYear())+String(d.getMonth()+1).padStart(2,'0');
+}
+
+function keysFiltrados(){
+  const dados=DATA.dados||{};
+  const n=parseInt(document.getElementById('filter-periodo').value);
+  const keys=Object.keys(dados).sort();
+  return n?keys.slice(-n):keys;
+}
+
+function canalFiltro(){return document.getElementById('filter-canal').value}
+function especieFiltro(){return document.getElementById('filter-especie').value}
+
+function calcMes(mes){
+  const MI=mes.MI||{}, ME=mes.ME||{}, EC=mes.EC||{};
+  const canal=canalFiltro(), esp=especieFiltro();
+  let miProg=0,miPe=0,miMista=0,miPrev=0;
+  if(canal==='TODOS'||canal==='MI'){
+    if(esp==='TODOS'||esp==='PROG'){miProg=(MI.PROG||{}).REALIZADO||0; miPrev+=(MI.PROG||{}).PREVISTO||0}
+    if(esp==='TODOS'||esp==='PE'){miPe=(MI.PE||{}).REALIZADO||0; miPrev+=(MI.PE||{}).PREVISTO||0}
+    if(esp==='TODOS'||esp==='MISTA'){miMista=(MI.MISTA||{}).REALIZADO||0; miPrev+=(MI.MISTA||{}).PREVISTO||0}
+  }
+  const miReal=miProg+miPe+miMista;
+  let meUSD=0,mePrevUSD=0;
+  if(canal==='TODOS'||canal==='ME'){meUSD=ME.REALIZADO_USD||0; mePrevUSD=ME.PREVISTO_USD||0}
+  const meBRL=meUSD*CAMBIO, mePrevBRL=mePrevUSD*CAMBIO;
+  let ecReal=0,ecPrev=0;
+  if(canal==='TODOS'||canal==='EC'){ecReal=EC.REALIZADO||0; ecPrev=EC.PREVISTO||0}
+  return{miProg,miPe,miMista,miReal,meUSD,meBRL,ecReal,totalReal:miReal+meBRL+ecReal,totalPrev:miPrev+mePrevBRL+ecPrev};
+}
+
+function getStatus(mes,k){
+  const MA=mesAtual();
+  if(k>MA) return 'prev';
+  const MI=mes.MI||{},ME=mes.ME||{},EC=mes.EC||{};
+  const hasReal=(MI.PROG?.REALIZADO||0)+(MI.PE?.REALIZADO||0)+(MI.MISTA?.REALIZADO||0)+(ME.REALIZADO_USD||0)+(EC.REALIZADO||0);
+  const hasPrev=(MI.PROG?.PREVISTO||0)+(MI.PE?.PREVISTO||0)+(MI.MISTA?.PREVISTO||0)+(ME.PREVISTO_USD||0)+(EC.PREVISTO||0);
+  if(hasReal>0&&hasPrev===0) return 'done';
+  if(hasReal>0) return 'open';
+  return 'prev';
+}
+
+function render(){
+  if(!DATA) return;
+  const dados=DATA.dados||{};
+  const keys=keysFiltrados();
+  const canal=canalFiltro();
+
+  document.getElementById('filter-especie-group').style.display=(canal==='ME'||canal==='EC')?'none':'flex';
+
+  // KPIs mês atual
+  const MA=mesAtual(), cA=calcMes(dados[MA]||{});
+  document.getElementById('kpi-mi-real').textContent=fK(cA.miReal);
+  document.getElementById('kpi-mi-sub').textContent='PROG '+fK(cA.miProg)+' · PE '+fK(cA.miPe)+' · MISTA '+fK(cA.miMista);
+  document.getElementById('kpi-me-real').textContent=fK(cA.meBRL);
+  document.getElementById('kpi-me-sub').textContent=fUSD(cA.meUSD);
+  document.getElementById('kpi-ec-real').textContent=fK(cA.ecReal);
+  document.getElementById('kpi-tot-real').textContent=fK(cA.totalReal);
+  document.getElementById('kpi-tot-sub').textContent=mesLabel(MA);
+  document.getElementById('kpi-prev').textContent=fK(cA.totalPrev);
+
+  // Gráfico
+  const labels=keys.map(mesLabel);
+  const dMI=[],dME=[],dEC=[],dPrev=[];
+  keys.forEach(k=>{
+    const c=calcMes(dados[k]||{});
+    dMI.push(R(c.miReal)); dME.push(R(c.meBRL)); dEC.push(R(c.ecReal));
+    dPrev.push(R(c.totalReal+c.totalPrev));
+  });
+  if(fatChart) fatChart.destroy();
+  fatChart=new Chart(document.getElementById('fat-chart').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'MI Realizado',data:dMI,backgroundColor:'rgba(237,104,66,.85)',stack:'r',borderRadius:3},
+      {label:'ME BRL',data:dME,backgroundColor:'rgba(73,148,199,.85)',stack:'r',borderRadius:3},
+      {label:'E-commerce',data:dEC,backgroundColor:'rgba(221,112,81,.85)',stack:'r',borderRadius:3},
+      {label:'Total Previsto',data:dPrev,type:'line',borderColor:'#6c9c37',backgroundColor:'transparent',
+       borderWidth:2,borderDash:[5,4],pointBackgroundColor:'#6c9c37',pointRadius:3,tension:.25,order:0},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fBRL(c.raw)}}},
+      scales:{
+        x:{grid:{color:'rgba(38,43,58,.8)'},ticks:{font:{size:10}}},
+        y:{grid:{color:'rgba(38,43,58,.8)'},ticks:{font:{size:10},callback:v=>'R$'+Math.round(v/1000)+'k'}},
+      }
+    }
+  });
+
+  // Tabela
+  const tbody=document.getElementById('tbody'), tfoot=document.getElementById('tfoot');
+  let sP=0,sPE=0,sM=0,sMI=0,sUSD=0,sBRL=0,sEC=0,sR=0,sPrev=0;
+  tbody.innerHTML='';
+  keys.slice().reverse().forEach(k=>{
+    const c=calcMes(dados[k]||{}), st=getStatus(dados[k]||{},k);
+    sP+=c.miProg; sPE+=c.miPe; sM+=c.miMista; sMI+=c.miReal;
+    sUSD+=c.meUSD; sBRL+=c.meBRL; sEC+=c.ecReal; sR+=c.totalReal; sPrev+=c.totalPrev;
+    const stHtml=st==='done'?'<span class="status-badge st-done">Concluído</span>':
+                 st==='open'?'<span class="status-badge st-open">Em aberto</span>':
+                             '<span class="status-badge st-prev">Previsto</span>';
+    tbody.innerHTML+=`<tr>
+      <td>${mesLabel(k)}</td>
+      <td class="td-val">${c.miProg?fBRL(c.miProg):'–'}</td>
+      <td class="td-val">${c.miPe?fBRL(c.miPe):'–'}</td>
+      <td class="td-val">${c.miMista?fBRL(c.miMista):'–'}</td>
+      <td class="td-val">${fBRL(c.miReal)}</td>
+      <td class="td-me">${c.meUSD?fUSD(c.meUSD):'–'}</td>
+      <td class="td-me">${c.meBRL?fBRL(c.meBRL):'–'}</td>
+      <td class="td-ec">${c.ecReal?fBRL(c.ecReal):'–'}</td>
+      <td class="td-tot">${fBRL(c.totalReal)}</td>
+      <td class="td-prev">${c.totalPrev?fBRL(c.totalPrev):'–'}</td>
+      <td>${stHtml}</td>
+    </tr>`;
+  });
+  tfoot.innerHTML=`<td>TOTAL (${keys.length} meses)</td>
+    <td class="td-val">${fBRL(sP)}</td><td class="td-val">${fBRL(sPE)}</td>
+    <td class="td-val">${fBRL(sM)}</td><td class="td-val">${fBRL(sMI)}</td>
+    <td class="td-me">${fUSD(sUSD)}</td><td class="td-me">${fBRL(sBRL)}</td>
+    <td class="td-ec">${fBRL(sEC)}</td><td class="td-tot">${fBRL(sR)}</td>
+    <td class="td-prev">${fBRL(sPrev)}</td><td></td>`;
+  document.getElementById('table-info').textContent=keys.length+' meses exibidos';
+
+  renderSemData();
+}
+
+function renderSemData(){
+  const sd=DATA.sem_data||[];
+  const card=document.getElementById('semdata-card');
+  if(!sd.length){card.style.display='none';return;}
+  card.style.display='block';
+  const canal=canalFiltro(), esp=especieFiltro();
+  const fil=sd.filter(r=>{
+    if(canal!=='TODOS'&&r.canal!==canal) return false;
+    if(canal==='MI'&&esp!=='TODOS'&&r.especie!==esp) return false;
+    return true;
+  });
+  const totVal=fil.reduce((s,r)=>s+(r.valor||0),0);
+  const totPar=fil.reduce((s,r)=>s+(r.pares||0),0);
+  document.getElementById('semdata-kpis').innerHTML=`
+    <div style="text-align:center"><div class="semdata-kpi-v">${fil.length}</div><div class="semdata-kpi-l">itens</div></div>
+    <div style="text-align:center"><div class="semdata-kpi-v">${totPar.toLocaleString('pt-BR')}</div><div class="semdata-kpi-l">pares</div></div>
+    <div style="text-align:center"><div class="semdata-kpi-v">${fK(totVal)}</div><div class="semdata-kpi-l">valor</div></div>`;
+  if(!fil.length){document.getElementById('semdata-body').innerHTML='<div style="font-size:11px;color:var(--txt-m);padding:12px">Nenhum item para os filtros selecionados</div>';return;}
+  const rows=fil.slice(0,60).map(r=>`<tr>
+    <td>${r.ref||'–'}</td>
+    <td><span class="status-badge" style="background:rgba(237,104,66,.1);color:var(--coral)">${r.canal||'–'}</span></td>
+    <td>${r.especie||'–'}</td>
+    <td style="text-align:right">${(r.pares||0).toLocaleString('pt-BR')}</td>
+    <td style="text-align:right">${r.valor?fBRL(r.valor):'–'}</td>
+  </tr>`).join('');
+  document.getElementById('semdata-body').innerHTML=`<table class="semdata-table">
+    <thead><tr><th>Referência</th><th>Canal</th><th>Espécie</th><th style="text-align:right">Pares</th><th style="text-align:right">Valor</th></tr></thead>
+    <tbody>${rows}</tbody></table>`
+    +(fil.length>60?`<div style="font-size:10px;color:var(--txt-m);padding:8px 10px">... e mais ${fil.length-60} itens</div>`:'');
+}
+
+fetch('dados_faturamento.json?_='+Date.now())
+  .then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})
+  .then(d=>{
+    DATA=d;
+    CAMBIO=parseFloat(d.taxa_cambio_me)||5.00;
+    document.getElementById('cambio-inp').value=CAMBIO.toFixed(2);
+    document.getElementById('hdr-data').textContent=d.gerado_em||'–';
+    render();
+  })
+  .catch(()=>{
+    document.querySelector('.main').innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Dados de faturamento não encontrados</div><div class="empty-sub">Execute o processador para gerar dados_faturamento.json e tente novamente.</div></div>';
+  });
+
+document.getElementById('cambio-inp').addEventListener('input',e=>{
+  const v=parseFloat(e.target.value);
+  if(v>0){CAMBIO=v;if(DATA)render();}
+});
+['filter-periodo','filter-canal','filter-especie'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>{if(DATA)render();});
+});
+</script>
+</body>
+</html>

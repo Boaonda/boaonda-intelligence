@@ -55,7 +55,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   position:relative;
   width:100%;max-width:1100px;
   margin:0 auto;
-  height:900px;
+  height:1060px;
   padding:0 40px;
 }
 .org-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
@@ -200,7 +200,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .alerta-val{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2);border-radius:5px;padding:4px 9px;font-size:8.5px;color:var(--coral);font-weight:600;margin-top:6px;display:inline-block}
 
 @media(max-width:900px){
-  .org-stage{height:auto;min-height:900px}
+  .org-stage{height:auto;min-height:1060px}
   .nó-central{flex-direction:column;align-items:stretch;text-align:left}
   .nc-side{flex:none}
   .fases{grid-template-columns:1fr;padding:8px 16px 40px}
@@ -240,10 +240,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     <!-- Labels de seção -->
     <span class="sec-label" style="left:48px;top:24px">Mercado</span>
     <span class="sec-label" style="right:48px;top:24px;text-align:right">Indústria</span>
-    <span class="sec-label" style="left:50%;transform:translateX(-50%);bottom:8px">Equilíbrio</span>
+    <span class="sec-label" style="left:50%;transform:translateX(-50%);top:568px">Equilíbrio</span>
+    <span class="sec-label" style="left:50%;transform:translateX(-50%);top:892px">Resultado Financeiro</span>
 
     <!-- SVG CONEXÕES -->
-    <svg class="org-svg" viewBox="0 0 1020 900" preserveAspectRatio="none">
+    <svg class="org-svg" viewBox="0 0 1020 1060" preserveAspectRatio="none">
       <defs>
         <marker id="ac" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
           <path d="M1 2L8 5L1 8" fill="none" stroke="#ed6842" stroke-width="1.5" stroke-linecap="round"/>
@@ -274,6 +275,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <!-- IA → Outputs -->
       <path d="M 460 748 Q 350 780 220 788" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
       <path d="M 560 748 Q 670 780 800 788" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
+
+      <!-- Outputs → Faturamento -->
+      <path d="M 220 868 Q 340 910 490 920" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".35" marker-end="url(#ac)"/>
+      <path d="M 800 868 Q 680 910 530 920" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".35" marker-end="url(#ac)"/>
     </svg>
 
     <!-- NÓ: VENDAS (esq topo) -->
@@ -379,6 +384,24 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-output-desc">O que produzir · ordem · semana</div>
     </div>
 
+    <!-- NÓ: FATURAMENTO (base central — resultado financeiro) -->
+    <div class="nó" style="left:50%;top:920px;transform:translateX(-50%)" onclick="abrirModulo('faturamento')">
+      <span class="nó-icon">💰</span>
+      <div class="nó-title">Faturamento</div>
+      <div class="nó-desc">Realizado · Previsto · MI · ME · EC</div>
+      <div class="nó-kpi-row">
+        <div>
+          <div class="nó-kpi" id="kpi-fat-real" style="font-size:19px">–</div>
+          <div class="nó-kpi-label">realizado</div>
+        </div>
+        <div>
+          <div class="nó-kpi" id="kpi-fat-prev" style="font-size:19px">–</div>
+          <div class="nó-kpi-label">previsto</div>
+        </div>
+      </div>
+      <div class="nó-cta">Ver faturamento →</div>
+    </div>
+
   </div><!-- /stage -->
 
   <!-- FASES -->
@@ -426,6 +449,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   <iframe class="mod-frame" id="frame-capacidade" src="" title="Capacidade Fabril"></iframe>
 </div>
 
+<div class="page" id="page-faturamento">
+  <iframe class="mod-frame" id="frame-faturamento" src="" title="Faturamento"></iframe>
+</div>
+
 <div class="page" id="page-equilibrio">
   <div class="mod-header">
     <div class="mod-icon">⚖️</div>
@@ -445,6 +472,7 @@ const MODS={
   estoque:{file:'boaonda_estoque.html',label:'Estoque'},
   carteira:{file:'boaonda_carteira.html',label:'Pedido em Carteira'},
   capacidade:{file:'boaonda_capacidade_fabril.html',label:'Capacidade Fabril'},
+  faturamento:{file:'boaonda_faturamento.html',label:'Faturamento'},
   equilibrio:{file:null,label:'Equilíbrio'},
 };
 function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
@@ -453,6 +481,21 @@ function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
 fetch('dados_portal.json?_='+Date.now())
   .then(r=>r.json()).then(render)
   .catch(()=>render(fallback()));
+
+// Faturamento — KPIs do mês atual
+fetch('dados_faturamento.json?_='+Date.now())
+  .then(r=>r.json()).then(d=>{
+    const mes=new Date(), MA=String(mes.getFullYear())+String(mes.getMonth()+1).padStart(2,'0');
+    const m=(d.dados||{})[MA]||{}, cambio=parseFloat(d.taxa_cambio_me)||5;
+    const MI=m.MI||{}, ME=m.ME||{}, EC=m.EC||{};
+    const miR=(MI.PROG?.REALIZADO||0)+(MI.PE?.REALIZADO||0)+(MI.MISTA?.REALIZADO||0);
+    const miP=(MI.PROG?.PREVISTO||0)+(MI.PE?.PREVISTO||0)+(MI.MISTA?.PREVISTO||0);
+    const meR=(ME.REALIZADO_USD||0)*cambio, meP=(ME.PREVISTO_USD||0)*cambio;
+    const ecR=EC.REALIZADO||0, ecP=EC.PREVISTO||0;
+    const fK=n=>{const v=Math.round(n||0);return v>=1e6?'R$'+(v/1e6).toFixed(1).replace('.',',')+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toLocaleString('pt-BR')};
+    document.getElementById('kpi-fat-real').textContent=fK(miR+meR+ecR);
+    document.getElementById('kpi-fat-prev').textContent=fK(miP+meP+ecP);
+  }).catch(()=>{});
 
 // Capacidade Fabril — bloco isolado, KPIs próprios (sem cruzamento com o portal principal)
 fetch('dados_capacidade.json?_='+Date.now())
