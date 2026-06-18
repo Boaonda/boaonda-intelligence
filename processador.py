@@ -778,20 +778,27 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     canal/espécie e mês de referência, com suporte a taxa de câmbio ME."""
     print("\n  Processando faturamento...")
 
-    def zero_mi(): return {'fat_pares':0,'fat_vlr':0.0,'prev_pares':0,'prev_vlr':0.0}
-    def zero_me(): return {'fat_pares':0,'fat_vlr_usd':0.0,'fat_vlr_brl':0.0,
-                            'prev_pares':0,'prev_vlr_usd':0.0,'prev_vlr_brl':0.0}
-    def zero_ec(): return {'fat_pares':0,'fat_vlr':0.0,'prev_pares':0,'prev_vlr':0.0}
-
-    dados    = defaultdict(lambda: {'MI':defaultdict(zero_mi),'ME':defaultdict(zero_me),'EC':defaultdict(zero_ec)})
-    sem_data = {'MI':defaultdict(zero_mi),'ME':defaultdict(zero_me),'EC':defaultdict(zero_ec)}
+    # Acumuladores por mês: MI/ME/EC com valores BRL (ME em USD)
+    # Estrutura: dados[yyyymm] = {
+    #   'MI': {'PROG':[fat_vlr,prev_vlr], 'PE':[...], 'MISTA':[...]},
+    #   'ME': [fat_vlr_usd, prev_vlr_usd],
+    #   'EC': [fat_vlr, prev_vlr],
+    # }
+    def new_mes():
+        return {
+            'MI': {'PROG':[0.0,0.0],'PE':[0.0,0.0],'MISTA':[0.0,0.0]},
+            'ME': [0.0,0.0],
+            'EC': [0.0,0.0],
+        }
+    dados = defaultdict(new_mes)
+    sem_data_list = []   # [{ref, canal, especie, pares, valor}]
     total_fat = total_prev = sem_data_count = 0
 
     for row in linhas:
         pos = g(row, IDX['pos_item']).strip().upper()
         if pos == 'CANCELADO': continue
-        if pos == 'FATURADO':                               status = 'fat'
-        elif pos in ('NADA FATURADO','PARCIALMENTE FATURADO'): status = 'prev'
+        if pos == 'FATURADO':                                   status = 'fat'
+        elif pos in ('NADA FATURADO','PARCIALMENTE FATURADO'):  status = 'prev'
         else: continue
 
         abr = g(row, IDX['abr_grp']).upper()
@@ -822,41 +829,40 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             elif dt_p:          mes_ref = dt_p.strftime('%Y%m')
             else:               mes_ref = None
 
-        tgt = dados[mes_ref] if mes_ref else sem_data
-        if not mes_ref: sem_data_count += 1
+        if mes_ref is None:
+            sem_data_list.append({'ref': g(row, IDX['ref']), 'canal': canal, 'especie': tipo,
+                                  'pares': qtd, 'valor': round(vlr, 2)})
+            sem_data_count += 1
+            continue
 
-        if canal == 'ME':
-            e = tgt['ME'][tipo]
-            if status == 'fat':
-                e['fat_pares'] += qtd; e['fat_vlr_usd'] += vlr; e['fat_vlr_brl'] += vlr*taxa_cambio_me; total_fat += qtd
-            else:
-                e['prev_pares'] += qtd; e['prev_vlr_usd'] += vlr; e['prev_vlr_brl'] += vlr*taxa_cambio_me
-                if mes_ref: total_prev += qtd
+        m = dados[mes_ref]
+        i = 0 if status == 'fat' else 1
+        if canal == 'MI':
+            m['MI'][tipo][i] += vlr
+        elif canal == 'ME':
+            m['ME'][i] += vlr      # USD
         else:
-            e = tgt[canal][tipo]
-            if status == 'fat':
-                e['fat_pares'] += qtd; e['fat_vlr'] += vlr; total_fat += qtd
-            else:
-                e['prev_pares'] += qtd; e['prev_vlr'] += vlr
-                if mes_ref: total_prev += qtd
+            m['EC'][i] += vlr
+
+        if status == 'fat':  total_fat  += qtd
+        else:                total_prev += qtd
 
     print(f"    Faturado: {total_fat:,} pares | Previsto: {total_prev:,} pares | Sem data: {sem_data_count}")
 
-    def ser_mi(d): return {k:{'fat_pares':int(v['fat_pares']),'fat_vlr':round(v['fat_vlr'],2),
-                                'prev_pares':int(v['prev_pares']),'prev_vlr':round(v['prev_vlr'],2)} for k,v in d.items()}
-    def ser_me(d): return {k:{'fat_pares':int(v['fat_pares']),'fat_vlr_usd':round(v['fat_vlr_usd'],2),
-                                'fat_vlr_brl':round(v['fat_vlr_brl'],2),'prev_pares':int(v['prev_pares']),
-                                'prev_vlr_usd':round(v['prev_vlr_usd'],2),'prev_vlr_brl':round(v['prev_vlr_brl'],2)} for k,v in d.items()}
-    def ser_ec(d): return {k:{'fat_pares':int(v['fat_pares']),'fat_vlr':round(v['fat_vlr'],2),
-                                'prev_pares':int(v['prev_pares']),'prev_vlr':round(v['prev_vlr'],2)} for k,v in d.items()}
+    def build_mes(m):
+        mi = {}
+        for t in ('PROG','PE','MISTA'):
+            r, p = m['MI'][t]
+            if r or p:
+                mi[t] = {'REALIZADO': round(r, 2), 'PREVISTO': round(p, 2)}
+        return {
+            'MI': mi,
+            'ME': {'REALIZADO_USD': round(m['ME'][0], 2), 'PREVISTO_USD': round(m['ME'][1], 2)},
+            'EC': {'REALIZADO': round(m['EC'][0], 2), 'PREVISTO': round(m['EC'][1], 2)},
+        }
 
-    dados_out = {k:{'MI':ser_mi(m['MI']),'ME':ser_me(m['ME']),'EC':ser_ec(m['EC'])}
-                 for k,m in sorted(dados.items())}
-    sem_data_out = {
-        'MI': ser_mi({k:v for k,v in sem_data['MI'].items() if v['fat_pares']+v['prev_pares']>0}),
-        'ME': ser_me({k:v for k,v in sem_data['ME'].items() if v['fat_pares']+v['prev_pares']>0}),
-        'EC': ser_ec({k:v for k,v in sem_data['EC'].items() if v['fat_pares']+v['prev_pares']>0}),
-    }
+    dados_out    = {k: build_mes(m) for k, m in sorted(dados.items())}
+    sem_data_out = sorted(sem_data_list, key=lambda x: (-x['pares'], x['ref']))
 
     result = {'gerado_em':datetime.now().strftime('%d/%m/%Y %H:%M'),
               'taxa_cambio_me':taxa_cambio_me, 'dados':dados_out, 'sem_data':sem_data_out}
@@ -875,16 +881,15 @@ def gerar_json_portal(vendas, prog, estoque, carteira, mes_atual, mes_label, out
     sems_mes = {k:v for k,v in prog['semanas'].items()
                 if v.get('mes_ref')==mes_ref_atual}
 
-    # Faturamento — resumo do mês atual para o card da home
+    # Faturamento — resumo do mês atual para o card da home (estrutura nova)
     fat_dados = (fat or {}).get('dados', {})
-    mes_fat_d  = fat_dados.get(mes_atual, {})
-    fat_mes_vlr = prev_mes_vlr = fat_mes_pares = prev_mes_pares = 0
-    for canal_k, canal_d in mes_fat_d.items():
-        for tp in canal_d.values():
-            fat_mes_vlr   += tp.get('fat_vlr_brl' if canal_k=='ME' else 'fat_vlr', 0)
-            prev_mes_vlr  += tp.get('prev_vlr_brl' if canal_k=='ME' else 'prev_vlr', 0)
-            fat_mes_pares  += tp.get('fat_pares', 0)
-            prev_mes_pares += tp.get('prev_pares', 0)
+    mes_fat_d = fat_dados.get(mes_atual, {})
+    mi_d  = mes_fat_d.get('MI', {})
+    me_d  = mes_fat_d.get('ME', {})
+    ec_d  = mes_fat_d.get('EC', {})
+    fat_mes_vlr   = sum(v.get('REALIZADO', 0) for v in mi_d.values()) + ec_d.get('REALIZADO', 0)
+    prev_mes_vlr  = sum(v.get('PREVISTO', 0) for v in mi_d.values()) + ec_d.get('PREVISTO', 0)
+    fat_mes_pares = 0; prev_mes_pares = 0  # pares não armazenados na estrutura nova
 
     dados = {
         'gerado_em': agora.strftime('%d/%m/%Y %H:%M'),
