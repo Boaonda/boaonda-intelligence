@@ -778,17 +778,13 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     canal/espécie e mês de referência, com suporte a taxa de câmbio ME."""
     print("\n  Processando faturamento...")
 
-    # Acumuladores por mês: MI/ME/EC com valores BRL (ME em USD)
-    # Estrutura: dados[yyyymm] = {
-    #   'MI': {'PROG':[fat_vlr,prev_vlr], 'PE':[...], 'MISTA':[...]},
-    #   'ME': [fat_vlr_usd, prev_vlr_usd],
-    #   'EC': [fat_vlr, prev_vlr],
-    # }
+    # Acumuladores: [fat_vlr, prev_vlr, fat_pares, prev_pares]
+    # ME usa USD em índice 0/1; MI/EC usam BRL
     def new_mes():
         return {
-            'MI': {'PROG':[0.0,0.0],'PE':[0.0,0.0],'MISTA':[0.0,0.0]},
-            'ME': [0.0,0.0],
-            'EC': [0.0,0.0],
+            'MI': {'PROG':[0.0,0.0,0,0],'PE':[0.0,0.0,0,0],'MISTA':[0.0,0.0,0,0]},
+            'ME': [0.0,0.0,0,0],
+            'EC': [0.0,0.0,0,0],
         }
     dados = defaultdict(new_mes)
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
@@ -836,13 +832,13 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             continue
 
         m = dados[mes_ref]
-        i = 0 if status == 'fat' else 1
+        vi, qi = (0, 2) if status == 'fat' else (1, 3)
         if canal == 'MI':
-            m['MI'][tipo][i] += vlr
+            m['MI'][tipo][vi] += vlr; m['MI'][tipo][qi] += qtd
         elif canal == 'ME':
-            m['ME'][i] += vlr      # USD
+            m['ME'][vi] += vlr; m['ME'][qi] += qtd     # USD
         else:
-            m['EC'][i] += vlr
+            m['EC'][vi] += vlr; m['EC'][qi] += qtd
 
         if status == 'fat':  total_fat  += qtd
         else:                total_prev += qtd
@@ -852,13 +848,16 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     def build_mes(m):
         mi = {}
         for t in ('PROG','PE','MISTA'):
-            r, p = m['MI'][t]
-            if r or p:
-                mi[t] = {'REALIZADO': round(r, 2), 'PREVISTO': round(p, 2)}
+            rv, pv, rq, pq = m['MI'][t]
+            if rv or pv or rq or pq:
+                mi[t] = {'REALIZADO': round(rv, 2), 'PREVISTO': round(pv, 2),
+                         'REALIZADO_PARES': int(rq), 'PREVISTO_PARES': int(pq)}
         return {
             'MI': mi,
-            'ME': {'REALIZADO_USD': round(m['ME'][0], 2), 'PREVISTO_USD': round(m['ME'][1], 2)},
-            'EC': {'REALIZADO': round(m['EC'][0], 2), 'PREVISTO': round(m['EC'][1], 2)},
+            'ME': {'REALIZADO_USD': round(m['ME'][0], 2), 'PREVISTO_USD': round(m['ME'][1], 2),
+                   'REALIZADO_PARES': int(m['ME'][2]), 'PREVISTO_PARES': int(m['ME'][3])},
+            'EC': {'REALIZADO': round(m['EC'][0], 2), 'PREVISTO': round(m['EC'][1], 2),
+                   'REALIZADO_PARES': int(m['EC'][2]), 'PREVISTO_PARES': int(m['EC'][3])},
         }
 
     dados_out    = {k: build_mes(m) for k, m in sorted(dados.items())}

@@ -35,6 +35,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .stitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;display:flex;align-items:center;gap:12px}
 .stitle::after{content:'';flex:1;height:1px;background:var(--border)}
 
+/* KPIs */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
 .kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--line2);border-radius:10px;padding:16px}
 .kpi.destaque{border-top-color:var(--coral)}
@@ -48,12 +49,14 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .kpi-v.verde{color:var(--verde)}
 .kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
 
+/* Filtros */
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;align-items:center}
 .filter-group{display:flex;align-items:center;gap:8px}
 .filter-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
 .filter-sel{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:7px;padding:6px 10px;font-size:11px;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
 .filter-sel:focus{border-color:var(--coral)}
 
+/* Gráfico */
 .chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px}
 .chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
 .leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--txt-s)}
@@ -61,6 +64,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .leg-line{width:18px;height:2px;border-radius:1px;flex-shrink:0;border-top:2px dashed}
 .chart-inner{position:relative;height:320px}
 
+/* Tabela mensal */
 .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px}
 .table-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .table-title{font-size:11px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.12em}
@@ -84,6 +88,7 @@ tr:last-child td{border-bottom:none}
 .st-prev{background:rgba(113,112,111,.12);color:var(--cinza)}
 tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid var(--border);background:var(--card2);border-bottom:none}
 
+/* Sem data */
 .semdata-card{background:var(--card);border:1px solid rgba(237,104,66,.25);border-radius:12px;padding:20px;margin-bottom:24px}
 .semdata-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
 .semdata-title{font-size:12px;font-weight:800;color:var(--coral)}
@@ -97,6 +102,47 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
 .semdata-table td:last-child,.semdata-table th:last-child{text-align:right}
 .semdata-table tr:last-child td{border-bottom:none}
 
+/* ═══ RESUMO MENSAL ══════════════════════════════════════════════ */
+.resumo-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:32px}
+.resumo-head{padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.resumo-titulo{font-size:14px;font-weight:800;color:var(--txt);letter-spacing:.04em}
+.resumo-mes-sel{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
+.resumo-mes-sel:focus{border-color:var(--coral)}
+
+/* tabela do resumo */
+.rt{width:100%;border-collapse:collapse}
+.rt th{padding:8px 12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
+.rt th.th-grupo{text-align:left;min-width:160px}
+.rt th.th-sep{background:var(--bg);width:8px;padding:0;border:none}
+.rt th.th-real{background:rgba(237,104,66,.07);color:var(--coral);border-bottom:1px solid rgba(237,104,66,.2)}
+.rt th.th-prev{background:rgba(113,112,111,.07);color:var(--cinza);border-bottom:1px solid rgba(113,112,111,.2)}
+.rt th.th-tot{background:rgba(108,156,55,.07);color:var(--verde);border-bottom:1px solid rgba(108,156,55,.2)}
+.rt th.th-grp{text-align:center;font-size:10px;font-weight:800;letter-spacing:.15em;padding:10px 16px}
+.rt th.th-grp-real{background:rgba(237,104,66,.07);border-bottom:1px solid rgba(237,104,66,.15);color:var(--coral)}
+.rt th.th-grp-prev{background:rgba(113,112,111,.07);border-bottom:1px solid rgba(113,112,111,.15);color:var(--cinza)}
+.rt th.th-grp-tot{background:rgba(108,156,55,.07);border-bottom:1px solid rgba(108,156,55,.15);color:var(--verde)}
+.rt td{padding:9px 12px;font-size:11px;text-align:right;border-bottom:1px solid rgba(255,255,255,.04);color:var(--txt-s)}
+.rt td.td-grupo{text-align:left;font-weight:700;color:var(--txt);padding-left:16px}
+.rt td.td-grupo.sub{padding-left:28px;color:var(--txt-s);font-weight:500;font-size:10.5px}
+.rt td.td-sep{background:var(--bg);width:8px;padding:0;border:none}
+.rt td.td-r-q{color:var(--txt)}
+.rt td.td-r-v{color:var(--coral);font-weight:700}
+.rt td.td-r-p{color:var(--txt-m);font-size:9.5px;font-weight:600}
+.rt td.td-p-q{color:var(--txt-m)}
+.rt td.td-p-v{color:var(--cinza);font-weight:600}
+.rt td.td-t-q{color:var(--txt);font-weight:700}
+.rt td.td-t-v{color:var(--verde);font-weight:800}
+.rt td.td-t-p{color:var(--txt-m);font-size:9.5px;font-weight:600}
+.rt tr:hover td{background:rgba(255,255,255,.015)}
+.rt tr:hover td.td-sep{background:var(--bg)}
+.rt tr.tr-total td{font-size:11.5px;font-weight:800;color:var(--txt);border-top:1px solid var(--border);background:var(--card2);border-bottom:none}
+.rt tr.tr-total td.td-r-v{color:var(--coral)}
+.rt tr.tr-total td.td-p-v{color:var(--cinza)}
+.rt tr.tr-total td.td-t-v{color:var(--verde)}
+.rt tr.tr-total td.td-sep{background:var(--bg)}
+.rt tr.tr-total td.td-grupo{color:var(--txt);font-size:11.5px}
+
+/* empty state */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:12px;color:var(--txt-m)}
 .empty-icon{font-size:42px}
 .empty-msg{font-size:13px;font-weight:600}
@@ -125,6 +171,7 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
 
 <div class="main">
 
+  <!-- KPIs -->
   <div class="stitle">Resumo — mês atual</div>
   <div class="kpi-grid">
     <div class="kpi destaque">
@@ -148,12 +195,13 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
       <div class="kpi-s" id="kpi-tot-sub">mês atual</div>
     </div>
     <div class="kpi cinza">
-      <div class="kpi-l">Previsto</div>
+      <div class="kpi-l">Previsto (mês atual)</div>
       <div class="kpi-v" id="kpi-prev">–</div>
       <div class="kpi-s" id="kpi-prev-sub">aguardando faturar</div>
     </div>
   </div>
 
+  <!-- Filtros -->
   <div class="filters">
     <div class="filter-group">
       <span class="filter-lbl">Período</span>
@@ -184,18 +232,20 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
     </div>
   </div>
 
+  <!-- Gráfico -->
   <div class="chart-wrap">
     <div class="chart-legend">
       <div class="leg-item"><div class="leg-dot" style="background:#ed6842"></div>MI Realizado</div>
       <div class="leg-item"><div class="leg-dot" style="background:#4994c7"></div>ME Realizado (BRL)</div>
       <div class="leg-item"><div class="leg-dot" style="background:#dd7051"></div>EC Realizado</div>
-      <div class="leg-item"><div class="leg-line" style="border-color:#6c9c37"></div>Total Previsto</div>
+      <div class="leg-item"><div class="leg-line" style="border-color:#6c9c37"></div>Total c/ Previsto (mês atual)</div>
     </div>
     <div class="chart-inner">
       <canvas id="fat-chart"></canvas>
     </div>
   </div>
 
+  <!-- Tabela mensal -->
   <div class="table-wrap">
     <div class="table-head">
       <div class="table-title">Detalhamento mensal</div>
@@ -214,16 +264,18 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
             <th>ME (BRL)</th>
             <th>E-commerce</th>
             <th>Total Realiz.</th>
-            <th>Previsto</th>
+            <th>Previsto¹</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
         <tfoot><tr id="tfoot"></tr></tfoot>
       </table>
+      <div style="font-size:9px;color:var(--txt-m);padding:8px 14px">¹ Previsto exibido apenas para o mês atual — meses passados já estão encerrados.</div>
     </div>
   </div>
 
+  <!-- Sem data -->
   <div class="semdata-card" id="semdata-card" style="display:none">
     <div class="semdata-head">
       <div>
@@ -235,7 +287,49 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
     <div id="semdata-body"></div>
   </div>
 
-</div>
+  <!-- ═══════════════════════════════════════════════════════════
+       RESUMO MENSAL — FATURAMENTO MOULD (estilo planilha)
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="stitle">Resumo mensal — faturamento por grupo</div>
+
+  <div class="resumo-wrap">
+    <div class="resumo-head">
+      <div class="resumo-titulo">Faturamento Boaonda</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:9px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.1em">Mês</span>
+        <select class="resumo-mes-sel" id="resumo-mes"></select>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="rt">
+        <thead>
+          <tr>
+            <th class="th-grupo" rowspan="2">Grupo</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-real" colspan="3" id="th-real-label">REALIZADO</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-prev" colspan="2" id="th-prev-label">PREVISTO</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-tot" colspan="3" id="th-tot-label">TOTAL GERAL</th>
+          </tr>
+          <tr>
+            <th class="th-real">Qtd. pares</th>
+            <th class="th-real">Valor Fat.</th>
+            <th class="th-real">%</th>
+            <th class="th-prev">Qtd. pares</th>
+            <th class="th-prev">Valor Fat.</th>
+            <th class="th-tot">Qtd. pares</th>
+            <th class="th-tot">Valor Fat.</th>
+            <th class="th-tot">%</th>
+          </tr>
+        </thead>
+        <tbody id="resumo-tbody"></tbody>
+        <tfoot><tr class="tr-total" id="resumo-tfoot"></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main -->
 
 <script>
 Chart.defaults.color='#7d7c79';
@@ -244,19 +338,29 @@ Chart.defaults.font.family="'Montserrat',sans-serif";
 
 let DATA=null, CAMBIO=5.00, fatChart=null;
 
-function R(n){return Math.round(n||0)}
-function fBRL(n){return'R$ '+R(n).toLocaleString('pt-BR')}
-function fUSD(n){return'US$ '+R(n).toLocaleString('pt-BR')}
-function fK(n){const v=R(n);return v>=1e6?'R$ '+(v/1e6).toFixed(1).replace('.',',')+'M':v>=1e3?'R$ '+(v/1e3).toFixed(0)+'k':'R$ '+v.toLocaleString('pt-BR')}
+const R=n=>Math.round(n||0);
+const fBRL=n=>'R$ '+R(n).toLocaleString('pt-BR');
+const fUSD=n=>'US$ '+R(n).toLocaleString('pt-BR');
+const fPar=n=>R(n).toLocaleString('pt-BR');
+const fK=n=>{const v=R(n);return v>=1e6?'R$ '+(v/1e6).toFixed(1).replace('.',',')+'M':v>=1e3?'R$ '+(v/1e3).toFixed(0)+'k':'R$ '+v.toLocaleString('pt-BR')};
+
+const MESES_PT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MESES_LONG=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 function mesLabel(yyyymm){
-  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  return meses[parseInt(yyyymm.slice(4,6))-1]+'/'+yyyymm.slice(2,4);
+  return MESES_PT[parseInt(yyyymm.slice(4,6))-1]+'/'+yyyymm.slice(2,4);
 }
-
+function mesLong(yyyymm){
+  return MESES_LONG[parseInt(yyyymm.slice(4,6))-1]+'/'+yyyymm.slice(0,4);
+}
 function mesAtual(){
   const d=new Date();
   return String(d.getFullYear())+String(d.getMonth()+1).padStart(2,'0');
+}
+function fimMes(yyyymm){
+  const y=parseInt(yyyymm.slice(0,4)), m=parseInt(yyyymm.slice(4,6));
+  const fim=new Date(y,m,0);
+  return fim.getDate()+'/'+(m<10?'0':'')+m+'/'+String(y).slice(2);
 }
 
 function keysFiltrados(){
@@ -265,26 +369,60 @@ function keysFiltrados(){
   const keys=Object.keys(dados).sort();
   return n?keys.slice(-n):keys;
 }
-
 function canalFiltro(){return document.getElementById('filter-canal').value}
 function especieFiltro(){return document.getElementById('filter-especie').value}
 
-function calcMes(mes){
+// Previsto só aparece no mês atual — passados estão encerrados
+function calcMes(mes, key){
+  const MA=mesAtual();
+  const showPrev = key >= MA;   // false para meses passados
   const MI=mes.MI||{}, ME=mes.ME||{}, EC=mes.EC||{};
   const canal=canalFiltro(), esp=especieFiltro();
+
   let miProg=0,miPe=0,miMista=0,miPrev=0;
+  let miProgQ=0,miPeQ=0,miMistaQ=0,miPrevQ=0;
   if(canal==='TODOS'||canal==='MI'){
-    if(esp==='TODOS'||esp==='PROG'){miProg=(MI.PROG||{}).REALIZADO||0; miPrev+=(MI.PROG||{}).PREVISTO||0}
-    if(esp==='TODOS'||esp==='PE'){miPe=(MI.PE||{}).REALIZADO||0; miPrev+=(MI.PE||{}).PREVISTO||0}
-    if(esp==='TODOS'||esp==='MISTA'){miMista=(MI.MISTA||{}).REALIZADO||0; miPrev+=(MI.MISTA||{}).PREVISTO||0}
+    if(esp==='TODOS'||esp==='PROG'){
+      miProg=(MI.PROG||{}).REALIZADO||0; miProgQ=(MI.PROG||{}).REALIZADO_PARES||0;
+      if(showPrev){miPrev+=(MI.PROG||{}).PREVISTO||0; miPrevQ+=(MI.PROG||{}).PREVISTO_PARES||0}
+    }
+    if(esp==='TODOS'||esp==='PE'){
+      miPe=(MI.PE||{}).REALIZADO||0; miPeQ=(MI.PE||{}).REALIZADO_PARES||0;
+      if(showPrev){miPrev+=(MI.PE||{}).PREVISTO||0; miPrevQ+=(MI.PE||{}).PREVISTO_PARES||0}
+    }
+    if(esp==='TODOS'||esp==='MISTA'){
+      miMista=(MI.MISTA||{}).REALIZADO||0; miMistaQ=(MI.MISTA||{}).REALIZADO_PARES||0;
+      if(showPrev){miPrev+=(MI.MISTA||{}).PREVISTO||0; miPrevQ+=(MI.MISTA||{}).PREVISTO_PARES||0}
+    }
   }
-  const miReal=miProg+miPe+miMista;
-  let meUSD=0,mePrevUSD=0;
-  if(canal==='TODOS'||canal==='ME'){meUSD=ME.REALIZADO_USD||0; mePrevUSD=ME.PREVISTO_USD||0}
+  const miReal=miProg+miPe+miMista, miRealQ=miProgQ+miPeQ+miMistaQ;
+
+  let meUSD=0,mePrevUSD=0,meRealQ=0,mePrevQ=0;
+  if(canal==='TODOS'||canal==='ME'){
+    meUSD=ME.REALIZADO_USD||0; meRealQ=ME.REALIZADO_PARES||0;
+    if(showPrev){mePrevUSD=ME.PREVISTO_USD||0; mePrevQ=ME.PREVISTO_PARES||0}
+  }
   const meBRL=meUSD*CAMBIO, mePrevBRL=mePrevUSD*CAMBIO;
-  let ecReal=0,ecPrev=0;
-  if(canal==='TODOS'||canal==='EC'){ecReal=EC.REALIZADO||0; ecPrev=EC.PREVISTO||0}
-  return{miProg,miPe,miMista,miReal,meUSD,meBRL,ecReal,totalReal:miReal+meBRL+ecReal,totalPrev:miPrev+mePrevBRL+ecPrev};
+
+  let ecReal=0,ecPrev=0,ecRealQ=0,ecPrevQ=0;
+  if(canal==='TODOS'||canal==='EC'){
+    ecReal=EC.REALIZADO||0; ecRealQ=EC.REALIZADO_PARES||0;
+    if(showPrev){ecPrev=EC.PREVISTO||0; ecPrevQ=EC.PREVISTO_PARES||0}
+  }
+
+  const totalReal=miReal+meBRL+ecReal;
+  const totalPrev=miPrev+mePrevBRL+ecPrev;
+  const totalRealQ=miRealQ+meRealQ+ecRealQ;
+  const totalPrevQ=miPrevQ+mePrevQ+ecPrevQ;
+
+  return{
+    miProg,miPe,miMista,miReal,miPrev,
+    miProgQ,miPeQ,miMistaQ,miRealQ,miPrevQ,
+    meUSD,meBRL,mePrevBRL,meRealQ,mePrevQ,
+    ecReal,ecPrev,ecRealQ,ecPrevQ,
+    totalReal,totalPrev,totalRealQ,totalPrevQ,
+    showPrev
+  };
 }
 
 function getStatus(mes,k){
@@ -298,16 +436,19 @@ function getStatus(mes,k){
   return 'prev';
 }
 
+function pct(v,tot){return tot>0?Math.round(v/tot*100)+'%':'–'}
+
 function render(){
   if(!DATA) return;
   const dados=DATA.dados||{};
   const keys=keysFiltrados();
   const canal=canalFiltro();
+  const MA=mesAtual();
 
   document.getElementById('filter-especie-group').style.display=(canal==='ME'||canal==='EC')?'none':'flex';
 
-  // KPIs mês atual
-  const MA=mesAtual(), cA=calcMes(dados[MA]||{});
+  // KPIs mês atual (sempre showPrev=true)
+  const cA=calcMes(dados[MA]||{}, MA);
   document.getElementById('kpi-mi-real').textContent=fK(cA.miReal);
   document.getElementById('kpi-mi-sub').textContent='PROG '+fK(cA.miProg)+' · PE '+fK(cA.miPe)+' · MISTA '+fK(cA.miMista);
   document.getElementById('kpi-me-real').textContent=fK(cA.meBRL);
@@ -316,13 +457,15 @@ function render(){
   document.getElementById('kpi-tot-real').textContent=fK(cA.totalReal);
   document.getElementById('kpi-tot-sub').textContent=mesLabel(MA);
   document.getElementById('kpi-prev').textContent=fK(cA.totalPrev);
+  document.getElementById('kpi-prev-sub').textContent='aguardando faturar · '+mesLabel(MA);
 
-  // Gráfico
+  // Gráfico — previsto line só para mês atual
   const labels=keys.map(mesLabel);
   const dMI=[],dME=[],dEC=[],dPrev=[];
   keys.forEach(k=>{
-    const c=calcMes(dados[k]||{});
+    const c=calcMes(dados[k]||{}, k);
     dMI.push(R(c.miReal)); dME.push(R(c.meBRL)); dEC.push(R(c.ecReal));
+    // linha verde = realizado + previsto (previsto só existe para mês atual)
     dPrev.push(R(c.totalReal+c.totalPrev));
   });
   if(fatChart) fatChart.destroy();
@@ -332,7 +475,7 @@ function render(){
       {label:'MI Realizado',data:dMI,backgroundColor:'rgba(237,104,66,.85)',stack:'r',borderRadius:3},
       {label:'ME BRL',data:dME,backgroundColor:'rgba(73,148,199,.85)',stack:'r',borderRadius:3},
       {label:'E-commerce',data:dEC,backgroundColor:'rgba(221,112,81,.85)',stack:'r',borderRadius:3},
-      {label:'Total Previsto',data:dPrev,type:'line',borderColor:'#6c9c37',backgroundColor:'transparent',
+      {label:'Total c/ Previsto',data:dPrev,type:'line',borderColor:'#6c9c37',backgroundColor:'transparent',
        borderWidth:2,borderDash:[5,4],pointBackgroundColor:'#6c9c37',pointRadius:3,tension:.25,order:0},
     ]},
     options:{
@@ -345,12 +488,12 @@ function render(){
     }
   });
 
-  // Tabela
+  // Tabela mensal
   const tbody=document.getElementById('tbody'), tfoot=document.getElementById('tfoot');
   let sP=0,sPE=0,sM=0,sMI=0,sUSD=0,sBRL=0,sEC=0,sR=0,sPrev=0;
   tbody.innerHTML='';
   keys.slice().reverse().forEach(k=>{
-    const c=calcMes(dados[k]||{}), st=getStatus(dados[k]||{},k);
+    const c=calcMes(dados[k]||{},k), st=getStatus(dados[k]||{},k);
     sP+=c.miProg; sPE+=c.miPe; sM+=c.miMista; sMI+=c.miReal;
     sUSD+=c.meUSD; sBRL+=c.meBRL; sEC+=c.ecReal; sR+=c.totalReal; sPrev+=c.totalPrev;
     const stHtml=st==='done'?'<span class="status-badge st-done">Concluído</span>':
@@ -366,7 +509,7 @@ function render(){
       <td class="td-me">${c.meBRL?fBRL(c.meBRL):'–'}</td>
       <td class="td-ec">${c.ecReal?fBRL(c.ecReal):'–'}</td>
       <td class="td-tot">${fBRL(c.totalReal)}</td>
-      <td class="td-prev">${c.totalPrev?fBRL(c.totalPrev):'–'}</td>
+      <td class="td-prev">${c.showPrev&&c.totalPrev?fBRL(c.totalPrev):'–'}</td>
       <td>${stHtml}</td>
     </tr>`;
   });
@@ -379,6 +522,122 @@ function render(){
   document.getElementById('table-info').textContent=keys.length+' meses exibidos';
 
   renderSemData();
+  renderResumo();
+}
+
+// ──────────────────────────────────────────────────────────────────
+// RESUMO MENSAL — tabela estilo Faturamento Mould
+// ──────────────────────────────────────────────────────────────────
+function popularSeletorMes(){
+  const dados=DATA.dados||{};
+  const keys=Object.keys(dados).sort().reverse();
+  const MA=mesAtual();
+  const sel=document.getElementById('resumo-mes');
+  sel.innerHTML='';
+  // Garante que o mês atual aparece mesmo se não tiver dados ainda
+  const opcoes=keys.includes(MA)?keys:[MA,...keys];
+  opcoes.forEach(k=>{
+    const opt=document.createElement('option');
+    opt.value=k; opt.textContent=mesLong(k);
+    if(k===MA) opt.selected=true;
+    sel.appendChild(opt);
+  });
+}
+
+function renderResumo(){
+  if(!DATA) return;
+  const key=document.getElementById('resumo-mes').value||mesAtual();
+  const MA=mesAtual();
+  const dados=DATA.dados||{};
+  const mes=dados[key]||{};
+  const MI=mes.MI||{}, ME=mes.ME||{}, EC=mes.EC||{};
+  const showPrev=key>=MA;
+  const gerado=DATA.gerado_em||'';
+  // Data do corte para "Realizado" = data de geração (dd/mm/aa)
+  let dataReal='–';
+  if(gerado){const p=gerado.split(' ')[0]; const pts=p.split('/'); dataReal=pts[0]+'/'+pts[1]+'/'+pts[2]?.slice(-2);}
+  const dataPrev=showPrev?fimMes(key):'–';
+
+  // Atualizar labels de cabeçalho
+  document.getElementById('th-real-label').textContent='REALIZADO'+(dataReal!=='–'?' — '+dataReal:'');
+  document.getElementById('th-prev-label').textContent='PREVISTO'+(showPrev&&dataPrev!=='–'?' — '+dataPrev:'');
+  document.getElementById('th-tot-label').textContent='TOTAL GERAL — '+mesLong(key).toUpperCase();
+
+  // Helper: pegar valores de uma espécie MI
+  const mi=(tipo)=>{
+    const d=MI[tipo]||{};
+    return{
+      rQ:d.REALIZADO_PARES||0, rV:d.REALIZADO||0,
+      pQ:showPrev?d.PREVISTO_PARES||0:0, pV:showPrev?d.PREVISTO||0:0,
+    };
+  };
+  const meV={
+    rQ:ME.REALIZADO_PARES||0, rV:(ME.REALIZADO_USD||0)*CAMBIO,
+    pQ:showPrev?ME.PREVISTO_PARES||0:0, pV:showPrev?(ME.PREVISTO_USD||0)*CAMBIO:0,
+  };
+  const ecV={
+    rQ:EC.REALIZADO_PARES||0, rV:EC.REALIZADO||0,
+    pQ:showPrev?EC.PREVISTO_PARES||0:0, pV:showPrev?EC.PREVISTO||0:0,
+  };
+  const mprog=mi('PROG'), mpe=mi('PE'), mmist=mi('MISTA');
+
+  // Agrupa: MI total
+  const miTot={
+    rQ:mprog.rQ+mpe.rQ+mmist.rQ, rV:mprog.rV+mpe.rV+mmist.rV,
+    pQ:mprog.pQ+mpe.pQ+mmist.pQ, pV:mprog.pV+mpe.pV+mmist.pV,
+  };
+  // Grand total
+  const gt={
+    rQ:miTot.rQ+meV.rQ+ecV.rQ, rV:miTot.rV+meV.rV+ecV.rV,
+    pQ:miTot.pQ+meV.pQ+ecV.pQ, pV:miTot.pV+meV.pV+ecV.pV,
+  };
+  const totR=gt.rV, totT=gt.rV+gt.pV;
+
+  function row(label, d, isSub){
+    const tQ=d.rQ+d.pQ, tV=d.rV+d.pV;
+    const rPct=pct(d.rV,totR), tPct=pct(tV,totT);
+    const grp=isSub?'td-grupo sub':'td-grupo';
+    const pQ=showPrev?(d.pQ?fPar(d.pQ):'–'):'—';
+    const pV=showPrev?(d.pV?fBRL(d.pV):'–'):'—';
+    return `<tr>
+      <td class="${grp}">${label}</td>
+      <td class="td-sep"></td>
+      <td class="td-r-q">${d.rQ?fPar(d.rQ):'–'}</td>
+      <td class="td-r-v">${d.rV?fBRL(d.rV):'–'}</td>
+      <td class="td-r-p">${d.rV?rPct:'–'}</td>
+      <td class="td-sep"></td>
+      <td class="td-p-q">${pQ}</td>
+      <td class="td-p-v">${pV}</td>
+      <td class="td-sep"></td>
+      <td class="td-t-q">${tQ?fPar(tQ):'–'}</td>
+      <td class="td-t-v">${tV?fBRL(tV):'–'}</td>
+      <td class="td-t-p">${tV?tPct:'–'}</td>
+    </tr>`;
+  }
+
+  const tbody=document.getElementById('resumo-tbody');
+  tbody.innerHTML=
+    row('Vendas MI — Programado (PROG)', mprog, false)+
+    row('Vendas MI — Pronta Entrega (PE)', mpe, false)+
+    (mmist.rV||mmist.pV?row('Vendas MI — Mista', mmist, false):'')+
+    row('Vendas ME (BRL @ R$'+CAMBIO.toFixed(2)+')', meV, false)+
+    row('E-commerce', ecV, false);
+
+  const tpQ=showPrev?fPar(gt.pQ):'—', tpV=showPrev?(gt.pV?fBRL(gt.pV):'–'):'—';
+  const tQ=gt.rQ+gt.pQ, tV=gt.rV+gt.pV;
+  document.getElementById('resumo-tfoot').innerHTML=`
+    <td class="td-grupo">Total Geral</td>
+    <td class="td-sep"></td>
+    <td class="td-r-q">${gt.rQ?fPar(gt.rQ):'–'}</td>
+    <td class="td-r-v">${gt.rV?fBRL(gt.rV):'–'}</td>
+    <td class="td-r-p">100%</td>
+    <td class="td-sep"></td>
+    <td class="td-p-q">${tpQ}</td>
+    <td class="td-p-v">${tpV}</td>
+    <td class="td-sep"></td>
+    <td class="td-t-q">${tQ?fPar(tQ):'–'}</td>
+    <td class="td-t-v">${tV?fBRL(tV):'–'}</td>
+    <td class="td-t-p">${tV?'100%':'–'}</td>`;
 }
 
 function renderSemData(){
@@ -412,6 +671,7 @@ function renderSemData(){
     +(fil.length>60?`<div style="font-size:10px;color:var(--txt-m);padding:8px 10px">... e mais ${fil.length-60} itens</div>`:'');
 }
 
+// ── Carregar dados ──────────────────────────────────────────────
 fetch('dados_faturamento.json?_='+Date.now())
   .then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})
   .then(d=>{
@@ -419,12 +679,14 @@ fetch('dados_faturamento.json?_='+Date.now())
     CAMBIO=parseFloat(d.taxa_cambio_me)||5.00;
     document.getElementById('cambio-inp').value=CAMBIO.toFixed(2);
     document.getElementById('hdr-data').textContent=d.gerado_em||'–';
+    popularSeletorMes();
     render();
   })
   .catch(()=>{
     document.querySelector('.main').innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Dados de faturamento não encontrados</div><div class="empty-sub">Execute o processador para gerar dados_faturamento.json e tente novamente.</div></div>';
   });
 
+// ── Eventos ─────────────────────────────────────────────────────
 document.getElementById('cambio-inp').addEventListener('input',e=>{
   const v=parseFloat(e.target.value);
   if(v>0){CAMBIO=v;if(DATA)render();}
@@ -432,6 +694,7 @@ document.getElementById('cambio-inp').addEventListener('input',e=>{
 ['filter-periodo','filter-canal','filter-especie'].forEach(id=>{
   document.getElementById(id).addEventListener('change',()=>{if(DATA)render();});
 });
+document.getElementById('resumo-mes').addEventListener('change',()=>{if(DATA)renderResumo();});
 </script>
 </body>
 </html>
