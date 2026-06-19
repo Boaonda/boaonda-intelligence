@@ -278,6 +278,45 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     </div>
   </div>
 
+  <!-- CFOP -->
+  <div class="stitle" id="cfop-section" style="display:none">Resumo mensal — faturamento por CFOP</div>
+  <div class="resumo-wrap" id="cfop-wrap" style="display:none">
+    <div class="resumo-head">
+      <div class="resumo-titulo">Faturamento por CFOP</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:9px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.1em">Mês</span>
+        <select class="resumo-mes-sel" id="cfop-mes"></select>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="rt">
+        <thead>
+          <tr>
+            <th class="th-grupo" rowspan="2">CFOP · Descrição</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-real" colspan="3" id="cfop-th-real">REALIZADO</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-prev" colspan="2" id="cfop-th-prev">PREVISTO</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-tot" colspan="3" id="cfop-th-tot">TOTAL GERAL</th>
+          </tr>
+          <tr>
+            <th class="th-real">Qtd. pares</th>
+            <th class="th-real">Valor Fat.</th>
+            <th class="th-real">%</th>
+            <th class="th-prev">Qtd. pares</th>
+            <th class="th-prev">Valor Fat.</th>
+            <th class="th-tot">Qtd. pares</th>
+            <th class="th-tot">Valor Fat.</th>
+            <th class="th-tot">%</th>
+          </tr>
+        </thead>
+        <tbody id="cfop-tbody"></tbody>
+        <tfoot><tr class="tr-total" id="cfop-tfoot"></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
   <!-- Sem data -->
   <div class="semdata-card" id="semdata-card" style="display:none">
     <div class="semdata-head">
@@ -484,6 +523,7 @@ function render() {
 
   renderSemData();
   renderResumo();
+  renderCfop();
 }
 
 // ─── Resumo mensal ────────────────────────────────────────────────
@@ -641,6 +681,119 @@ function renderSemData() {
     + (fil.length > 60 ? `<div style="font-size:10px;color:var(--txt-m);padding:8px 10px">... e mais ${fil.length - 60} itens</div>` : '');
 }
 
+// ─── CFOP ─────────────────────────────────────────────────────────
+const CFOP_DESC = {
+  '5101':'Venda de produção — mesmo estado',
+  '5102':'Venda de mercadoria — mesmo estado',
+  '5401':'Venda c/ subst. tributária — mesmo estado',
+  '5403':'Venda c/ ST (contribuinte) — mesmo estado',
+  '5949':'Outra saída — mesmo estado',
+  '6101':'Venda de produção — outros estados',
+  '6102':'Venda de mercadoria — outros estados',
+  '6401':'Venda c/ subst. tributária — outros estados',
+  '6403':'Venda c/ ST (contribuinte) — outros estados',
+  '6949':'Outra saída — outros estados',
+  '7101':'Exportação de produção',
+  '7102':'Exportação de mercadoria adquirida de terceiros',
+};
+function cfopLabel(code) {
+  return CFOP_DESC[code] ? code + ' · ' + CFOP_DESC[code] : 'CFOP ' + code;
+}
+
+function popularSeletorCfop() {
+  const dc  = DATA.dados_cfop || {};
+  const MA  = mesAtual();
+  const keys = Object.keys(dc).sort().reverse();
+  const lista = keys.includes(MA) ? keys : [MA, ...keys];
+  const sel = document.getElementById('cfop-mes');
+  sel.innerHTML = '';
+  lista.forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = mesLong(k);
+    if (k === MA) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function renderCfop() {
+  if (!DATA) return;
+  const dc = DATA.dados_cfop || {};
+  const hasData = Object.keys(dc).length > 0;
+  document.getElementById('cfop-section').style.display = hasData ? '' : 'none';
+  document.getElementById('cfop-wrap').style.display    = hasData ? '' : 'none';
+  if (!hasData) return;
+
+  const key  = document.getElementById('cfop-mes').value || mesAtual();
+  const MA   = mesAtual();
+  const sp   = key >= MA;
+  const cfops = dc[key] || {};
+
+  const gerado = DATA.gerado_em || '';
+  let dataReal = '–';
+  if (gerado) { const p = gerado.split(' ')[0].split('/'); dataReal = p[0]+'/'+p[1]+'/'+p[2]?.slice(-2); }
+  document.getElementById('cfop-th-real').textContent = 'REALIZADO' + (dataReal !== '–' ? ' — ' + dataReal : '');
+  document.getElementById('cfop-th-prev').textContent = sp ? 'PREVISTO — ' + fimMes(key) : 'PREVISTO';
+  document.getElementById('cfop-th-tot').textContent  = 'TOTAL GERAL — ' + mesLong(key).toUpperCase();
+
+  // Totais para %
+  let totR = 0, totT = 0;
+  Object.values(cfops).forEach(d => {
+    const rv = (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
+    const pv = sp ? (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO : 0;
+    totR += rv; totT += rv + pv;
+  });
+
+  const rows = Object.entries(cfops)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .map(([code, d]) => {
+      const rV = (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
+      const pV = sp ? (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO : 0;
+      const rQ = d.REALIZADO_PARES||0;
+      const pQ = sp ? d.PREVISTO_PARES||0 : 0;
+      const tV = rV+pV, tQ = rQ+pQ;
+      const dash = sp ? '' : '—';
+      return `<tr>
+        <td class="td-grupo">${cfopLabel(code)}</td>
+        <td class="td-sep"></td>
+        <td class="td-r-q">${rQ ? fPar(rQ) : '–'}</td>
+        <td class="td-r-v">${rV ? fBRL(rV) : '–'}</td>
+        <td class="td-r-p">${rV ? pct(rV, totR) : '–'}</td>
+        <td class="td-sep"></td>
+        <td class="td-p-q">${sp ? (pQ ? fPar(pQ) : '–') : dash}</td>
+        <td class="td-p-v">${sp ? (pV ? fBRL(pV) : '–') : dash}</td>
+        <td class="td-sep"></td>
+        <td class="td-t-q">${tQ ? fPar(tQ) : '–'}</td>
+        <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
+        <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
+      </tr>`;
+    }).join('');
+
+  document.getElementById('cfop-tbody').innerHTML = rows ||
+    '<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--txt-m)">Sem dados para este mês</td></tr>';
+
+  let gtRV=0, gtRQ=0, gtPV=0, gtPQ=0;
+  Object.values(cfops).forEach(d => {
+    gtRV += (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
+    gtRQ += d.REALIZADO_PARES||0;
+    if (sp) { gtPV += (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO; gtPQ += d.PREVISTO_PARES||0; }
+  });
+  const tQ = gtRQ+gtPQ, tV = gtRV+gtPV;
+  const dash = sp ? '' : '—';
+  document.getElementById('cfop-tfoot').innerHTML = `
+    <td class="td-grupo">Total Geral</td>
+    <td class="td-sep"></td>
+    <td class="td-r-q">${fPar(gtRQ)}</td>
+    <td class="td-r-v">${fBRL(gtRV)}</td>
+    <td class="td-r-p">100%</td>
+    <td class="td-sep"></td>
+    <td class="td-p-q">${sp ? fPar(gtPQ) : dash}</td>
+    <td class="td-p-v">${sp ? fBRL(gtPV) : dash}</td>
+    <td class="td-sep"></td>
+    <td class="td-t-q">${fPar(tQ)}</td>
+    <td class="td-t-v">${fBRL(tV)}</td>
+    <td class="td-t-p">100%</td>`;
+}
+
 // ── Carregar dados ───────────────────────────────────────────────
 fetch('dados_faturamento.json?_=' + Date.now())
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
@@ -650,6 +803,7 @@ fetch('dados_faturamento.json?_=' + Date.now())
     document.getElementById('cambio-inp').value = CAMBIO.toFixed(2);
     document.getElementById('hdr-data').textContent = d.gerado_em || '–';
     popularSeletorMes();
+    popularSeletorCfop();
     render();
   })
   .catch(() => {
@@ -665,6 +819,7 @@ document.getElementById('cambio-inp').addEventListener('input', e => {
   document.getElementById(id).addEventListener('change', () => { if (DATA) render(); });
 });
 document.getElementById('resumo-mes').addEventListener('change', () => { if (DATA) renderResumo(); });
+document.getElementById('cfop-mes').addEventListener('change', () => { if (DATA) renderCfop(); });
 </script>
 </body>
 </html>

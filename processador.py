@@ -31,7 +31,7 @@ IDX = {
     'dt_ent':11,'dt_fat':12,'pedido':13,'anomes':18,
     'marca':20,'linha':23,'vlr':26,'cod_esp':27,'abr_grp':29,
     'holding':16,'nomeholder':17,'plano':35,'dt_plano':77,
-    'pos_item':40,'etapa':39,'local':72,'tipomontagem':85,
+    'pos_item':40,'etapa':39,'local':72,'tipomontagem':85,'cfop':71,
 }
 
 # Query usada quando MYSQL_HOST está configurado (ver db_mysql.py) — substitui
@@ -57,6 +57,7 @@ SELECT
     etapa_atual     AS etapa,
     LocalEstoque    AS local,
     CorPalmilha     AS tipomontagem,
+    cfop            AS cfop,
     {col_valor}     AS vlr
 FROM mould.v_entradapedidos_extended v
 WHERE v.dt_entrada >= date_format(date_sub(current_date, interval 1 year), '%Y/01/01')
@@ -787,6 +788,8 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             'EC': [0.0,0.0,0,0],
         }
     dados = defaultdict(new_mes)
+    # dados_cfop[mes_ref][cfop] = [fat_brl, prev_brl, fat_usd, prev_usd, fat_pares, prev_pares]
+    dados_cfop = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0, 0, 0]))
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
     total_fat = total_prev = sem_data_count = 0
 
@@ -840,6 +843,15 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         else:
             m['EC'][vi] += vlr; m['EC'][qi] += qtd
 
+        # Acumular por CFOP
+        cfop_code = g(row, IDX['cfop'])
+        if cfop_code:
+            dc = dados_cfop[mes_ref][cfop_code]
+            vi_c = (2 if canal == 'ME' else 0) + (0 if status == 'fat' else 1)
+            qi_c = 4 if status == 'fat' else 5
+            dc[vi_c] += vlr
+            dc[qi_c] += qtd
+
         if status == 'fat':  total_fat  += qtd
         else:                total_prev += qtd
 
@@ -863,8 +875,23 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     dados_out    = {k: build_mes(m) for k, m in sorted(dados.items())}
     sem_data_out = sorted(sem_data_list, key=lambda x: (-x['pares'], x['ref']))
 
+    def build_cfop_mes(cfops):
+        out = {}
+        for cfop_code, acc in sorted(cfops.items()):
+            fb, pb, fu, pu, fq, pq = acc
+            if any([fb, pb, fu, pu, fq, pq]):
+                out[cfop_code] = {
+                    'REALIZADO': round(fb, 2), 'PREVISTO': round(pb, 2),
+                    'REALIZADO_USD': round(fu, 2), 'PREVISTO_USD': round(pu, 2),
+                    'REALIZADO_PARES': int(fq), 'PREVISTO_PARES': int(pq),
+                }
+        return out
+
+    dados_cfop_out = {k: build_cfop_mes(v) for k, v in sorted(dados_cfop.items())}
+
     result = {'gerado_em':datetime.now().strftime('%d/%m/%Y %H:%M'),
-              'taxa_cambio_me':taxa_cambio_me, 'dados':dados_out, 'sem_data':sem_data_out}
+              'taxa_cambio_me':taxa_cambio_me, 'dados':dados_out,
+              'dados_cfop':dados_cfop_out, 'sem_data':sem_data_out}
     with open(os.path.join(output_dir,'dados_faturamento.json'),'w',encoding='utf-8') as f_:
         json.dump(result, f_, ensure_ascii=False, default=str)
     print(f"    ✓ dados_faturamento.json gerado ({len(dados_out)} meses)")
