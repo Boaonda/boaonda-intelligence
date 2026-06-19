@@ -666,13 +666,42 @@ def processar_carteira(linhas, output_dir='.'):
 # ─── ESTOQUE ─────────────────────────────────────────────────────────
 def processar_estoque(arquivo_esqt, output_dir='.'):
     print("\n  Processando estoque...")
-    try: import xlrd
-    except ImportError:
-        print("    ✗ xlrd não instalado. Rode: pip install xlrd")
-        sys.exit(1)
+    ext = os.path.splitext(arquivo_esqt)[1].lower()
 
-    wb = xlrd.open_workbook(arquivo_esqt)
-    ws = wb.sheet_by_index(0)
+    def parse_n(s):
+        try: return float(str(s).replace(',', '.').strip())
+        except: return 0.0
+
+    # Lê o arquivo (CSV ou XLS) e normaliza em lista de tuplas
+    rows_norm = []
+    if ext == '.csv':
+        sep = detectar_sep(arquivo_esqt)
+        with open(arquivo_esqt, 'r', encoding='utf-8', errors='replace') as f_:
+            reader = csv.reader(f_, delimiter=sep)
+            next(reader)  # pula cabeçalho
+            for row in reader:
+                def _g(c, _r=row):
+                    try: return str(_r[c]).strip()
+                    except: return ''
+                local = _g(1)
+                if local.endswith('.0'): local = local[:-2]
+                rows_norm.append((local, _g(2), _g(3), _g(5),
+                                  parse_n(_g(8)),  parse_n(_g(9)),
+                                  parse_n(_g(10)), parse_n(_g(11)), parse_n(_g(12))))
+    else:
+        try: import xlrd
+        except ImportError:
+            print("    ✗ xlrd não instalado. Rode: pip install xlrd"); sys.exit(1)
+        wb = xlrd.open_workbook(arquivo_esqt)
+        ws = wb.sheet_by_index(0)
+        for r in range(1, ws.nrows):
+            def ge(c, _r=r): return str(ws.cell_value(_r, c)).strip()
+            local = ge(1)
+            if local.endswith('.0'): local = local[:-2]
+            rows_norm.append((local, ge(2), ge(3), ge(5),
+                              parse_n(ge(8)),  parse_n(ge(9)),
+                              parse_n(ge(10)), parse_n(ge(11)), parse_n(ge(12))))
+
     estoque = defaultdict(lambda: {
         'fisico':0,'reservas':0,'livre':0,'vlr_fisico':0.0,'vlr_livre':0.0,'locais':set(),
         'linhas': defaultdict(lambda: {
@@ -681,22 +710,8 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
         })
     })
 
-    for r in range(1, ws.nrows):
-        def ge(c): return str(ws.cell_value(r,c)).strip()
-        local = ge(1)
-        if local.endswith('.0'): local = local[:-2]
+    for local, ref, descr, comb, fisico, reservas, livre, vlr_f, vlr_l in rows_norm:
         if local not in LOCAIS_ESTOQUE: continue
-        ref = ge(2); descr = ge(3); comb = ge(5)
-        try: fisico   = float(ge(8)) if ge(8) else 0
-        except: fisico = 0
-        try: reservas = float(ge(9)) if ge(9) else 0
-        except: reservas = 0
-        try: livre    = float(ge(10)) if ge(10) else 0
-        except: livre = 0
-        try: vlr_f   = float(ge(11)) if ge(11) else 0.0
-        except: vlr_f = 0.0
-        try: vlr_l   = float(ge(12)) if ge(12) else 0.0
-        except: vlr_l = 0.0
         e = estoque[ref]
         e['fisico'] += fisico; e['reservas'] += reservas; e['livre'] += livre
         e['vlr_fisico'] += vlr_f; e['vlr_livre'] += vlr_l; e['locais'].add(local)

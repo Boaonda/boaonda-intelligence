@@ -208,9 +208,9 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
       <div class="hint">Opcional — se não enviado, vendas e programação mantêm os dados anteriores. Arquivo pode ter ~130MB, o envio pode demorar.</div>
     </div>
     <div class="field">
-      <label>ESQT.xls (estoque PA)</label>
-      <input type="file" name="arquivo_esqt" accept=".xls">
-      <div class="hint">Obrigatório.</div>
+      <label>ESQT — estoque PA (.csv ou .xls)</label>
+      <input type="file" name="arquivo_esqt" accept=".csv,.xls">
+      <div class="hint">Obrigatório. Aceita exportação em CSV (recomendado) ou XLS.</div>
     </div>
     <button class="btn" id="btn" type="submit">Processar e atualizar dashboards</button>
   </form>
@@ -242,10 +242,14 @@ def upload():
             path_esqt = UPLOADS_DIR / f_esqt.filename
             f_esqt.save(path_esqt)
         else:
-            # Mantém estoque atual — processador exige um ESQT existente
-            path_esqt = UPLOADS_DIR / '_ESQT_atual.xls'
-            if not path_esqt.exists():
-                return render_template_string(_UPLOAD_HTML, message='ESQT.xls não encontrado para reprocessar.', ok=False)
+            # Mantém estoque atual — busca o backup salvo (CSV ou XLS)
+            path_esqt = next(
+                (UPLOADS_DIR / f'_ESQT_atual{ext}' for ext in ('.csv', '.xls')
+                 if (UPLOADS_DIR / f'_ESQT_atual{ext}').exists()),
+                None
+            )
+            if not path_esqt:
+                return render_template_string(_UPLOAD_HTML, message='ESQT não encontrado para reprocessar. Envie o arquivo.', ok=False)
 
         resumo = processador.processar_tudo(
             arquivo_3ys=str(path_3ys) if path_3ys else None,
@@ -255,7 +259,8 @@ def upload():
 
         # Guarda uma cópia do ESQT mais recente para reprocessamentos futuros
         if f_esqt and f_esqt.filename:
-            (UPLOADS_DIR / '_ESQT_atual.xls').write_bytes(path_esqt.read_bytes())
+            esqt_ext = Path(f_esqt.filename).suffix.lower()
+            (UPLOADS_DIR / f'_ESQT_atual{esqt_ext}').write_bytes(path_esqt.read_bytes())
 
         cm = resumo['vendas_mes']
         t  = resumo['estoque_totais']
