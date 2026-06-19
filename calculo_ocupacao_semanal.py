@@ -17,8 +17,8 @@ FRONTEND_DIR = os.path.join(os.path.dirname(__file__), 'frontend')
 DIAS_UTEIS_SEMANA = 5
 
 
-def _carregar_json(nome):
-    with open(os.path.join(FRONTEND_DIR, nome), 'r', encoding='utf-8') as f:
+def _carregar_json(diretorio, nome):
+    with open(os.path.join(diretorio, nome), 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
@@ -285,9 +285,18 @@ def agregar_meses(semanas_out, cap):
     return meses_out
 
 
-def gerar(saida='dados_ocupacao_semanal.json'):
-    cap = _carregar_json('dados_capacidade.json')
-    prog_detalhe = _carregar_json('dados_programacao_detalhe.json')
+def gerar(diretorio=None, saida='dados_ocupacao_semanal.json'):
+    """Recalcula a ocupação/eficiência semanal cruzando a capacidade e a
+    programação atuais. Chamado automaticamente após cada import de
+    capacidade (planilha) e após cada upload de 3YS/ESQT — ver app.py.
+
+    diretorio: pasta onde estão dados_capacidade.json e
+    dados_programacao_detalhe.json (e onde a saída é gravada). Default:
+    frontend/ local — em produção, app.py passa DATA_DIR (volume persistente).
+    """
+    diretorio = diretorio or FRONTEND_DIR
+    cap = _carregar_json(diretorio, 'dados_capacidade.json')
+    prog_detalhe = _carregar_json(diretorio, 'dados_programacao_detalhe.json')
 
     semanas = calcular(cap, prog_detalhe)
     out = {
@@ -296,7 +305,7 @@ def gerar(saida='dados_ocupacao_semanal.json'):
         'meses': agregar_meses(semanas, cap),
     }
 
-    caminho = os.path.join(FRONTEND_DIR, saida)
+    caminho = os.path.join(diretorio, saida)
     with open(caminho, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False)
     print(f"    {caminho} gerado com {len(out['semanas'])} semanas e {len(out['meses'])} meses")

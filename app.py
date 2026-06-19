@@ -257,6 +257,15 @@ def upload():
             output_dir=str(DATA_DIR),
         )
 
+        # Mix programado mudou — recalcula ocupação/eficiência contra a
+        # capacidade atual (não bloqueia o upload se ainda não houver
+        # dados_capacidade.json ou dados_programacao_detalhe.json).
+        try:
+            import calculo_ocupacao_semanal
+            calculo_ocupacao_semanal.gerar(diretorio=str(DATA_DIR))
+        except Exception:
+            traceback.print_exc()
+
         # Guarda uma cópia do ESQT mais recente para reprocessamentos futuros
         if f_esqt and f_esqt.filename:
             esqt_ext = Path(f_esqt.filename).suffix.lower()
@@ -462,6 +471,15 @@ def capacidade_importar():
             str(DATA_DIR / 'dados_capacidade.json'),
             str(DATA_DIR),
         )
+        # Capacidade mudou — recalcula ocupação/eficiência contra a
+        # programação atual (não bloqueia a importação se ainda não houver
+        # dados_programacao_detalhe.json).
+        if resultado.get('status') == 'ok':
+            try:
+                import calculo_ocupacao_semanal
+                calculo_ocupacao_semanal.gerar(diretorio=str(DATA_DIR))
+            except Exception:
+                traceback.print_exc()
         return jsonify(resultado)
     except Exception as ex:
         traceback.print_exc()
