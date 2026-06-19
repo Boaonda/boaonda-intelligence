@@ -17,6 +17,7 @@
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
 body{background:var(--bg);color:var(--txt);min-height:100vh}
 
+/* Header */
 .header{background:var(--card);border-bottom:1px solid var(--border);padding:20px 32px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px}
 .breadcrumb{font-size:10px;color:var(--txt-m);margin-bottom:6px;letter-spacing:.04em}
 .h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
@@ -25,18 +26,18 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .h-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
 .h-meta strong{color:var(--txt-s)}
-
 .cambio-box{display:flex;align-items:center;gap:8px;background:rgba(73,148,199,.08);border:1px solid rgba(73,148,199,.25);border-radius:8px;padding:8px 14px}
 .cambio-lbl{font-size:9px;color:var(--azul);font-weight:700;text-transform:uppercase;letter-spacing:.1em}
 .cambio-inp{background:transparent;border:none;outline:none;font-family:'Montserrat',sans-serif;font-size:15px;font-weight:800;color:var(--txt);width:64px;text-align:right}
 .cambio-unit{font-size:10px;color:var(--txt-m);font-weight:600}
 
+/* Layout */
 .main{padding:24px 32px;max-width:1500px;margin:0 auto}
 .stitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;display:flex;align-items:center;gap:12px}
 .stitle::after{content:'';flex:1;height:1px;background:var(--border)}
 
 /* KPIs */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:28px}
 .kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--line2);border-radius:10px;padding:16px}
 .kpi.destaque{border-top-color:var(--coral)}
 .kpi.azul{border-top-color:var(--azul)}
@@ -50,46 +51,62 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
 
 /* Filtros */
-.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;align-items:center}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center}
 .filter-group{display:flex;align-items:center;gap:8px}
 .filter-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
 .filter-sel{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:7px;padding:6px 10px;font-size:11px;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
 .filter-sel:focus{border-color:var(--coral)}
 
 /* Gráfico */
-.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px}
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:28px}
 .chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
 .leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--txt-s)}
 .leg-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
 .leg-line{width:18px;height:2px;border-radius:1px;flex-shrink:0;border-top:2px dashed}
-.chart-inner{position:relative;height:320px}
+.chart-inner{position:relative;height:340px}
 
-/* Tabela mensal */
-.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px}
-.table-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.table-title{font-size:11px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.12em}
+/* ═══ RESUMO MENSAL ══════════════════════════════════════════════ */
+.resumo-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:28px}
+.resumo-head{padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.resumo-titulo{font-size:14px;font-weight:800;color:var(--txt);letter-spacing:.04em}
+.resumo-mes-sel{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
+.resumo-mes-sel:focus{border-color:var(--coral)}
 .table-scroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-thead tr{background:var(--card2)}
-th{padding:9px 12px;text-align:right;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);border-bottom:1px solid var(--border);white-space:nowrap}
-th:first-child{text-align:left}
-td{padding:9px 12px;text-align:right;font-size:11px;color:var(--txt-s);border-bottom:1px solid rgba(255,255,255,.04)}
-td:first-child{text-align:left;color:var(--txt);font-weight:600}
-tr:hover td{background:rgba(255,255,255,.02)}
-tr:last-child td{border-bottom:none}
-.td-val{color:var(--txt);font-weight:700}
-.td-me{color:var(--azul)}
-.td-ec{color:var(--coral2)}
-.td-tot{color:var(--coral);font-weight:800}
-.td-prev{color:var(--cinza)}
-.status-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:8.5px;font-weight:700;white-space:nowrap}
-.st-done{background:rgba(108,156,55,.12);color:var(--verde)}
-.st-open{background:rgba(237,104,66,.12);color:var(--coral)}
-.st-prev{background:rgba(113,112,111,.12);color:var(--cinza)}
-tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid var(--border);background:var(--card2);border-bottom:none}
+
+/* Tabela resumo */
+.rt{width:100%;border-collapse:collapse}
+.rt th{padding:8px 12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
+.rt th.th-grupo{text-align:left;min-width:200px}
+.rt th.th-sep{background:var(--bg);width:6px;padding:0;border:none}
+.rt th.th-grp{text-align:center;font-size:10px;font-weight:800;letter-spacing:.15em;padding:10px 16px}
+.rt th.th-grp-real{background:rgba(237,104,66,.07);border-bottom:1px solid rgba(237,104,66,.2);color:var(--coral)}
+.rt th.th-grp-prev{background:rgba(113,112,111,.07);border-bottom:1px solid rgba(113,112,111,.2);color:var(--cinza)}
+.rt th.th-grp-tot{background:rgba(108,156,55,.07);border-bottom:1px solid rgba(108,156,55,.2);color:var(--verde)}
+.rt th.th-real{background:rgba(237,104,66,.04);color:var(--coral);border-bottom:1px solid rgba(237,104,66,.15)}
+.rt th.th-prev{background:rgba(113,112,111,.04);color:var(--cinza);border-bottom:1px solid rgba(113,112,111,.15)}
+.rt th.th-tot{background:rgba(108,156,55,.04);color:var(--verde);border-bottom:1px solid rgba(108,156,55,.15)}
+.rt td{padding:10px 12px;font-size:11px;text-align:right;border-bottom:1px solid rgba(255,255,255,.04);color:var(--txt-s)}
+.rt td.td-grupo{text-align:left;font-weight:700;color:var(--txt);padding-left:16px;font-size:11.5px}
+.rt td.td-sep{background:var(--bg);width:6px;padding:0;border:none}
+.rt td.td-r-q{color:var(--txt-s)}
+.rt td.td-r-v{color:var(--coral);font-weight:700}
+.rt td.td-r-p{color:var(--txt-m);font-size:9.5px;font-weight:600}
+.rt td.td-p-q{color:var(--txt-m)}
+.rt td.td-p-v{color:var(--cinza);font-weight:600}
+.rt td.td-t-q{color:var(--txt)}
+.rt td.td-t-v{color:var(--verde);font-weight:800}
+.rt td.td-t-p{color:var(--txt-m);font-size:9.5px;font-weight:600}
+.rt tr:hover td{background:rgba(255,255,255,.015)}
+.rt tr:hover td.td-sep{background:var(--bg)}
+.rt tr.tr-total td{font-size:12px;font-weight:800;color:var(--txt);border-top:2px solid var(--border);background:var(--card2);border-bottom:none;padding-top:12px;padding-bottom:12px}
+.rt tr.tr-total td.td-sep{background:var(--bg)}
+.rt tr.tr-total td.td-grupo{color:var(--txt);font-size:12px}
+.rt tr.tr-total td.td-r-v{color:var(--coral)}
+.rt tr.tr-total td.td-p-v{color:var(--cinza)}
+.rt tr.tr-total td.td-t-v{color:var(--verde)}
 
 /* Sem data */
-.semdata-card{background:var(--card);border:1px solid rgba(237,104,66,.25);border-radius:12px;padding:20px;margin-bottom:24px}
+.semdata-card{background:var(--card);border:1px solid rgba(237,104,66,.25);border-radius:12px;padding:20px;margin-bottom:28px}
 .semdata-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
 .semdata-title{font-size:12px;font-weight:800;color:var(--coral)}
 .semdata-sub{font-size:10px;color:var(--txt-m);margin-top:3px}
@@ -102,51 +119,17 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
 .semdata-table td:last-child,.semdata-table th:last-child{text-align:right}
 .semdata-table tr:last-child td{border-bottom:none}
 
-/* ═══ RESUMO MENSAL ══════════════════════════════════════════════ */
-.resumo-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:32px}
-.resumo-head{padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
-.resumo-titulo{font-size:14px;font-weight:800;color:var(--txt);letter-spacing:.04em}
-.resumo-mes-sel{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
-.resumo-mes-sel:focus{border-color:var(--coral)}
-
-/* tabela do resumo */
-.rt{width:100%;border-collapse:collapse}
-.rt th{padding:8px 12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
-.rt th.th-grupo{text-align:left;min-width:160px}
-.rt th.th-sep{background:var(--bg);width:8px;padding:0;border:none}
-.rt th.th-real{background:rgba(237,104,66,.07);color:var(--coral);border-bottom:1px solid rgba(237,104,66,.2)}
-.rt th.th-prev{background:rgba(113,112,111,.07);color:var(--cinza);border-bottom:1px solid rgba(113,112,111,.2)}
-.rt th.th-tot{background:rgba(108,156,55,.07);color:var(--verde);border-bottom:1px solid rgba(108,156,55,.2)}
-.rt th.th-grp{text-align:center;font-size:10px;font-weight:800;letter-spacing:.15em;padding:10px 16px}
-.rt th.th-grp-real{background:rgba(237,104,66,.07);border-bottom:1px solid rgba(237,104,66,.15);color:var(--coral)}
-.rt th.th-grp-prev{background:rgba(113,112,111,.07);border-bottom:1px solid rgba(113,112,111,.15);color:var(--cinza)}
-.rt th.th-grp-tot{background:rgba(108,156,55,.07);border-bottom:1px solid rgba(108,156,55,.15);color:var(--verde)}
-.rt td{padding:9px 12px;font-size:11px;text-align:right;border-bottom:1px solid rgba(255,255,255,.04);color:var(--txt-s)}
-.rt td.td-grupo{text-align:left;font-weight:700;color:var(--txt);padding-left:16px}
-.rt td.td-grupo.sub{padding-left:28px;color:var(--txt-s);font-weight:500;font-size:10.5px}
-.rt td.td-sep{background:var(--bg);width:8px;padding:0;border:none}
-.rt td.td-r-q{color:var(--txt)}
-.rt td.td-r-v{color:var(--coral);font-weight:700}
-.rt td.td-r-p{color:var(--txt-m);font-size:9.5px;font-weight:600}
-.rt td.td-p-q{color:var(--txt-m)}
-.rt td.td-p-v{color:var(--cinza);font-weight:600}
-.rt td.td-t-q{color:var(--txt);font-weight:700}
-.rt td.td-t-v{color:var(--verde);font-weight:800}
-.rt td.td-t-p{color:var(--txt-m);font-size:9.5px;font-weight:600}
-.rt tr:hover td{background:rgba(255,255,255,.015)}
-.rt tr:hover td.td-sep{background:var(--bg)}
-.rt tr.tr-total td{font-size:11.5px;font-weight:800;color:var(--txt);border-top:1px solid var(--border);background:var(--card2);border-bottom:none}
-.rt tr.tr-total td.td-r-v{color:var(--coral)}
-.rt tr.tr-total td.td-p-v{color:var(--cinza)}
-.rt tr.tr-total td.td-t-v{color:var(--verde)}
-.rt tr.tr-total td.td-sep{background:var(--bg)}
-.rt tr.tr-total td.td-grupo{color:var(--txt);font-size:11.5px}
-
-/* empty state */
+/* Empty state */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:12px;color:var(--txt-m)}
 .empty-icon{font-size:42px}
 .empty-msg{font-size:13px;font-weight:600}
 .empty-sub{font-size:10px;text-align:center;max-width:340px;line-height:1.8}
+
+/* Status badges */
+.status-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:8.5px;font-weight:700;white-space:nowrap}
+.st-done{background:rgba(108,156,55,.12);color:var(--verde)}
+.st-open{background:rgba(237,104,66,.12);color:var(--coral)}
+.st-prev{background:rgba(113,112,111,.12);color:var(--cinza)}
 </style>
 </head>
 <body>
@@ -201,7 +184,46 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
     </div>
   </div>
 
-  <!-- Filtros -->
+  <!-- RESUMO MENSAL -->
+  <div class="stitle">Resumo mensal — faturamento por grupo</div>
+  <div class="resumo-wrap">
+    <div class="resumo-head">
+      <div class="resumo-titulo">Faturamento Boaonda</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:9px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.1em">Mês</span>
+        <select class="resumo-mes-sel" id="resumo-mes"></select>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="rt">
+        <thead>
+          <tr>
+            <th class="th-grupo" rowspan="2">Grupo</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-real" colspan="3" id="th-real-label">REALIZADO</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-prev" colspan="2" id="th-prev-label">PREVISTO</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-tot" colspan="3" id="th-tot-label">TOTAL GERAL</th>
+          </tr>
+          <tr>
+            <th class="th-real">Qtd. pares</th>
+            <th class="th-real">Valor Fat.</th>
+            <th class="th-real">%</th>
+            <th class="th-prev">Qtd. pares</th>
+            <th class="th-prev">Valor Fat.</th>
+            <th class="th-tot">Qtd. pares</th>
+            <th class="th-tot">Valor Fat.</th>
+            <th class="th-tot">%</th>
+          </tr>
+        </thead>
+        <tbody id="resumo-tbody"></tbody>
+        <tfoot><tr class="tr-total" id="resumo-tfoot"></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Filtros do gráfico -->
   <div class="filters">
     <div class="filter-group">
       <span class="filter-lbl">Período</span>
@@ -245,36 +267,6 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
     </div>
   </div>
 
-  <!-- Tabela mensal -->
-  <div class="table-wrap">
-    <div class="table-head">
-      <div class="table-title">Detalhamento mensal</div>
-      <div style="font-size:9px;color:var(--txt-m)" id="table-info">–</div>
-    </div>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Mês</th>
-            <th>MI PROG</th>
-            <th>MI PE</th>
-            <th>MI MISTA</th>
-            <th>Total MI</th>
-            <th>ME (USD)</th>
-            <th>ME (BRL)</th>
-            <th>E-commerce</th>
-            <th>Total Realiz.</th>
-            <th>Previsto¹</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-        <tfoot><tr id="tfoot"></tr></tfoot>
-      </table>
-      <div style="font-size:9px;color:var(--txt-m);padding:8px 14px">¹ Previsto exibido apenas para o mês atual — meses passados já estão encerrados.</div>
-    </div>
-  </div>
-
   <!-- Sem data -->
   <div class="semdata-card" id="semdata-card" style="display:none">
     <div class="semdata-head">
@@ -287,414 +279,356 @@ tfoot tr td{font-size:11px;font-weight:800;color:var(--txt);border-top:1px solid
     <div id="semdata-body"></div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════
-       RESUMO MENSAL — FATURAMENTO MOULD (estilo planilha)
-  ═══════════════════════════════════════════════════════════ -->
-  <div class="stitle">Resumo mensal — faturamento por grupo</div>
-
-  <div class="resumo-wrap">
-    <div class="resumo-head">
-      <div class="resumo-titulo">Faturamento Boaonda</div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:9px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.1em">Mês</span>
-        <select class="resumo-mes-sel" id="resumo-mes"></select>
-      </div>
-    </div>
-    <div class="table-scroll">
-      <table class="rt">
-        <thead>
-          <tr>
-            <th class="th-grupo" rowspan="2">Grupo</th>
-            <th class="th-sep" rowspan="2"></th>
-            <th class="th-grp th-grp-real" colspan="3" id="th-real-label">REALIZADO</th>
-            <th class="th-sep" rowspan="2"></th>
-            <th class="th-grp th-grp-prev" colspan="2" id="th-prev-label">PREVISTO</th>
-            <th class="th-sep" rowspan="2"></th>
-            <th class="th-grp th-grp-tot" colspan="3" id="th-tot-label">TOTAL GERAL</th>
-          </tr>
-          <tr>
-            <th class="th-real">Qtd. pares</th>
-            <th class="th-real">Valor Fat.</th>
-            <th class="th-real">%</th>
-            <th class="th-prev">Qtd. pares</th>
-            <th class="th-prev">Valor Fat.</th>
-            <th class="th-tot">Qtd. pares</th>
-            <th class="th-tot">Valor Fat.</th>
-            <th class="th-tot">%</th>
-          </tr>
-        </thead>
-        <tbody id="resumo-tbody"></tbody>
-        <tfoot><tr class="tr-total" id="resumo-tfoot"></tr></tfoot>
-      </table>
-    </div>
-  </div>
-
-</div><!-- /main -->
+</div>
 
 <script>
-Chart.defaults.color='#7d7c79';
-Chart.defaults.borderColor='#262b3a';
-Chart.defaults.font.family="'Montserrat',sans-serif";
+Chart.defaults.color = '#7d7c79';
+Chart.defaults.borderColor = '#262b3a';
+Chart.defaults.font.family = "'Montserrat',sans-serif";
 
-let DATA=null, CAMBIO=5.00, fatChart=null;
+// Plugin: rótulo de total em cima de cada barra empilhada
+const stackTotalPlugin = {
+  id: 'stackTotal',
+  afterDatasetsDraw(chart) {
+    const {ctx, scales: {y}, data} = chart;
+    const stackIdx = data.datasets.map((ds,i) => ds.stack === 'r' ? i : -1).filter(i => i >= 0);
+    if (!stackIdx.length) return;
+    const firstMeta = chart.getDatasetMeta(stackIdx[0]);
 
-const R=n=>Math.round(n||0);
-const fBRL=n=>'R$ '+R(n).toLocaleString('pt-BR');
-const fUSD=n=>'US$ '+R(n).toLocaleString('pt-BR');
-const fPar=n=>R(n).toLocaleString('pt-BR');
-const fK=n=>{const v=R(n);return v>=1e6?'R$ '+(v/1e6).toFixed(1).replace('.',',')+'M':v>=1e3?'R$ '+(v/1e3).toFixed(0)+'k':'R$ '+v.toLocaleString('pt-BR')};
+    data.labels.forEach((_, i) => {
+      let total = 0;
+      stackIdx.forEach(di => { total += data.datasets[di].data[i] || 0; });
+      if (!total || !firstMeta.data[i]) return;
 
-const MESES_PT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const MESES_LONG=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      const x = firstMeta.data[i].x;
+      const yPx = y.getPixelForValue(total);
+      const txt = total >= 1e6
+        ? 'R$' + (total / 1e6).toFixed(1).replace('.', ',') + 'M'
+        : 'R$' + Math.round(total / 1000) + 'k';
 
-function mesLabel(yyyymm){
-  return MESES_PT[parseInt(yyyymm.slice(4,6))-1]+'/'+yyyymm.slice(2,4);
+      ctx.save();
+      ctx.fillStyle = '#b6b3ac';
+      ctx.font = '700 8.5px Montserrat, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(txt, x, yPx - 4);
+      ctx.restore();
+    });
+  }
+};
+Chart.register(stackTotalPlugin);
+
+let DATA = null, CAMBIO = 5.00, fatChart = null;
+
+const R = n => Math.round(n || 0);
+const fBRL = n => 'R$ ' + R(n).toLocaleString('pt-BR');
+const fUSD = n => 'US$ ' + R(n).toLocaleString('pt-BR');
+const fPar = n => R(n).toLocaleString('pt-BR');
+const fK = n => {
+  const v = R(n);
+  return v >= 1e6 ? 'R$ ' + (v / 1e6).toFixed(1).replace('.', ',') + 'M'
+       : v >= 1e3 ? 'R$ ' + (v / 1e3).toFixed(0) + 'k'
+       : 'R$ ' + v.toLocaleString('pt-BR');
+};
+
+const MESES_PT   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MESES_LONG = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function mesLabel(k)  { return MESES_PT[parseInt(k.slice(4,6))-1] + '/' + k.slice(2,4); }
+function mesLong(k)   { return MESES_LONG[parseInt(k.slice(4,6))-1] + '/' + k.slice(0,4); }
+function mesAtual()   { const d = new Date(); return String(d.getFullYear()) + String(d.getMonth()+1).padStart(2,'0'); }
+function fimMes(k)    { const y=parseInt(k.slice(0,4)), m=parseInt(k.slice(4,6)), fim=new Date(y,m,0); return fim.getDate()+'/'+(m<10?'0':'')+m+'/'+String(y).slice(2); }
+
+function keysFiltrados() {
+  const keys = Object.keys(DATA.dados || {}).sort();
+  const n = parseInt(document.getElementById('filter-periodo').value);
+  return n ? keys.slice(-n) : keys;
 }
-function mesLong(yyyymm){
-  return MESES_LONG[parseInt(yyyymm.slice(4,6))-1]+'/'+yyyymm.slice(0,4);
-}
-function mesAtual(){
-  const d=new Date();
-  return String(d.getFullYear())+String(d.getMonth()+1).padStart(2,'0');
-}
-function fimMes(yyyymm){
-  const y=parseInt(yyyymm.slice(0,4)), m=parseInt(yyyymm.slice(4,6));
-  const fim=new Date(y,m,0);
-  return fim.getDate()+'/'+(m<10?'0':'')+m+'/'+String(y).slice(2);
-}
+function canalFiltro()   { return document.getElementById('filter-canal').value; }
+function especieFiltro() { return document.getElementById('filter-especie').value; }
 
-function keysFiltrados(){
-  const dados=DATA.dados||{};
-  const n=parseInt(document.getElementById('filter-periodo').value);
-  const keys=Object.keys(dados).sort();
-  return n?keys.slice(-n):keys;
-}
-function canalFiltro(){return document.getElementById('filter-canal').value}
-function especieFiltro(){return document.getElementById('filter-especie').value}
+// Previsto: apenas mês atual (meses passados estão encerrados)
+function calcMes(mes, key) {
+  const MA = mesAtual();
+  const sp = key >= MA;   // showPrev
+  const MI = mes.MI || {}, ME = mes.ME || {}, EC = mes.EC || {};
+  const canal = canalFiltro(), esp = especieFiltro();
 
-// Previsto só aparece no mês atual — passados estão encerrados
-function calcMes(mes, key){
-  const MA=mesAtual();
-  const showPrev = key >= MA;   // false para meses passados
-  const MI=mes.MI||{}, ME=mes.ME||{}, EC=mes.EC||{};
-  const canal=canalFiltro(), esp=especieFiltro();
-
-  let miProg=0,miPe=0,miMista=0,miPrev=0;
-  let miProgQ=0,miPeQ=0,miMistaQ=0,miPrevQ=0;
-  if(canal==='TODOS'||canal==='MI'){
-    if(esp==='TODOS'||esp==='PROG'){
-      miProg=(MI.PROG||{}).REALIZADO||0; miProgQ=(MI.PROG||{}).REALIZADO_PARES||0;
-      if(showPrev){miPrev+=(MI.PROG||{}).PREVISTO||0; miPrevQ+=(MI.PROG||{}).PREVISTO_PARES||0}
+  let miProg=0, miPe=0, miMista=0, miPrev=0;
+  let miProgQ=0, miPeQ=0, miMistaQ=0, miPrevQ=0;
+  if (canal === 'TODOS' || canal === 'MI') {
+    if (esp === 'TODOS' || esp === 'PROG') {
+      miProg  = (MI.PROG||{}).REALIZADO        || 0;
+      miProgQ = (MI.PROG||{}).REALIZADO_PARES  || 0;
+      if (sp) { miPrev  += (MI.PROG||{}).PREVISTO       || 0;
+                miPrevQ += (MI.PROG||{}).PREVISTO_PARES  || 0; }
     }
-    if(esp==='TODOS'||esp==='PE'){
-      miPe=(MI.PE||{}).REALIZADO||0; miPeQ=(MI.PE||{}).REALIZADO_PARES||0;
-      if(showPrev){miPrev+=(MI.PE||{}).PREVISTO||0; miPrevQ+=(MI.PE||{}).PREVISTO_PARES||0}
+    if (esp === 'TODOS' || esp === 'PE') {
+      miPe  = (MI.PE||{}).REALIZADO       || 0;
+      miPeQ = (MI.PE||{}).REALIZADO_PARES || 0;
+      if (sp) { miPrev  += (MI.PE||{}).PREVISTO       || 0;
+                miPrevQ += (MI.PE||{}).PREVISTO_PARES  || 0; }
     }
-    if(esp==='TODOS'||esp==='MISTA'){
-      miMista=(MI.MISTA||{}).REALIZADO||0; miMistaQ=(MI.MISTA||{}).REALIZADO_PARES||0;
-      if(showPrev){miPrev+=(MI.MISTA||{}).PREVISTO||0; miPrevQ+=(MI.MISTA||{}).PREVISTO_PARES||0}
+    if (esp === 'TODOS' || esp === 'MISTA') {
+      miMista  = (MI.MISTA||{}).REALIZADO       || 0;
+      miMistaQ = (MI.MISTA||{}).REALIZADO_PARES || 0;
+      if (sp) { miPrev  += (MI.MISTA||{}).PREVISTO       || 0;
+                miPrevQ += (MI.MISTA||{}).PREVISTO_PARES  || 0; }
     }
   }
-  const miReal=miProg+miPe+miMista, miRealQ=miProgQ+miPeQ+miMistaQ;
+  const miReal  = miProg + miPe + miMista;
+  const miRealQ = miProgQ + miPeQ + miMistaQ;
 
-  let meUSD=0,mePrevUSD=0,meRealQ=0,mePrevQ=0;
-  if(canal==='TODOS'||canal==='ME'){
-    meUSD=ME.REALIZADO_USD||0; meRealQ=ME.REALIZADO_PARES||0;
-    if(showPrev){mePrevUSD=ME.PREVISTO_USD||0; mePrevQ=ME.PREVISTO_PARES||0}
+  let meUSD=0, mePrevUSD=0, meRealQ=0, mePrevQ=0;
+  if (canal === 'TODOS' || canal === 'ME') {
+    meUSD   = ME.REALIZADO_USD   || 0;
+    meRealQ = ME.REALIZADO_PARES || 0;
+    if (sp) { mePrevUSD = ME.PREVISTO_USD   || 0;
+              mePrevQ   = ME.PREVISTO_PARES || 0; }
   }
-  const meBRL=meUSD*CAMBIO, mePrevBRL=mePrevUSD*CAMBIO;
+  const meBRL = meUSD * CAMBIO, mePrevBRL = mePrevUSD * CAMBIO;
 
-  let ecReal=0,ecPrev=0,ecRealQ=0,ecPrevQ=0;
-  if(canal==='TODOS'||canal==='EC'){
-    ecReal=EC.REALIZADO||0; ecRealQ=EC.REALIZADO_PARES||0;
-    if(showPrev){ecPrev=EC.PREVISTO||0; ecPrevQ=EC.PREVISTO_PARES||0}
+  let ecReal=0, ecPrev=0, ecRealQ=0, ecPrevQ=0;
+  if (canal === 'TODOS' || canal === 'EC') {
+    ecReal  = EC.REALIZADO       || 0;
+    ecRealQ = EC.REALIZADO_PARES || 0;
+    if (sp) { ecPrev  = EC.PREVISTO       || 0;
+              ecPrevQ = EC.PREVISTO_PARES || 0; }
   }
 
-  const totalReal=miReal+meBRL+ecReal;
-  const totalPrev=miPrev+mePrevBRL+ecPrev;
-  const totalRealQ=miRealQ+meRealQ+ecRealQ;
-  const totalPrevQ=miPrevQ+mePrevQ+ecPrevQ;
+  const totalReal  = miReal  + meBRL    + ecReal;
+  const totalPrev  = miPrev  + mePrevBRL + ecPrev;
+  const totalRealQ = miRealQ + meRealQ   + ecRealQ;
+  const totalPrevQ = miPrevQ + mePrevQ   + ecPrevQ;
 
-  return{
-    miProg,miPe,miMista,miReal,miPrev,
-    miProgQ,miPeQ,miMistaQ,miRealQ,miPrevQ,
-    meUSD,meBRL,mePrevBRL,meRealQ,mePrevQ,
-    ecReal,ecPrev,ecRealQ,ecPrevQ,
-    totalReal,totalPrev,totalRealQ,totalPrevQ,
-    showPrev
-  };
+  return { miProg, miPe, miMista, miReal, miPrev,
+           miProgQ, miPeQ, miMistaQ, miRealQ, miPrevQ,
+           meUSD, meBRL, mePrevBRL, meRealQ, mePrevQ,
+           ecReal, ecPrev, ecRealQ, ecPrevQ,
+           totalReal, totalPrev, totalRealQ, totalPrevQ, showPrev: sp };
 }
 
-function getStatus(mes,k){
-  const MA=mesAtual();
-  if(k>MA) return 'prev';
-  const MI=mes.MI||{},ME=mes.ME||{},EC=mes.EC||{};
-  const hasReal=(MI.PROG?.REALIZADO||0)+(MI.PE?.REALIZADO||0)+(MI.MISTA?.REALIZADO||0)+(ME.REALIZADO_USD||0)+(EC.REALIZADO||0);
-  const hasPrev=(MI.PROG?.PREVISTO||0)+(MI.PE?.PREVISTO||0)+(MI.MISTA?.PREVISTO||0)+(ME.PREVISTO_USD||0)+(EC.PREVISTO||0);
-  if(hasReal>0&&hasPrev===0) return 'done';
-  if(hasReal>0) return 'open';
-  return 'prev';
-}
+function pct(v, tot) { return tot > 0 ? Math.round(v / tot * 100) + '%' : '–'; }
 
-function pct(v,tot){return tot>0?Math.round(v/tot*100)+'%':'–'}
+function render() {
+  if (!DATA) return;
+  const dados = DATA.dados || {};
+  const keys  = keysFiltrados();
+  const MA    = mesAtual();
+  const canal = canalFiltro();
 
-function render(){
-  if(!DATA) return;
-  const dados=DATA.dados||{};
-  const keys=keysFiltrados();
-  const canal=canalFiltro();
-  const MA=mesAtual();
+  document.getElementById('filter-especie-group').style.display = (canal === 'ME' || canal === 'EC') ? 'none' : 'flex';
 
-  document.getElementById('filter-especie-group').style.display=(canal==='ME'||canal==='EC')?'none':'flex';
+  // KPIs mês atual
+  const cA = calcMes(dados[MA] || {}, MA);
+  document.getElementById('kpi-mi-real').textContent  = fK(cA.miReal);
+  document.getElementById('kpi-mi-sub').textContent   = 'PROG ' + fK(cA.miProg) + ' · PE ' + fK(cA.miPe) + ' · MISTA ' + fK(cA.miMista);
+  document.getElementById('kpi-me-real').textContent  = fK(cA.meBRL);
+  document.getElementById('kpi-me-sub').textContent   = fUSD(cA.meUSD);
+  document.getElementById('kpi-ec-real').textContent  = fK(cA.ecReal);
+  document.getElementById('kpi-tot-real').textContent = fK(cA.totalReal);
+  document.getElementById('kpi-tot-sub').textContent  = mesLabel(MA);
+  document.getElementById('kpi-prev').textContent     = fK(cA.totalPrev);
+  document.getElementById('kpi-prev-sub').textContent = 'aguardando faturar · ' + mesLabel(MA);
 
-  // KPIs mês atual (sempre showPrev=true)
-  const cA=calcMes(dados[MA]||{}, MA);
-  document.getElementById('kpi-mi-real').textContent=fK(cA.miReal);
-  document.getElementById('kpi-mi-sub').textContent='PROG '+fK(cA.miProg)+' · PE '+fK(cA.miPe)+' · MISTA '+fK(cA.miMista);
-  document.getElementById('kpi-me-real').textContent=fK(cA.meBRL);
-  document.getElementById('kpi-me-sub').textContent=fUSD(cA.meUSD);
-  document.getElementById('kpi-ec-real').textContent=fK(cA.ecReal);
-  document.getElementById('kpi-tot-real').textContent=fK(cA.totalReal);
-  document.getElementById('kpi-tot-sub').textContent=mesLabel(MA);
-  document.getElementById('kpi-prev').textContent=fK(cA.totalPrev);
-  document.getElementById('kpi-prev-sub').textContent='aguardando faturar · '+mesLabel(MA);
-
-  // Gráfico — previsto line só para mês atual
-  const labels=keys.map(mesLabel);
-  const dMI=[],dME=[],dEC=[],dPrev=[];
-  keys.forEach(k=>{
-    const c=calcMes(dados[k]||{}, k);
-    dMI.push(R(c.miReal)); dME.push(R(c.meBRL)); dEC.push(R(c.ecReal));
-    // linha verde = realizado + previsto (previsto só existe para mês atual)
-    dPrev.push(R(c.totalReal+c.totalPrev));
+  // Gráfico
+  const labels = keys.map(mesLabel);
+  const dMI = [], dME = [], dEC = [], dPrev = [];
+  keys.forEach(k => {
+    const c = calcMes(dados[k] || {}, k);
+    dMI.push(R(c.miReal));
+    dME.push(R(c.meBRL));
+    dEC.push(R(c.ecReal));
+    dPrev.push(R(c.totalReal + c.totalPrev));
   });
-  if(fatChart) fatChart.destroy();
-  fatChart=new Chart(document.getElementById('fat-chart').getContext('2d'),{
-    type:'bar',
-    data:{labels,datasets:[
-      {label:'MI Realizado',data:dMI,backgroundColor:'rgba(237,104,66,.85)',stack:'r',borderRadius:3},
-      {label:'ME BRL',data:dME,backgroundColor:'rgba(73,148,199,.85)',stack:'r',borderRadius:3},
-      {label:'E-commerce',data:dEC,backgroundColor:'rgba(221,112,81,.85)',stack:'r',borderRadius:3},
-      {label:'Total c/ Previsto',data:dPrev,type:'line',borderColor:'#6c9c37',backgroundColor:'transparent',
-       borderWidth:2,borderDash:[5,4],pointBackgroundColor:'#6c9c37',pointRadius:3,tension:.25,order:0},
-    ]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fBRL(c.raw)}}},
-      scales:{
-        x:{grid:{color:'rgba(38,43,58,.8)'},ticks:{font:{size:10}}},
-        y:{grid:{color:'rgba(38,43,58,.8)'},ticks:{font:{size:10},callback:v=>'R$'+Math.round(v/1000)+'k'}},
+
+  if (fatChart) fatChart.destroy();
+  fatChart = new Chart(document.getElementById('fat-chart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'MI Realizado', data: dMI, backgroundColor: 'rgba(237,104,66,.85)', stack: 'r', borderRadius: 2 },
+        { label: 'ME BRL',       data: dME, backgroundColor: 'rgba(73,148,199,.85)',  stack: 'r', borderRadius: 0 },
+        { label: 'E-commerce',   data: dEC, backgroundColor: 'rgba(221,112,81,.85)',  stack: 'r', borderRadius: 0 },
+        { label: 'Total c/ Previsto', data: dPrev, type: 'line',
+          borderColor: '#6c9c37', backgroundColor: 'transparent',
+          borderWidth: 2, borderDash: [5, 4],
+          pointBackgroundColor: '#6c9c37', pointRadius: 3, tension: .25, order: 0 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 22 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ' ' + c.dataset.label + ': ' + fBRL(c.raw) } },
+      },
+      scales: {
+        x: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 }, callback: v => 'R$' + Math.round(v / 1000) + 'k' } },
       }
     }
   });
-
-  // Tabela mensal
-  const tbody=document.getElementById('tbody'), tfoot=document.getElementById('tfoot');
-  let sP=0,sPE=0,sM=0,sMI=0,sUSD=0,sBRL=0,sEC=0,sR=0,sPrev=0;
-  tbody.innerHTML='';
-  keys.slice().reverse().forEach(k=>{
-    const c=calcMes(dados[k]||{},k), st=getStatus(dados[k]||{},k);
-    sP+=c.miProg; sPE+=c.miPe; sM+=c.miMista; sMI+=c.miReal;
-    sUSD+=c.meUSD; sBRL+=c.meBRL; sEC+=c.ecReal; sR+=c.totalReal; sPrev+=c.totalPrev;
-    const stHtml=st==='done'?'<span class="status-badge st-done">Concluído</span>':
-                 st==='open'?'<span class="status-badge st-open">Em aberto</span>':
-                             '<span class="status-badge st-prev">Previsto</span>';
-    tbody.innerHTML+=`<tr>
-      <td>${mesLabel(k)}</td>
-      <td class="td-val">${c.miProg?fBRL(c.miProg):'–'}</td>
-      <td class="td-val">${c.miPe?fBRL(c.miPe):'–'}</td>
-      <td class="td-val">${c.miMista?fBRL(c.miMista):'–'}</td>
-      <td class="td-val">${fBRL(c.miReal)}</td>
-      <td class="td-me">${c.meUSD?fUSD(c.meUSD):'–'}</td>
-      <td class="td-me">${c.meBRL?fBRL(c.meBRL):'–'}</td>
-      <td class="td-ec">${c.ecReal?fBRL(c.ecReal):'–'}</td>
-      <td class="td-tot">${fBRL(c.totalReal)}</td>
-      <td class="td-prev">${c.showPrev&&c.totalPrev?fBRL(c.totalPrev):'–'}</td>
-      <td>${stHtml}</td>
-    </tr>`;
-  });
-  tfoot.innerHTML=`<td>TOTAL (${keys.length} meses)</td>
-    <td class="td-val">${fBRL(sP)}</td><td class="td-val">${fBRL(sPE)}</td>
-    <td class="td-val">${fBRL(sM)}</td><td class="td-val">${fBRL(sMI)}</td>
-    <td class="td-me">${fUSD(sUSD)}</td><td class="td-me">${fBRL(sBRL)}</td>
-    <td class="td-ec">${fBRL(sEC)}</td><td class="td-tot">${fBRL(sR)}</td>
-    <td class="td-prev">${fBRL(sPrev)}</td><td></td>`;
-  document.getElementById('table-info').textContent=keys.length+' meses exibidos';
 
   renderSemData();
   renderResumo();
 }
 
-// ──────────────────────────────────────────────────────────────────
-// RESUMO MENSAL — tabela estilo Faturamento Mould
-// ──────────────────────────────────────────────────────────────────
-function popularSeletorMes(){
-  const dados=DATA.dados||{};
-  const keys=Object.keys(dados).sort().reverse();
-  const MA=mesAtual();
-  const sel=document.getElementById('resumo-mes');
-  sel.innerHTML='';
-  // Garante que o mês atual aparece mesmo se não tiver dados ainda
-  const opcoes=keys.includes(MA)?keys:[MA,...keys];
-  opcoes.forEach(k=>{
-    const opt=document.createElement('option');
-    opt.value=k; opt.textContent=mesLong(k);
-    if(k===MA) opt.selected=true;
+// ─── Resumo mensal ────────────────────────────────────────────────
+function popularSeletorMes() {
+  const dados = DATA.dados || {};
+  const MA    = mesAtual();
+  const keys  = Object.keys(dados).sort().reverse();
+  const lista = keys.includes(MA) ? keys : [MA, ...keys];
+  const sel   = document.getElementById('resumo-mes');
+  sel.innerHTML = '';
+  lista.forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = mesLong(k);
+    if (k === MA) opt.selected = true;
     sel.appendChild(opt);
   });
 }
 
-function renderResumo(){
-  if(!DATA) return;
-  const key=document.getElementById('resumo-mes').value||mesAtual();
-  const MA=mesAtual();
-  const dados=DATA.dados||{};
-  const mes=dados[key]||{};
-  const MI=mes.MI||{}, ME=mes.ME||{}, EC=mes.EC||{};
-  const showPrev=key>=MA;
-  const gerado=DATA.gerado_em||'';
-  // Data do corte para "Realizado" = data de geração (dd/mm/aa)
-  let dataReal='–';
-  if(gerado){const p=gerado.split(' ')[0]; const pts=p.split('/'); dataReal=pts[0]+'/'+pts[1]+'/'+pts[2]?.slice(-2);}
-  const dataPrev=showPrev?fimMes(key):'–';
+function renderResumo() {
+  if (!DATA) return;
+  const key  = document.getElementById('resumo-mes').value || mesAtual();
+  const MA   = mesAtual();
+  const mes  = (DATA.dados || {})[key] || {};
+  const MI   = mes.MI || {}, ME = mes.ME || {}, EC = mes.EC || {};
+  const sp   = key >= MA;
+  const gerado = DATA.gerado_em || '';
 
-  // Atualizar labels de cabeçalho
-  document.getElementById('th-real-label').textContent='REALIZADO'+(dataReal!=='–'?' — '+dataReal:'');
-  document.getElementById('th-prev-label').textContent='PREVISTO'+(showPrev&&dataPrev!=='–'?' — '+dataPrev:'');
-  document.getElementById('th-tot-label').textContent='TOTAL GERAL — '+mesLong(key).toUpperCase();
+  // Datas de corte dinâmicas
+  let dataReal = '–';
+  if (gerado) { const p = gerado.split(' ')[0].split('/'); dataReal = p[0] + '/' + p[1] + '/' + p[2]?.slice(-2); }
+  const dataPrev = sp ? fimMes(key) : '–';
 
-  // Helper: pegar valores de uma espécie MI
-  const mi=(tipo)=>{
-    const d=MI[tipo]||{};
-    return{
-      rQ:d.REALIZADO_PARES||0, rV:d.REALIZADO||0,
-      pQ:showPrev?d.PREVISTO_PARES||0:0, pV:showPrev?d.PREVISTO||0:0,
-    };
-  };
-  const meV={
-    rQ:ME.REALIZADO_PARES||0, rV:(ME.REALIZADO_USD||0)*CAMBIO,
-    pQ:showPrev?ME.PREVISTO_PARES||0:0, pV:showPrev?(ME.PREVISTO_USD||0)*CAMBIO:0,
-  };
-  const ecV={
-    rQ:EC.REALIZADO_PARES||0, rV:EC.REALIZADO||0,
-    pQ:showPrev?EC.PREVISTO_PARES||0:0, pV:showPrev?EC.PREVISTO||0:0,
-  };
-  const mprog=mi('PROG'), mpe=mi('PE'), mmist=mi('MISTA');
+  document.getElementById('th-real-label').textContent = 'REALIZADO' + (dataReal !== '–' ? ' — ' + dataReal : '');
+  document.getElementById('th-prev-label').textContent = sp ? 'PREVISTO — ' + dataPrev : 'PREVISTO';
+  document.getElementById('th-tot-label').textContent  = 'TOTAL GERAL — ' + mesLong(key).toUpperCase();
 
-  // Agrupa: MI total
-  const miTot={
-    rQ:mprog.rQ+mpe.rQ+mmist.rQ, rV:mprog.rV+mpe.rV+mmist.rV,
-    pQ:mprog.pQ+mpe.pQ+mmist.pQ, pV:mprog.pV+mpe.pV+mmist.pV,
+  const miE = tipo => {
+    const d = MI[tipo] || {};
+    return { rQ: d.REALIZADO_PARES||0, rV: d.REALIZADO||0,
+             pQ: sp ? d.PREVISTO_PARES||0 : 0,
+             pV: sp ? d.PREVISTO||0       : 0 };
   };
-  // Grand total
-  const gt={
-    rQ:miTot.rQ+meV.rQ+ecV.rQ, rV:miTot.rV+meV.rV+ecV.rV,
-    pQ:miTot.pQ+meV.pQ+ecV.pQ, pV:miTot.pV+meV.pV+ecV.pV,
-  };
-  const totR=gt.rV, totT=gt.rV+gt.pV;
+  const meV = { rQ: ME.REALIZADO_PARES||0, rV: (ME.REALIZADO_USD||0)*CAMBIO,
+                pQ: sp ? ME.PREVISTO_PARES||0            : 0,
+                pV: sp ? (ME.PREVISTO_USD||0)*CAMBIO     : 0 };
+  const ecV = { rQ: EC.REALIZADO_PARES||0, rV: EC.REALIZADO||0,
+                pQ: sp ? EC.PREVISTO_PARES||0 : 0,
+                pV: sp ? EC.PREVISTO||0       : 0 };
+  const mprog = miE('PROG'), mpe = miE('PE'), mmist = miE('MISTA');
 
-  function row(label, d, isSub){
-    const tQ=d.rQ+d.pQ, tV=d.rV+d.pV;
-    const rPct=pct(d.rV,totR), tPct=pct(tV,totT);
-    const grp=isSub?'td-grupo sub':'td-grupo';
-    const pQ=showPrev?(d.pQ?fPar(d.pQ):'–'):'—';
-    const pV=showPrev?(d.pV?fBRL(d.pV):'–'):'—';
+  const gt = {
+    rQ: mprog.rQ+mpe.rQ+mmist.rQ+meV.rQ+ecV.rQ,
+    rV: mprog.rV+mpe.rV+mmist.rV+meV.rV+ecV.rV,
+    pQ: mprog.pQ+mpe.pQ+mmist.pQ+meV.pQ+ecV.pQ,
+    pV: mprog.pV+mpe.pV+mmist.pV+meV.pV+ecV.pV,
+  };
+  const totR = gt.rV, totT = gt.rV + gt.pV;
+
+  function row(label, d) {
+    const tQ = d.rQ + d.pQ, tV = d.rV + d.pV;
+    const dash = sp ? '' : '—';
     return `<tr>
-      <td class="${grp}">${label}</td>
+      <td class="td-grupo">${label}</td>
       <td class="td-sep"></td>
-      <td class="td-r-q">${d.rQ?fPar(d.rQ):'–'}</td>
-      <td class="td-r-v">${d.rV?fBRL(d.rV):'–'}</td>
-      <td class="td-r-p">${d.rV?rPct:'–'}</td>
+      <td class="td-r-q">${d.rQ ? fPar(d.rQ) : '–'}</td>
+      <td class="td-r-v">${d.rV ? fBRL(d.rV) : '–'}</td>
+      <td class="td-r-p">${d.rV ? pct(d.rV, totR) : '–'}</td>
       <td class="td-sep"></td>
-      <td class="td-p-q">${pQ}</td>
-      <td class="td-p-v">${pV}</td>
+      <td class="td-p-q">${sp ? (d.pQ ? fPar(d.pQ) : '–') : dash}</td>
+      <td class="td-p-v">${sp ? (d.pV ? fBRL(d.pV) : '–') : dash}</td>
       <td class="td-sep"></td>
-      <td class="td-t-q">${tQ?fPar(tQ):'–'}</td>
-      <td class="td-t-v">${tV?fBRL(tV):'–'}</td>
-      <td class="td-t-p">${tV?tPct:'–'}</td>
+      <td class="td-t-q">${tQ ? fPar(tQ) : '–'}</td>
+      <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
+      <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
     </tr>`;
   }
 
-  const tbody=document.getElementById('resumo-tbody');
-  tbody.innerHTML=
-    row('Vendas MI — Programado (PROG)', mprog, false)+
-    row('Vendas MI — Pronta Entrega (PE)', mpe, false)+
-    (mmist.rV||mmist.pV?row('Vendas MI — Mista', mmist, false):'')+
-    row('Vendas ME (BRL @ R$'+CAMBIO.toFixed(2)+')', meV, false)+
-    row('E-commerce', ecV, false);
+  document.getElementById('resumo-tbody').innerHTML =
+    row('Vendas MI — Programado (PROG)', mprog) +
+    row('Vendas MI — Pronta Entrega (PE)', mpe) +
+    (mmist.rV || mmist.pV ? row('Vendas MI — Mista', mmist) : '') +
+    row('Vendas ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV) +
+    row('E-commerce', ecV);
 
-  const tpQ=showPrev?fPar(gt.pQ):'—', tpV=showPrev?(gt.pV?fBRL(gt.pV):'–'):'—';
-  const tQ=gt.rQ+gt.pQ, tV=gt.rV+gt.pV;
-  document.getElementById('resumo-tfoot').innerHTML=`
+  const tQ = gt.rQ + gt.pQ, tV = gt.rV + gt.pV;
+  const dash = sp ? '' : '—';
+  document.getElementById('resumo-tfoot').innerHTML = `
     <td class="td-grupo">Total Geral</td>
     <td class="td-sep"></td>
-    <td class="td-r-q">${gt.rQ?fPar(gt.rQ):'–'}</td>
-    <td class="td-r-v">${gt.rV?fBRL(gt.rV):'–'}</td>
+    <td class="td-r-q">${fPar(gt.rQ)}</td>
+    <td class="td-r-v">${fBRL(gt.rV)}</td>
     <td class="td-r-p">100%</td>
     <td class="td-sep"></td>
-    <td class="td-p-q">${tpQ}</td>
-    <td class="td-p-v">${tpV}</td>
+    <td class="td-p-q">${sp ? fPar(gt.pQ) : dash}</td>
+    <td class="td-p-v">${sp ? fBRL(gt.pV) : dash}</td>
     <td class="td-sep"></td>
-    <td class="td-t-q">${tQ?fPar(tQ):'–'}</td>
-    <td class="td-t-v">${tV?fBRL(tV):'–'}</td>
-    <td class="td-t-p">${tV?'100%':'–'}</td>`;
+    <td class="td-t-q">${fPar(tQ)}</td>
+    <td class="td-t-v">${fBRL(tV)}</td>
+    <td class="td-t-p">100%</td>`;
 }
 
-function renderSemData(){
-  const sd=DATA.sem_data||[];
-  const card=document.getElementById('semdata-card');
-  if(!sd.length){card.style.display='none';return;}
-  card.style.display='block';
-  const canal=canalFiltro(), esp=especieFiltro();
-  const fil=sd.filter(r=>{
-    if(canal!=='TODOS'&&r.canal!==canal) return false;
-    if(canal==='MI'&&esp!=='TODOS'&&r.especie!==esp) return false;
+function renderSemData() {
+  const sd   = DATA.sem_data || [];
+  const card = document.getElementById('semdata-card');
+  if (!sd.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const canal = canalFiltro(), esp = especieFiltro();
+  const fil = sd.filter(r => {
+    if (canal !== 'TODOS' && r.canal !== canal) return false;
+    if (canal === 'MI' && esp !== 'TODOS' && r.especie !== esp) return false;
     return true;
   });
-  const totVal=fil.reduce((s,r)=>s+(r.valor||0),0);
-  const totPar=fil.reduce((s,r)=>s+(r.pares||0),0);
-  document.getElementById('semdata-kpis').innerHTML=`
+  const totVal = fil.reduce((s, r) => s + (r.valor || 0), 0);
+  const totPar = fil.reduce((s, r) => s + (r.pares || 0), 0);
+  document.getElementById('semdata-kpis').innerHTML = `
     <div style="text-align:center"><div class="semdata-kpi-v">${fil.length}</div><div class="semdata-kpi-l">itens</div></div>
     <div style="text-align:center"><div class="semdata-kpi-v">${totPar.toLocaleString('pt-BR')}</div><div class="semdata-kpi-l">pares</div></div>
     <div style="text-align:center"><div class="semdata-kpi-v">${fK(totVal)}</div><div class="semdata-kpi-l">valor</div></div>`;
-  if(!fil.length){document.getElementById('semdata-body').innerHTML='<div style="font-size:11px;color:var(--txt-m);padding:12px">Nenhum item para os filtros selecionados</div>';return;}
-  const rows=fil.slice(0,60).map(r=>`<tr>
-    <td>${r.ref||'–'}</td>
-    <td><span class="status-badge" style="background:rgba(237,104,66,.1);color:var(--coral)">${r.canal||'–'}</span></td>
-    <td>${r.especie||'–'}</td>
-    <td style="text-align:right">${(r.pares||0).toLocaleString('pt-BR')}</td>
-    <td style="text-align:right">${r.valor?fBRL(r.valor):'–'}</td>
+  if (!fil.length) { document.getElementById('semdata-body').innerHTML = '<div style="font-size:11px;color:var(--txt-m);padding:12px">Nenhum item para os filtros selecionados</div>'; return; }
+  const rows = fil.slice(0, 60).map(r => `<tr>
+    <td>${r.ref || '–'}</td>
+    <td><span class="status-badge st-open">${r.canal || '–'}</span></td>
+    <td>${r.especie || '–'}</td>
+    <td style="text-align:right">${(r.pares || 0).toLocaleString('pt-BR')}</td>
+    <td style="text-align:right">${r.valor ? fBRL(r.valor) : '–'}</td>
   </tr>`).join('');
-  document.getElementById('semdata-body').innerHTML=`<table class="semdata-table">
+  document.getElementById('semdata-body').innerHTML = `<table class="semdata-table">
     <thead><tr><th>Referência</th><th>Canal</th><th>Espécie</th><th style="text-align:right">Pares</th><th style="text-align:right">Valor</th></tr></thead>
     <tbody>${rows}</tbody></table>`
-    +(fil.length>60?`<div style="font-size:10px;color:var(--txt-m);padding:8px 10px">... e mais ${fil.length-60} itens</div>`:'');
+    + (fil.length > 60 ? `<div style="font-size:10px;color:var(--txt-m);padding:8px 10px">... e mais ${fil.length - 60} itens</div>` : '');
 }
 
-// ── Carregar dados ──────────────────────────────────────────────
-fetch('dados_faturamento.json?_='+Date.now())
-  .then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})
-  .then(d=>{
-    DATA=d;
-    CAMBIO=parseFloat(d.taxa_cambio_me)||5.00;
-    document.getElementById('cambio-inp').value=CAMBIO.toFixed(2);
-    document.getElementById('hdr-data').textContent=d.gerado_em||'–';
+// ── Carregar dados ───────────────────────────────────────────────
+fetch('dados_faturamento.json?_=' + Date.now())
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d => {
+    DATA   = d;
+    CAMBIO = parseFloat(d.taxa_cambio_me) || 5.00;
+    document.getElementById('cambio-inp').value = CAMBIO.toFixed(2);
+    document.getElementById('hdr-data').textContent = d.gerado_em || '–';
     popularSeletorMes();
     render();
   })
-  .catch(()=>{
-    document.querySelector('.main').innerHTML='<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Dados de faturamento não encontrados</div><div class="empty-sub">Execute o processador para gerar dados_faturamento.json e tente novamente.</div></div>';
+  .catch(() => {
+    document.querySelector('.main').innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Dados de faturamento não encontrados</div><div class="empty-sub">Execute o processador para gerar dados_faturamento.json e tente novamente.</div></div>';
   });
 
 // ── Eventos ─────────────────────────────────────────────────────
-document.getElementById('cambio-inp').addEventListener('input',e=>{
-  const v=parseFloat(e.target.value);
-  if(v>0){CAMBIO=v;if(DATA)render();}
+document.getElementById('cambio-inp').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  if (v > 0) { CAMBIO = v; if (DATA) render(); }
 });
-['filter-periodo','filter-canal','filter-especie'].forEach(id=>{
-  document.getElementById(id).addEventListener('change',()=>{if(DATA)render();});
+['filter-periodo', 'filter-canal', 'filter-especie'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => { if (DATA) render(); });
 });
-document.getElementById('resumo-mes').addEventListener('change',()=>{if(DATA)renderResumo();});
+document.getElementById('resumo-mes').addEventListener('change', () => { if (DATA) renderResumo(); });
 </script>
 </body>
 </html>
