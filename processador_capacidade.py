@@ -496,6 +496,29 @@ def exportar_capacidade_excel(dados_path):
     return buf
 
 
+def _normaliza_header(v):
+    """Normaliza célula de cabeçalho: remove 2ª linha (dica de unidade),
+    marcador de obrigatório ('*') e espaços extras, deixando em minúsculas."""
+    s = str(v or '').strip().lower()
+    s = s.split('\n')[0]
+    s = s.rstrip('*').strip()
+    return s
+
+
+def _achar_header_referencias(ws):
+    """Procura a linha de cabeçalho real da aba REFERÊNCIAS nas primeiras 10
+    linhas — tolera linhas de título/legenda inseridas manualmente antes do
+    cabeçalho (ex: arquivos reformatados fora do template exportado)."""
+    linhas = list(ws.iter_rows(max_row=10))
+    for r_idx, row in enumerate(linhas, 1):
+        header = [_normaliza_header(c.value) for c in row]
+        if 'ref_linha' in header and 'referencia' in header:
+            return r_idx, header
+    # Nada encontrado — assume linha 1 (comportamento anterior, gera erro claro)
+    header = [_normaliza_header(c.value) for c in linhas[0]] if linhas else []
+    return 1, header
+
+
 def _ler_parametros(ws_params):
     """Lê a aba PARÂMETROS como dict chave→valor."""
     params = {}
@@ -515,7 +538,7 @@ def _validar_formato(wb):
         return erros
 
     ws = wb['REFERÊNCIAS']
-    header = [str(c.value or '').strip().lower() for c in next(ws.iter_rows(max_row=1))]
+    _, header = _achar_header_referencias(ws)
     for col in _COLS_OBRIG:
         if col.lower() not in header:
             erros.append(f'Coluna obrigatória ausente em REFERÊNCIAS: {col}')
@@ -554,11 +577,10 @@ def _validar_faixas(wb):
 
     # Validar cada referência
     ws = wb['REFERÊNCIAS']
-    header = [str(c.value or '').strip().lower()
-              for c in next(ws.iter_rows(max_row=1))]
+    header_row, header = _achar_header_referencias(ws)
     col_idx = {nome: i for i, nome in enumerate(header)}
 
-    for n_row, row in enumerate(ws.iter_rows(min_row=2, values_only=True), 2):
+    for n_row, row in enumerate(ws.iter_rows(min_row=header_row + 1, values_only=True), header_row + 1):
         if not row or row[0] is None:
             continue
         ref_linha = str(row[0]).strip()
@@ -631,8 +653,7 @@ def _reconstruir_json(wb, dados_atual, output_dir):
 
     # Referências
     ws = wb['REFERÊNCIAS']
-    header = [str(c.value or '').strip().lower()
-              for c in next(ws.iter_rows(max_row=1))]
+    header_row, header = _achar_header_referencias(ws)
     col_idx = {nome: i for i, nome in enumerate(header)}
 
     def cv(row, campo, default=None):
@@ -660,15 +681,15 @@ def _reconstruir_json(wb, dados_atual, output_dir):
     sola_caps: set = set()
     pintura_grupos = Counter()
 
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if not row or row[0] is None:
+    for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+        if not row or row[col_idx.get('ref_linha', 0)] is None:
             continue
-        ref_linha = str(row[0]).strip()
+        ref_linha = str(row[col_idx.get('ref_linha', 0)]).strip()
         if not ref_linha:
             continue
 
         tipo_raw = str(cv(row, 'tipo_montagem') or '').strip().upper()
-        tipo = 'MONTADO' if 'MONTADO' in tipo_raw else 'CONVENCIONAL'
+        tipo = 'MONTADO' if tipo_raw.startswith('MONT') else 'CONVENCIONAL'
         por_tipo[tipo] += 1
 
         cap_mont = cv_int(row, 'cap_montagem')
