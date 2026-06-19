@@ -64,6 +64,11 @@ FROM mould.v_entradapedidos_extended v
 WHERE v.dt_entrada >= date_format(date_sub(current_date, interval 1 year), '%Y/01/01')
 """
 
+# Volume mínimo de linhas esperado da consulta acima (1+ ano de pedidos —
+# normalmente milhares). Abaixo disso, é mais provável uma falha de conexão
+# com o MySQL interno do que um período real sem movimento.
+MIN_LINHAS_3YS_MYSQL = 100
+
 # Pedido em Carteira — pos_item que não devem entrar (já cancelados ou já
 # totalmente faturados/entregues, não representam carteira aberta).
 CARTEIRA_POS_ITEM_EXCLUIDOS = {'CANCELADO', 'FATURADO'}
@@ -212,6 +217,13 @@ def carregar_linhas_3ys(arquivo_3ys=None):
             col_valor_sql = '0'
         db_rows = db_mysql.consultar(QUERY_3YS.format(col_valor=col_valor_sql))
         print(f"    {len(db_rows):,} linhas carregadas do MySQL")
+        if len(db_rows) < MIN_LINHAS_3YS_MYSQL:
+            raise RuntimeError(
+                f"Consulta ao MySQL retornou apenas {len(db_rows)} linha(s) "
+                f"(esperado pelo menos {MIN_LINHAS_3YS_MYSQL}). Abortando para não "
+                "sobrescrever vendas/programação/carteira com dados zerados — "
+                "provável instabilidade de conexão com o banco interno."
+            )
         return [_linha_de_db_row(r) for r in db_rows]
 
     sep = detectar_sep(arquivo_3ys)
