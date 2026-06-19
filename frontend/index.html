@@ -211,11 +211,37 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .alerta-val{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2);border-radius:5px;padding:4px 9px;font-size:8.5px;color:var(--coral);font-weight:600;margin-top:6px;display:inline-block}
 
 @media(max-width:900px){
-  .org-stage{height:auto;min-height:1260px}
+  .header{padding:10px 16px;flex-wrap:wrap;gap:8px}
+  .hright{display:none}
+  .hero{padding:24px 16px 4px}
+  .hero-title{font-size:26px}
+
+  /* Organismo: de diagrama com posições absolutas para lista empilhada */
+  .org-stage{
+    position:relative;height:auto;min-height:0;
+    max-width:100%;padding:0 16px;
+    display:flex;flex-direction:column;gap:14px;
+  }
+  .org-svg{display:none}
+  .sec-label{display:none}
+
+  .nó,.nó-central,.nó-output{
+    position:relative!important;width:100%!important;
+    left:auto!important;right:auto!important;top:auto!important;
+    transform:none!important;
+  }
+  .nó:hover,.nó-central:hover,.nó-output:hover{transform:none!important}
+
   .nó-central{flex-direction:column;align-items:stretch;text-align:left}
   .nc-side{flex:none}
+
+  .nó-ia{
+    position:relative!important;left:auto!important;top:auto!important;transform:none!important;
+    width:120px;height:120px;margin:4px auto;
+  }
+  .ia-main{font-size:24px}
+
   .fases{grid-template-columns:1fr;padding:8px 16px 40px}
-  .hero-title{font-size:26px}
 }
 </style>
 </head>
