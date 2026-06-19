@@ -796,34 +796,34 @@ function renderCfop() {
     if (el) el.textContent = cfopSort.col === col ? (cfopSort.dir < 0 ? '▼' : '▲') : '';
   });
 
+  const qtyRaw = (d, key) => d[key + '_KG'] !== undefined ? (d[key + '_KG']||0) : (d[key + '_PARES']||0);
+
   const rows = Object.entries(cfops)
     .sort(([a, da], [b, db]) => {
-      const va = cfopSort.col === 'rQ'
-        ? (da.REALIZADO_PARES||0)
-        : (da.REALIZADO||0) + (da.REALIZADO_USD||0)*CAMBIO;
-      const vb = cfopSort.col === 'rQ'
-        ? (db.REALIZADO_PARES||0)
-        : (db.REALIZADO||0) + (db.REALIZADO_USD||0)*CAMBIO;
+      const va = cfopSort.col === 'rQ' ? qtyRaw(da, 'REALIZADO') : (da.REALIZADO||0) + (da.REALIZADO_USD||0)*CAMBIO;
+      const vb = cfopSort.col === 'rQ' ? qtyRaw(db, 'REALIZADO') : (db.REALIZADO||0) + (db.REALIZADO_USD||0)*CAMBIO;
       return (va - vb) * cfopSort.dir;
     })
     .map(([code, d]) => {
+      const isKg = d.REALIZADO_KG !== undefined || d.PREVISTO_KG !== undefined;
+      const fmtQ = isKg ? fKg1 : fPar;
       const rV = (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
       const pV = sp ? (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO : 0;
-      const rQ = d.REALIZADO_PARES||0;
-      const pQ = sp ? d.PREVISTO_PARES||0 : 0;
+      const rQ = qtyRaw(d, 'REALIZADO');
+      const pQ = sp ? qtyRaw(d, 'PREVISTO') : 0;
       const tV = rV+pV, tQ = rQ+pQ;
       const dash = sp ? '' : '—';
       return `<tr>
         <td class="td-grupo">${cfopLabel(code)}</td>
         <td class="td-sep"></td>
-        <td class="td-r-q">${rQ ? fPar(rQ) : '–'}</td>
+        <td class="td-r-q">${rQ ? fmtQ(rQ) : '–'}</td>
         <td class="td-r-v">${rV ? fBRL(rV) : '–'}</td>
         <td class="td-r-p">${rV ? pct(rV, totR) : '–'}</td>
         <td class="td-sep"></td>
-        <td class="td-p-q">${sp ? (pQ ? fPar(pQ) : '–') : dash}</td>
+        <td class="td-p-q">${sp ? (pQ ? fmtQ(pQ) : '–') : dash}</td>
         <td class="td-p-v">${sp ? (pV ? fBRL(pV) : '–') : dash}</td>
         <td class="td-sep"></td>
-        <td class="td-t-q">${tQ ? fPar(tQ) : '–'}</td>
+        <td class="td-t-q">${tQ ? fmtQ(tQ) : '–'}</td>
         <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
         <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
       </tr>`;

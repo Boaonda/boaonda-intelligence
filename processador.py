@@ -881,8 +881,11 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             'EVA': [0.0,0.0,0.0,0.0],  # kg (float, não pares) nos índices 2/3
         }
     dados = defaultdict(new_mes)
-    # dados_cfop[mes_ref][cfop] = [fat_brl, prev_brl, fat_usd, prev_usd, fat_pares, prev_pares]
-    dados_cfop = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0, 0, 0]))
+    # dados_cfop[mes_ref][cfop] = [fat_brl, prev_brl, fat_usd, prev_usd,
+    #                              fat_pares, prev_pares, fat_kg, prev_kg]
+    # pares (índices 4/5) = MI/ME/EC; kg (índices 6/7) = Composto EVA —
+    # unidades distintas, nunca somadas entre si.
+    dados_cfop = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0, 0, 0, 0.0, 0.0]))
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
     total_fat = total_prev = sem_data_count = 0
 
@@ -940,14 +943,17 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         else:
             m['EC'][vi] += vlr; m['EC'][qi] += qtd
 
-        # Acumular por CFOP — só MI/ME/EC (pares); Composto EVA é kg e fica
-        # de fora desta tabela, que assume pares como unidade de quantidade.
+        # Acumular por CFOP — valor (BRL/USD) soma todos os canais; a
+        # quantidade vai para pares (MI/ME/EC) ou kg (EVA), nunca somadas.
         cfop_code = g(row, IDX['cfop'])
-        if cfop_code and canal != 'EVA':
+        if cfop_code:
             dc = dados_cfop[mes_ref][cfop_code]
             vi_c = (2 if canal == 'ME' else 0) + (0 if status == 'fat' else 1)
-            qi_c = 4 if status == 'fat' else 5
             dc[vi_c] += vlr
+            if canal == 'EVA':
+                qi_c = 6 if status == 'fat' else 7
+            else:
+                qi_c = 4 if status == 'fat' else 5
             dc[qi_c] += qtd
 
         if status == 'fat':  total_fat  += qtd
@@ -978,13 +984,17 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     def build_cfop_mes(cfops):
         out = {}
         for cfop_code, acc in sorted(cfops.items()):
-            fb, pb, fu, pu, fq, pq = acc
-            if any([fb, pb, fu, pu, fq, pq]):
-                out[cfop_code] = {
+            fb, pb, fu, pu, fq, pq, fkg, pkg = acc
+            if any([fb, pb, fu, pu, fq, pq, fkg, pkg]):
+                entry = {
                     'REALIZADO': round(fb, 2), 'PREVISTO': round(pb, 2),
                     'REALIZADO_USD': round(fu, 2), 'PREVISTO_USD': round(pu, 2),
                     'REALIZADO_PARES': int(fq), 'PREVISTO_PARES': int(pq),
                 }
+                if fkg or pkg:
+                    entry['REALIZADO_KG'] = round(fkg, 1)
+                    entry['PREVISTO_KG'] = round(pkg, 1)
+                out[cfop_code] = entry
         return out
 
     dados_cfop_out = {k: build_cfop_mes(v) for k, v in sorted(dados_cfop.items())}
