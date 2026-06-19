@@ -217,7 +217,38 @@ table.top-refs tr:hover td{background:var(--card2);color:var(--txt)}
 .td-num{font-size:13px;font-weight:800;color:var(--coral)}
 .mbar{height:3px;border-radius:2px;opacity:.7}
 .loading{text-align:center;padding:60px;color:var(--txt-m);font-size:13px;grid-column:1/-1}
-@media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}}
+@media(max-width:900px){
+  .main{padding:14px}
+  .crow{grid-template-columns:1fr}
+  .header{padding:14px 16px}
+  .h-right{width:100%;align-items:flex-start}
+  .h-controls{width:100%}
+  .h-meta{text-align:left}
+  .sim-row{justify-content:flex-start}
+  .kpi-grid,.cards-grid,.ocup-cards{grid-template-columns:repeat(auto-fill,minmax(135px,1fr))}
+  .prog-drill,.ocup-drill,.ccard,.refs-card,.tcard{padding:14px}
+  .pd-row{flex-wrap:wrap;gap:4px 10px}
+  .pd-nome{flex:1 1 100%;order:1}
+  .pd-arrow{order:0}
+  .pd-meta{width:auto;order:2;flex:1}
+  .pd-pares{width:auto;order:3;text-align:right}
+  .pd-detail{padding:4px 4px 10px 14px;overflow-x:auto}
+  .refs-card,.tcard{-webkit-overflow-scrolling:touch}
+}
+@media(max-width:480px){
+  .h-title{font-size:1.2rem}
+  .h-sub{font-size:10px}
+  .modo-btn{padding:7px 14px;font-size:10px}
+  .periodo-btn{width:26px;height:26px;font-size:13px}
+  .periodo-label{min-width:74px;font-size:12px}
+  .kpi-grid,.cards-grid,.ocup-cards{grid-template-columns:1fr 1fr;gap:8px}
+  .kpi-v{font-size:1.45rem}
+  .sc-total{font-size:1.3rem}
+  .mc-total{font-size:1.45rem}
+  .mont-totals{gap:14px}
+  .pd-row{font-size:11px}
+  .pd-meta{font-size:9px}
+}
 </style>
 </head>
 <body>
