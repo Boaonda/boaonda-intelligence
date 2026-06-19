@@ -301,8 +301,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
             <th class="th-grp th-grp-tot" colspan="3" id="cfop-th-tot">TOTAL GERAL</th>
           </tr>
           <tr>
-            <th class="th-real">Qtd. pares</th>
-            <th class="th-real">Valor Fat.</th>
+            <th class="th-real th-sortable" id="cfop-sort-rQ" onclick="setCfopSort('rQ')" style="cursor:pointer;user-select:none">Qtd. pares <span id="cfop-sort-rQ-icon"></span></th>
+            <th class="th-real th-sortable" id="cfop-sort-rV" onclick="setCfopSort('rV')" style="cursor:pointer;user-select:none">Valor Fat. <span id="cfop-sort-rV-icon">▼</span></th>
             <th class="th-real">%</th>
             <th class="th-prev">Qtd. pares</th>
             <th class="th-prev">Valor Fat.</th>
@@ -685,19 +685,35 @@ function renderSemData() {
 const CFOP_DESC = {
   '5101':'Venda de produção — mesmo estado',
   '5102':'Venda de mercadoria — mesmo estado',
+  '5105':'Venda de produção do estabelecimento que não deva por ele transitar',
   '5401':'Venda c/ subst. tributária — mesmo estado',
   '5403':'Venda c/ ST (contribuinte) — mesmo estado',
+  '5910':'Remessa em bonificação, doação ou brinde',
   '5949':'Outra saída — mesmo estado',
   '6101':'Venda de produção — outros estados',
   '6102':'Venda de mercadoria — outros estados',
+  '6105':'Venda de produtos industrializados ou produzidos pela própria empresa',
+  '6107':'Venda de produtos fabricados pela própria empresa — operações interestaduais',
+  '6109':'Vendas interestaduais de produtos industrializados pelo próprio estabelecimento',
+  '6118':'Vendas à ordem (operações triangulares)',
   '6401':'Venda c/ subst. tributária — outros estados',
   '6403':'Venda c/ ST (contribuinte) — outros estados',
+  '6910':'Remessa em bonificação, doação ou brinde',
   '6949':'Outra saída — outros estados',
   '7101':'Exportação de produção',
   '7102':'Exportação de mercadoria adquirida de terceiros',
+  '7105':'Venda de produção do estabelecimento que não deva por ele transitar',
 };
 function cfopLabel(code) {
   return CFOP_DESC[code] ? code + ' · ' + CFOP_DESC[code] : 'CFOP ' + code;
+}
+
+// Estado de ordenação da tabela CFOP
+let cfopSort = { col: 'rV', dir: -1 };  // padrão: Valor Fat. decrescente
+function setCfopSort(col) {
+  if (cfopSort.col === col) cfopSort.dir *= -1;
+  else { cfopSort.col = col; cfopSort.dir = -1; }
+  renderCfop();
 }
 
 function popularSeletorCfop() {
@@ -743,8 +759,22 @@ function renderCfop() {
     totR += rv; totT += rv + pv;
   });
 
+  // Atualiza ícones de ordenação
+  ['rQ','rV'].forEach(col => {
+    const el = document.getElementById('cfop-sort-' + col + '-icon');
+    if (el) el.textContent = cfopSort.col === col ? (cfopSort.dir < 0 ? '▼' : '▲') : '';
+  });
+
   const rows = Object.entries(cfops)
-    .sort(([a],[b]) => a.localeCompare(b))
+    .sort(([a, da], [b, db]) => {
+      const va = cfopSort.col === 'rQ'
+        ? (da.REALIZADO_PARES||0)
+        : (da.REALIZADO||0) + (da.REALIZADO_USD||0)*CAMBIO;
+      const vb = cfopSort.col === 'rQ'
+        ? (db.REALIZADO_PARES||0)
+        : (db.REALIZADO||0) + (db.REALIZADO_USD||0)*CAMBIO;
+      return (va - vb) * cfopSort.dir;
+    })
     .map(([code, d]) => {
       const rV = (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
       const pV = sp ? (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO : 0;
