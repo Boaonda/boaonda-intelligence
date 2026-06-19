@@ -104,6 +104,17 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rt tr.tr-total td.td-r-v{color:var(--coral)}
 .rt tr.tr-total td.td-p-v{color:var(--cinza)}
 .rt tr.tr-total td.td-t-v{color:var(--verde)}
+.rt tr.tr-group td{background:rgba(237,104,66,.04);font-weight:800;font-size:12px;color:var(--txt);border-bottom:none;padding-top:11px;padding-bottom:11px}
+.rt tr.tr-group td.td-sep{background:var(--bg)}
+.rt tr.tr-group td.td-grupo{padding-left:16px;color:var(--txt)}
+.rt tr.tr-group td.td-r-v{color:var(--coral)}
+.rt tr.tr-group td.td-t-v{color:var(--verde)}
+.rt tr.tr-sub td{font-size:10.5px;color:var(--txt-m);padding-top:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.025)}
+.rt tr.tr-sub td.td-sep{background:var(--bg)}
+.rt tr.tr-sub td.td-grupo{padding-left:32px;color:var(--txt-s);font-weight:600;font-size:10.5px}
+.rt tr.tr-sub td.td-r-v{color:rgba(237,104,66,.75);font-weight:600}
+.rt tr.tr-sub td.td-t-v{color:rgba(108,156,55,.8);font-weight:600}
+.rt tr.tr-sub:last-of-type td{border-bottom:1px solid rgba(255,255,255,.06)}
 
 /* Sem data */
 .semdata-card{background:var(--card);border:1px solid rgba(237,104,66,.25);border-radius:12px;padding:20px;margin-bottom:28px}
@@ -531,10 +542,15 @@ function renderResumo() {
   };
   const totR = gt.rV, totT = gt.rV + gt.pV;
 
-  function row(label, d) {
+  const miTotal = {
+    rQ: mprog.rQ+mpe.rQ+mmist.rQ, rV: mprog.rV+mpe.rV+mmist.rV,
+    pQ: mprog.pQ+mpe.pQ+mmist.pQ, pV: mprog.pV+mpe.pV+mmist.pV,
+  };
+
+  function rowGroup(label, d) {
     const tQ = d.rQ + d.pQ, tV = d.rV + d.pV;
     const dash = sp ? '' : '—';
-    return `<tr>
+    return `<tr class="tr-group">
       <td class="td-grupo">${label}</td>
       <td class="td-sep"></td>
       <td class="td-r-q">${d.rQ ? fPar(d.rQ) : '–'}</td>
@@ -550,12 +566,32 @@ function renderResumo() {
     </tr>`;
   }
 
+  function rowSub(label, d) {
+    const tQ = d.rQ + d.pQ, tV = d.rV + d.pV;
+    const dash = sp ? '' : '—';
+    return `<tr class="tr-sub">
+      <td class="td-grupo">↳ ${label}</td>
+      <td class="td-sep"></td>
+      <td class="td-r-q">${d.rQ ? fPar(d.rQ) : '–'}</td>
+      <td class="td-r-v">${d.rV ? fBRL(d.rV) : '–'}</td>
+      <td class="td-r-p">${d.rV ? pct(d.rV, totR) : '–'}</td>
+      <td class="td-sep"></td>
+      <td class="td-p-q">${sp ? (d.pQ ? fPar(d.pQ) : '–') : dash}</td>
+      <td class="td-p-v">${sp ? (d.pV ? fBRL(d.pV) : '–') : dash}</td>
+      <td class="td-sep"></td>
+      <td class="td-t-q">${tQ ? fPar(tQ) : '–'}</td>
+      <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
+      <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
+    </tr>`;
+  }
+
   document.getElementById('resumo-tbody').innerHTML =
-    row('Vendas MI — Programado (PROG)', mprog) +
-    row('Vendas MI — Pronta Entrega (PE)', mpe) +
-    (mmist.rV || mmist.pV ? row('Vendas MI — Mista', mmist) : '') +
-    row('Vendas ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV) +
-    row('E-commerce', ecV);
+    rowGroup('Faturamento MI', miTotal) +
+    rowSub('MI Programado', mprog) +
+    rowSub('MI Pronta Entrega', mpe) +
+    (mmist.rV || mmist.pV ? rowSub('MI Venda Mista', mmist) : '') +
+    rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV) +
+    rowGroup('Faturamento E-commerce', ecV);
 
   const tQ = gt.rQ + gt.pQ, tV = gt.rV + gt.pV;
   const dash = sp ? '' : '—';
