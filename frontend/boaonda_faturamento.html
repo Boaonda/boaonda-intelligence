@@ -150,7 +150,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     <div class="breadcrumb">Boaonda Intelligence › Faturamento</div>
     <div class="h-badge">💰 Faturamento</div>
     <div class="h-title">Faturamento</div>
-    <div class="h-sub">Realizado · Previsto · MI · ME · E-commerce</div>
+    <div class="h-sub">Realizado · Previsto · MI · ME · E-commerce · Composto EVA</div>
   </div>
   <div class="h-right">
     <div class="cambio-box">
@@ -182,6 +182,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
       <div class="kpi-l">Realizado E-commerce</div>
       <div class="kpi-v" id="kpi-ec-real">–</div>
       <div class="kpi-s" id="kpi-ec-sub">E-commerce</div>
+    </div>
+    <div class="kpi" style="border-top-color:#6c9c37">
+      <div class="kpi-l">Realizado Composto EVA</div>
+      <div class="kpi-v" id="kpi-eva-real" style="color:#6c9c37">–</div>
+      <div class="kpi-s" id="kpi-eva-sub">–</div>
     </div>
     <div class="kpi verde">
       <div class="kpi-l">Total Realizado</div>
@@ -218,12 +223,12 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
             <th class="th-grp th-grp-tot" colspan="3" id="th-tot-label">TOTAL GERAL</th>
           </tr>
           <tr>
-            <th class="th-real">Qtd. pares</th>
+            <th class="th-real">Qtd.</th>
             <th class="th-real">Valor Fat.</th>
             <th class="th-real">%</th>
-            <th class="th-prev">Qtd. pares</th>
+            <th class="th-prev">Qtd.</th>
             <th class="th-prev">Valor Fat.</th>
-            <th class="th-tot">Qtd. pares</th>
+            <th class="th-tot">Qtd.</th>
             <th class="th-tot">Valor Fat.</th>
             <th class="th-tot">%</th>
           </tr>
@@ -252,6 +257,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
         <option value="MI">MI</option>
         <option value="ME">ME</option>
         <option value="EC">E-commerce</option>
+        <option value="EVA">Composto EVA</option>
       </select>
     </div>
     <div class="filter-group" id="filter-especie-group">
@@ -271,7 +277,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
       <div class="leg-item"><div class="leg-dot" style="background:#ed6842"></div>MI Realizado</div>
       <div class="leg-item"><div class="leg-dot" style="background:#4994c7"></div>ME Realizado (BRL)</div>
       <div class="leg-item"><div class="leg-dot" style="background:#dd7051"></div>EC Realizado</div>
-      <div class="leg-item"><div class="leg-line" style="border-color:#6c9c37"></div>Total c/ Previsto (mês atual)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#6c9c37"></div>Composto EVA Realizado</div>
+      <div class="leg-item"><div class="leg-line" style="border-color:#9b9a98"></div>Total c/ Previsto (mês atual)</div>
     </div>
     <div class="chart-inner">
       <canvas id="fat-chart"></canvas>
@@ -380,6 +387,7 @@ const fK = n => {
        : v >= 1e3 ? 'R$ ' + (v / 1e3).toFixed(0) + 'k'
        : 'R$ ' + v.toLocaleString('pt-BR');
 };
+const fKg1 = n => (Math.round((n||0)*10)/10).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + ' kg';
 
 const MESES_PT   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MESES_LONG = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -401,7 +409,7 @@ function especieFiltro() { return document.getElementById('filter-especie').valu
 function calcMes(mes, key) {
   const MA = mesAtual();
   const sp = key >= MA;   // showPrev
-  const MI = mes.MI || {}, ME = mes.ME || {}, EC = mes.EC || {};
+  const MI = mes.MI || {}, ME = mes.ME || {}, EC = mes.EC || {}, EVA = mes.EVA || {};
   const canal = canalFiltro(), esp = especieFiltro();
 
   let miProg=0, miPe=0, miMista=0, miPrev=0;
@@ -446,8 +454,18 @@ function calcMes(mes, key) {
               ecPrevQ = EC.PREVISTO_PARES || 0; }
   }
 
-  const totalReal  = miReal  + meBRL    + ecReal;
-  const totalPrev  = miPrev  + mePrevBRL + ecPrev;
+  let evaReal=0, evaPrev=0, evaRealKg=0, evaPrevKg=0;
+  if (canal === 'TODOS' || canal === 'EVA') {
+    evaReal   = EVA.REALIZADO    || 0;
+    evaRealKg = EVA.REALIZADO_KG || 0;
+    if (sp) { evaPrev   = EVA.PREVISTO    || 0;
+              evaPrevKg = EVA.PREVISTO_KG || 0; }
+  }
+
+  // Qtd. (pares) soma só MI+ME+EC — Composto EVA é kg, unidade diferente,
+  // não entra na soma de pares (mas o valor R$ entra na soma financeira).
+  const totalReal  = miReal  + meBRL    + ecReal  + evaReal;
+  const totalPrev  = miPrev  + mePrevBRL + ecPrev + evaPrev;
   const totalRealQ = miRealQ + meRealQ   + ecRealQ;
   const totalPrevQ = miPrevQ + mePrevQ   + ecPrevQ;
 
@@ -455,6 +473,7 @@ function calcMes(mes, key) {
            miProgQ, miPeQ, miMistaQ, miRealQ, miPrevQ,
            meUSD, meBRL, mePrevBRL, meRealQ, mePrevQ,
            ecReal, ecPrev, ecRealQ, ecPrevQ,
+           evaReal, evaPrev, evaRealKg, evaPrevKg,
            totalReal, totalPrev, totalRealQ, totalPrevQ, showPrev: sp };
 }
 
@@ -467,7 +486,7 @@ function render() {
   const MA    = mesAtual();
   const canal = canalFiltro();
 
-  document.getElementById('filter-especie-group').style.display = (canal === 'ME' || canal === 'EC') ? 'none' : 'flex';
+  document.getElementById('filter-especie-group').style.display = (canal === 'ME' || canal === 'EC' || canal === 'EVA') ? 'none' : 'flex';
 
   // KPIs mês atual
   const cA = calcMes(dados[MA] || {}, MA);
@@ -476,6 +495,8 @@ function render() {
   document.getElementById('kpi-me-real').textContent  = fK(cA.meBRL);
   document.getElementById('kpi-me-sub').textContent   = fUSD(cA.meUSD);
   document.getElementById('kpi-ec-real').textContent  = fK(cA.ecReal);
+  document.getElementById('kpi-eva-real').textContent = fK(cA.evaReal);
+  document.getElementById('kpi-eva-sub').textContent  = fKg1(cA.evaRealKg);
   document.getElementById('kpi-tot-real').textContent = fK(cA.totalReal);
   document.getElementById('kpi-tot-sub').textContent  = mesLabel(MA);
   document.getElementById('kpi-prev').textContent     = fK(cA.totalPrev);
@@ -483,12 +504,13 @@ function render() {
 
   // Gráfico
   const labels = keys.map(mesLabel);
-  const dMI = [], dME = [], dEC = [], dPrev = [];
+  const dMI = [], dME = [], dEC = [], dEVA = [], dPrev = [];
   keys.forEach(k => {
     const c = calcMes(dados[k] || {}, k);
     dMI.push(R(c.miReal));
     dME.push(R(c.meBRL));
     dEC.push(R(c.ecReal));
+    dEVA.push(R(c.evaReal));
     dPrev.push(R(c.totalReal + c.totalPrev));
   });
 
@@ -501,10 +523,11 @@ function render() {
         { label: 'MI Realizado', data: dMI, backgroundColor: 'rgba(237,104,66,.85)', stack: 'r', borderRadius: 2 },
         { label: 'ME BRL',       data: dME, backgroundColor: 'rgba(73,148,199,.85)',  stack: 'r', borderRadius: 0 },
         { label: 'E-commerce',   data: dEC, backgroundColor: 'rgba(221,112,81,.85)',  stack: 'r', borderRadius: 0 },
+        { label: 'Composto EVA', data: dEVA, backgroundColor: 'rgba(108,156,55,.85)', stack: 'r', borderRadius: 2 },
         { label: 'Total c/ Previsto', data: dPrev, type: 'line',
-          borderColor: '#6c9c37', backgroundColor: 'transparent',
+          borderColor: '#9b9a98', backgroundColor: 'transparent',
           borderWidth: 2, borderDash: [5, 4],
-          pointBackgroundColor: '#6c9c37', pointRadius: 3, tension: .25, order: 0 },
+          pointBackgroundColor: '#9b9a98', pointRadius: 3, tension: .25, order: 0 },
       ]
     },
     options: {
@@ -547,7 +570,7 @@ function renderResumo() {
   const key  = document.getElementById('resumo-mes').value || mesAtual();
   const MA   = mesAtual();
   const mes  = (DATA.dados || {})[key] || {};
-  const MI   = mes.MI || {}, ME = mes.ME || {}, EC = mes.EC || {};
+  const MI   = mes.MI || {}, ME = mes.ME || {}, EC = mes.EC || {}, EVA = mes.EVA || {};
   const sp   = key >= MA;
   const gerado = DATA.gerado_em || '';
 
@@ -572,13 +595,18 @@ function renderResumo() {
   const ecV = { rQ: EC.REALIZADO_PARES||0, rV: EC.REALIZADO||0,
                 pQ: sp ? EC.PREVISTO_PARES||0 : 0,
                 pV: sp ? EC.PREVISTO||0       : 0 };
+  const evaV = { rQ: EVA.REALIZADO_KG||0, rV: EVA.REALIZADO||0,
+                 pQ: sp ? EVA.PREVISTO_KG||0 : 0,
+                 pV: sp ? EVA.PREVISTO||0    : 0 };
   const mprog = miE('PROG'), mpe = miE('PE'), mmist = miE('MISTA');
 
+  // Qtd. (pares) do Total Geral soma só MI+ME+EC — Composto EVA é kg
+  // (unidade diferente), mas o valor R$ do EVA entra na soma financeira.
   const gt = {
     rQ: mprog.rQ+mpe.rQ+mmist.rQ+meV.rQ+ecV.rQ,
-    rV: mprog.rV+mpe.rV+mmist.rV+meV.rV+ecV.rV,
+    rV: mprog.rV+mpe.rV+mmist.rV+meV.rV+ecV.rV+evaV.rV,
     pQ: mprog.pQ+mpe.pQ+mmist.pQ+meV.pQ+ecV.pQ,
-    pV: mprog.pV+mpe.pV+mmist.pV+meV.pV+ecV.pV,
+    pV: mprog.pV+mpe.pV+mmist.pV+meV.pV+ecV.pV+evaV.pV,
   };
   const totR = gt.rV, totT = gt.rV + gt.pV;
 
@@ -587,20 +615,21 @@ function renderResumo() {
     pQ: mprog.pQ+mpe.pQ+mmist.pQ, pV: mprog.pV+mpe.pV+mmist.pV,
   };
 
-  function rowGroup(label, d) {
+  function rowGroup(label, d, fmtQ) {
+    fmtQ = fmtQ || fPar;
     const tQ = d.rQ + d.pQ, tV = d.rV + d.pV;
     const dash = sp ? '' : '—';
     return `<tr class="tr-group">
       <td class="td-grupo">${label}</td>
       <td class="td-sep"></td>
-      <td class="td-r-q">${d.rQ ? fPar(d.rQ) : '–'}</td>
+      <td class="td-r-q">${d.rQ ? fmtQ(d.rQ) : '–'}</td>
       <td class="td-r-v">${d.rV ? fBRL(d.rV) : '–'}</td>
       <td class="td-r-p">${d.rV ? pct(d.rV, totR) : '–'}</td>
       <td class="td-sep"></td>
-      <td class="td-p-q">${sp ? (d.pQ ? fPar(d.pQ) : '–') : dash}</td>
+      <td class="td-p-q">${sp ? (d.pQ ? fmtQ(d.pQ) : '–') : dash}</td>
       <td class="td-p-v">${sp ? (d.pV ? fBRL(d.pV) : '–') : dash}</td>
       <td class="td-sep"></td>
-      <td class="td-t-q">${tQ ? fPar(tQ) : '–'}</td>
+      <td class="td-t-q">${tQ ? fmtQ(tQ) : '–'}</td>
       <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
       <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
     </tr>`;
@@ -631,7 +660,8 @@ function renderResumo() {
     rowSub('MI Pronta Entrega', mpe) +
     (mmist.rV || mmist.pV ? rowSub('MI Venda Mista', mmist) : '') +
     rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV) +
-    rowGroup('Faturamento E-commerce', ecV);
+    rowGroup('Faturamento E-commerce', ecV) +
+    (evaV.rV || evaV.pV ? rowGroup('Faturamento Composto EVA', evaV, fKg1) : '');
 
   const tQ = gt.rQ + gt.pQ, tV = gt.rV + gt.pV;
   const dash = sp ? '' : '—';

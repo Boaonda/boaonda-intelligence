@@ -108,6 +108,17 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .sem-v{font-size:12px;font-weight:800;color:var(--txt)}
 .sem-r{font-size:7px;color:var(--txt-m);margin-top:1px}
 
+/* NÓ-LINK — atalho compacto para área secundária (ex: Vendas Composto EVA) */
+.nó-link{
+  position:absolute;z-index:10;
+  background:var(--card);border:1.5px dashed var(--line2);border-radius:10px;
+  padding:10px 14px;cursor:pointer;transition:.2s;
+  width:210px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.nó-link:hover{border-color:var(--verde);border-style:solid;background:var(--card2)}
+.nó-link-title{font-size:10px;font-weight:700;color:var(--txt-s)}
+.nó-link-arrow{font-size:12px;color:var(--verde);flex-shrink:0}
+
 /* NÓ CENTRAL — ESTOQUE (card largo, abaixo de Vendas + Pedido em Carteira) */
 .nó-central{
   position:absolute;z-index:10;
@@ -284,13 +295,19 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     <!-- NÓ: VENDAS (esq topo) -->
     <div class="nó" style="left:40px;top:60px" onclick="abrirModulo('vendas')">
       <span class="nó-icon">📊</span>
-      <div class="nó-title">Vendas</div>
+      <div class="nó-title">Vendas Calçado</div>
       <div class="nó-desc">MI · ME · E-commerce · PE</div>
       <div class="nó-kpi" id="kpi-v-total">–</div>
       <div class="nó-kpi-label">pares · <span id="kpi-v-mes">Jun/2026</span></div>
       <div class="tags" id="tags-canais"></div>
       <div id="alerta-v"></div>
       <div class="nó-cta">Analisar vendas →</div>
+    </div>
+
+    <!-- NÓ-LINK: VENDAS COMPOSTO EVA (atalho compacto, abaixo de Vendas Calçado) -->
+    <div class="nó-link" style="left:40px;top:266px" onclick="abrirModulo('vendas_eva')">
+      <div class="nó-link-title">♻️ Vendas Composto EVA</div>
+      <div class="nó-link-arrow">→</div>
     </div>
 
     <!-- NÓ: PEDIDO EM CARTEIRA (centro topo — entre vendas e produção, box maior) -->
@@ -430,7 +447,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 
 <!-- MÓDULOS -->
 <div class="page" id="page-vendas">
-  <iframe class="mod-frame" id="frame-vendas" src="" title="Vendas"></iframe>
+  <iframe class="mod-frame" id="frame-vendas" src="" title="Vendas Calçado"></iframe>
+</div>
+<div class="page" id="page-vendas_eva">
+  <iframe class="mod-frame" id="frame-vendas_eva" src="" title="Vendas Composto EVA"></iframe>
 </div>
 
 <div class="page" id="page-programacao">
@@ -467,7 +487,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 
 <script>
 const MODS={
-  vendas:{file:'boaonda_vendas_catalogo.html',label:'Vendas & Catálogo'},
+  vendas:{file:'boaonda_vendas_catalogo.html',label:'Vendas Calçado'},
+  vendas_eva:{file:'boaonda_vendas_eva.html',label:'Vendas Composto EVA'},
   programacao:{file:'boaonda_programacao_v3.html',label:'Programação'},
   estoque:{file:'boaonda_estoque.html',label:'Estoque'},
   carteira:{file:'boaonda_carteira.html',label:'Pedido em Carteira'},

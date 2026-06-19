@@ -58,6 +58,7 @@ SELECT
     LocalEstoque    AS local,
     CorPalmilha     AS tipomontagem,
     cfop            AS cfop,
+    marca           AS marca,
     {col_valor}     AS vlr
 FROM mould.v_entradapedidos_extended v
 WHERE v.dt_entrada >= date_format(date_sub(current_date, interval 1 year), '%Y/01/01')
@@ -132,6 +133,14 @@ def corrigir_mojibake(s):
         if s2 == s: return s
         s = s2
     return s
+
+MARCA_COMPOSTO_EVA = 'COMPOSTOS EVA'
+
+def is_composto_eva(marca):
+    """Composto de EVA é um mercado separado de calçados, identificado pela
+    coluna MARCA — sem filtro de cliente cadastrado ou espécie de venda
+    (abr_grp/cod_esp), a pedido do usuário: toda linha com essa marca conta."""
+    return (marca or '').strip().upper() == MARCA_COMPOSTO_EVA
 
 def classifica_canal(cod, abr):
     if cod == '1': return 'MI'
@@ -346,6 +355,69 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
             for n, cv in sorted(holdings.items(), key=lambda x: -sum(x[1].values()))[:20]],
         'pendente_validacao': canais_mes.get('MI',0) < 10000,
     }
+
+# ─── VENDAS COMPOSTO EVA ─────────────────────────────────────────────
+def processar_vendas_eva(linhas, mes_atual, output_dir='.'):
+    """Vendas de Composto de EVA — mercado separado de calçados (matéria-prima
+    vendida a terceiros), identificado pela coluna MARCA. Sem filtro de
+    cliente cadastrado ou espécie de venda: toda linha com
+    marca=='COMPOSTOS EVA' conta. Quantidade em KG (não pares)."""
+    print("\n  Processando vendas Composto EVA...")
+    total_mes_kg = total_mes_valor = 0.0
+    mensal_kg = defaultdict(float)
+    mensal_valor = defaultdict(float)
+    clientes_kg = Counter()
+    clientes_valor = Counter()
+    refs_kg = Counter()
+    refs_valor = Counter()
+
+    for row in linhas:
+        if not is_composto_eva(g(row, IDX['marca'])):
+            continue
+        if g(row, IDX['pos_item']).strip().upper() == 'CANCELADO':
+            continue
+        try: qtd_kg = float(g(row, IDX['qtd']).replace(',', '.'))
+        except: qtd_kg = 0.0
+        if qtd_kg <= 0: continue
+        try: valor = float(g(row, IDX['vlr']).replace(',', '.'))
+        except: valor = 0.0
+
+        anomes = g(row, IDX['anomes'])
+        ref = g(row, IDX['ref'])
+        cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40]
+
+        if anomes == mes_atual:
+            total_mes_kg += qtd_kg
+            total_mes_valor += valor
+        if anomes and len(anomes) == 6 and anomes.isdigit():
+            mensal_kg[anomes] += qtd_kg
+            mensal_valor[anomes] += valor
+        if ref:
+            refs_kg[ref] += qtd_kg
+            refs_valor[ref] += valor
+        if cliente:
+            clientes_kg[cliente] += qtd_kg
+            clientes_valor[cliente] += valor
+
+    print(f"    Mês {mes_atual}: {total_mes_kg:,.1f} kg "
+          f"({len(refs_kg)} materiais, {len(clientes_kg)} clientes)")
+
+    dados_eva = {
+        'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        'mes_atual': mes_atual,
+        'total_mes_kg': round(total_mes_kg, 1),
+        'total_mes_valor': round(total_mes_valor, 2),
+        'mensal_kg': {k: round(v, 1) for k, v in sorted(mensal_kg.items())},
+        'mensal_valor': {k: round(v, 2) for k, v in sorted(mensal_valor.items())},
+        'clientes_top20_kg': [(c, round(v, 1)) for c, v in clientes_kg.most_common(20)],
+        'clientes_top20_valor': [(c, round(v, 2)) for c, v in clientes_valor.most_common(20)],
+        'refs_top20_kg': [(r, round(v, 1)) for r, v in refs_kg.most_common(20)],
+        'refs_top20_valor': [(r, round(v, 2)) for r, v in refs_valor.most_common(20)],
+    }
+    with open(os.path.join(output_dir, 'dados_vendas_eva.json'), 'w', encoding='utf-8') as f_:
+        json.dump(dados_eva, f_, ensure_ascii=False, default=str)
+    print(f"    ✓ dados_vendas_eva.json gerado")
+    return dados_eva
 
 # ─── PROGRAMAÇÃO ─────────────────────────────────────────────────────
 def processar_programacao(linhas, output_dir='.'):
@@ -768,15 +840,20 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
 # ─── FATURAMENTO ─────────────────────────────────────────────────────
 ANOMESFATURA_COL = 19  # coluna anomesfatura no CSV 3YS (yyyymm da emissão NF)
 
-def classifica_faturamento(cod, abr):
+def classifica_faturamento(cod, abr, marca=''):
     """Retorna (canal, tipo) para a área de Faturamento.
 
+    EVA      → marca=='COMPOSTOS EVA' (checado primeiro, sem filtro de
+               cliente/espécie — qualquer cod_esp/abr_grp conta)
     MI PROG  → cod=1   + (MERCADO INTERNO ou ISENTO em abr_grp)
     MI PE    → cod=22  + (MERCADO INTERNO ou ISENTO em abr_grp)
     MI MISTA → cod=31  + (MERCADO INTERNO ou ISENTO em abr_grp)
     ME       → cod=17 OU 'EXPORTA' em abr_grp, sem 'MOULD'
     EC       → cod=32 OU 'ECOMMERCE'/'E-COMMERCE' em abr_grp
     """
+    if is_composto_eva(marca):
+        return 'EVA', 'EVA'
+
     is_ec_abr  = 'ECOMMERCE' in abr or 'E-COMMERCE' in abr
     is_exporta = 'EXPORTA' in abr and 'MOULD' not in abr
     is_mi_abr  = ('MERCADO INTERNO' in abr or 'ISENTO' in abr) and 'EXPORTA' not in abr
@@ -801,6 +878,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             'MI': {'PROG':[0.0,0.0,0,0],'PE':[0.0,0.0,0,0],'MISTA':[0.0,0.0,0,0]},
             'ME': [0.0,0.0,0,0],
             'EC': [0.0,0.0,0,0],
+            'EVA': [0.0,0.0,0.0,0.0],  # kg (float, não pares) nos índices 2/3
         }
     dados = defaultdict(new_mes)
     # dados_cfop[mes_ref][cfop] = [fat_brl, prev_brl, fat_usd, prev_usd, fat_pares, prev_pares]
@@ -817,12 +895,14 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
 
         abr = g(row, IDX['abr_grp']).upper()
         cod = g(row, IDX['cod_esp'])
-        canal, tipo = classifica_faturamento(cod, abr)
+        marca = g(row, IDX['marca'])
+        canal, tipo = classifica_faturamento(cod, abr, marca)
         if not canal: continue
 
-        try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
-        except: qtd = 0
-        if qtd <= 0: continue
+        try: qtd_raw = float(g(row, IDX['qtd']).replace(',','.'))
+        except: qtd_raw = 0.0
+        if qtd_raw <= 0: continue
+        qtd = qtd_raw if canal == 'EVA' else int(qtd_raw)  # EVA é kg (float), demais são pares
 
         try: vlr = float(g(row, IDX['vlr']).replace(',','.'))
         except: vlr = 0.0
@@ -855,12 +935,15 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             m['MI'][tipo][vi] += vlr; m['MI'][tipo][qi] += qtd
         elif canal == 'ME':
             m['ME'][vi] += vlr; m['ME'][qi] += qtd     # USD
+        elif canal == 'EVA':
+            m['EVA'][vi] += vlr; m['EVA'][qi] += qtd   # kg
         else:
             m['EC'][vi] += vlr; m['EC'][qi] += qtd
 
-        # Acumular por CFOP
+        # Acumular por CFOP — só MI/ME/EC (pares); Composto EVA é kg e fica
+        # de fora desta tabela, que assume pares como unidade de quantidade.
         cfop_code = g(row, IDX['cfop'])
-        if cfop_code:
+        if cfop_code and canal != 'EVA':
             dc = dados_cfop[mes_ref][cfop_code]
             vi_c = (2 if canal == 'ME' else 0) + (0 if status == 'fat' else 1)
             qi_c = 4 if status == 'fat' else 5
@@ -885,6 +968,8 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                    'REALIZADO_PARES': int(m['ME'][2]), 'PREVISTO_PARES': int(m['ME'][3])},
             'EC': {'REALIZADO': round(m['EC'][0], 2), 'PREVISTO': round(m['EC'][1], 2),
                    'REALIZADO_PARES': int(m['EC'][2]), 'PREVISTO_PARES': int(m['EC'][3])},
+            'EVA': {'REALIZADO': round(m['EVA'][0], 2), 'PREVISTO': round(m['EVA'][1], 2),
+                    'REALIZADO_KG': round(m['EVA'][2], 1), 'PREVISTO_KG': round(m['EVA'][3], 1)},
         }
 
     dados_out    = {k: build_mes(m) for k, m in sorted(dados.items())}
@@ -1052,6 +1137,7 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
     if usar_mysql or (arquivo_3ys and os.path.exists(arquivo_3ys)):
         linhas = carregar_linhas_3ys(arquivo_3ys)
         vendas   = processar_vendas(linhas, mes_atual, output_dir)
+        processar_vendas_eva(linhas, mes_atual, output_dir)
         prog     = processar_programacao(linhas, output_dir)
         carteira = processar_carteira(linhas, output_dir)
         fat      = processar_faturamento(linhas, output_dir)
@@ -1070,7 +1156,7 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         'vendas_mes': cm,
         'estoque_totais': t,
         'arquivos': ['dados_portal.json','dados_programacao.json','dados_programacao_detalhe.json',
-                      'dados_refs_tabela.json','dados_vendas.json','dados_estoque.json',
+                      'dados_refs_tabela.json','dados_vendas.json','dados_vendas_eva.json','dados_estoque.json',
                       'dados_carteira.json','dados_faturamento.json','boaonda_dados_completos.json'],
     }
 

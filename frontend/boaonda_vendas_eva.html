@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Vendas Composto EVA</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --border:#262b3a;--line:#262b3a;--line2:#333a4d;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:20px 32px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.breadcrumb{font-size:10px;color:var(--txt-m);margin-bottom:6px;letter-spacing:.04em}
+.h-badge{display:inline-block;background:rgba(108,156,55,.12);border:1px solid rgba(108,156,55,.3);color:var(--verde);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:1.4rem;font-weight:800;color:var(--txt)}
+.h-sub{font-size:11px;color:var(--txt-s);margin-top:4px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.h-meta strong{color:var(--txt-s)}
+
+.main{padding:24px 32px;max-width:1500px;margin:0 auto}
+.stitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:28px}
+.kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--line2);border-radius:10px;padding:16px}
+.kpi.destaque{border-top-color:var(--verde)}
+.kpi.azul{border-top-color:var(--azul)}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
+.kpi-v{font-size:1.6rem;font-weight:800;color:var(--txt);line-height:1}
+.kpi-v.verde{color:var(--verde)}
+.kpi-v.azul{color:var(--azul)}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
+
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:28px}
+.chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--txt-s)}
+.leg-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.leg-line{width:18px;height:2px;border-radius:1px;flex-shrink:0;border-top:2px dashed}
+.chart-inner{position:relative;height:320px}
+
+.tcard{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:28px}
+.tcard-head{padding:16px 20px 14px;border-bottom:1px solid var(--border)}
+.tcard-titulo{font-size:14px;font-weight:800;color:var(--txt);letter-spacing:.04em}
+.table-scroll{overflow-x:auto}
+.crow{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.crow{grid-template-columns:1fr}}
+
+.rt{width:100%;border-collapse:collapse}
+.rt th{padding:8px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
+.rt th.th-nome{text-align:left;min-width:180px}
+.rt td{padding:9px 14px;font-size:11.5px;text-align:right;border-bottom:1px solid rgba(255,255,255,.04);color:var(--txt-s)}
+.rt td.td-nome{text-align:left;font-weight:700;color:var(--txt)}
+.rt td.td-kg{color:var(--verde);font-weight:700}
+.rt td.td-valor{color:var(--azul);font-weight:600}
+.rt tr:hover td{background:rgba(255,255,255,.015)}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:12px;color:var(--txt-m)}
+.empty-icon{font-size:42px}
+.empty-msg{font-size:13px;font-weight:600}
+.empty-sub{font-size:10px;text-align:center;max-width:340px;line-height:1.8}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="breadcrumb">Boaonda Intelligence › Vendas Composto EVA</div>
+    <div class="h-badge">♻️ Composto EVA</div>
+    <div class="h-title">Vendas — Composto EVA</div>
+    <div class="h-sub">Matéria-prima · mercado separado de calçados · identificado pela MARCA, sem filtro de cliente/espécie</div>
+  </div>
+  <div class="h-meta">Base: 3YS<br>Gerado: <strong id="hdr-data">–</strong></div>
+</div>
+
+<div class="main">
+
+  <div class="stitle">Resumo — mês atual</div>
+  <div class="kpi-grid">
+    <div class="kpi destaque">
+      <div class="kpi-l">Volume vendido</div>
+      <div class="kpi-v verde" id="kpi-kg">–</div>
+      <div class="kpi-s" id="kpi-kg-sub">–</div>
+    </div>
+    <div class="kpi azul">
+      <div class="kpi-l">Valor faturado</div>
+      <div class="kpi-v azul" id="kpi-valor">–</div>
+      <div class="kpi-s" id="kpi-valor-sub">–</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-l">Preço médio</div>
+      <div class="kpi-v" id="kpi-preco">–</div>
+      <div class="kpi-s">R$ por kg, mês atual</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-l">Clientes ativos</div>
+      <div class="kpi-v" id="kpi-clientes">–</div>
+      <div class="kpi-s">com compra no mês</div>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#6c9c37"></div>Volume (kg)</div>
+      <div class="leg-item"><div class="leg-line" style="border-color:#4994c7"></div>Valor (R$)</div>
+    </div>
+    <div class="chart-inner">
+      <canvas id="eva-chart"></canvas>
+    </div>
+  </div>
+
+  <div class="stitle">Top clientes e materiais — acumulado do histórico</div>
+  <div class="crow">
+    <div class="tcard">
+      <div class="tcard-head"><div class="tcard-titulo">Top 20 clientes</div></div>
+      <div class="table-scroll">
+        <table class="rt">
+          <thead><tr><th class="th-nome">Cliente</th><th>Kg</th><th>Valor</th></tr></thead>
+          <tbody id="tbody-clientes"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="tcard">
+      <div class="tcard-head"><div class="tcard-titulo">Top 20 materiais (referência)</div></div>
+      <div class="table-scroll">
+        <table class="rt">
+          <thead><tr><th class="th-nome">Referência</th><th>Kg</th><th>Valor</th></tr></thead>
+          <tbody id="tbody-refs"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+Chart.defaults.color = '#7d7c79';
+Chart.defaults.borderColor = '#262b3a';
+Chart.defaults.font.family = "'Montserrat',sans-serif";
+
+let DATA = null, evaChart = null;
+
+const R1 = n => Math.round((n || 0) * 10) / 10;
+const fKg = n => R1(n).toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' kg';
+const fBRL = n => 'R$ ' + Math.round(n || 0).toLocaleString('pt-BR');
+
+const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function mesLabel(k) { return MESES_PT[parseInt(k.slice(4,6))-1] + '/' + k.slice(2,4); }
+
+function render() {
+  if (!DATA) return;
+
+  document.getElementById('kpi-kg').textContent = fKg(DATA.total_mes_kg);
+  document.getElementById('kpi-kg-sub').textContent = mesLabel(DATA.mes_atual);
+  document.getElementById('kpi-valor').textContent = fBRL(DATA.total_mes_valor);
+  document.getElementById('kpi-valor-sub').textContent = mesLabel(DATA.mes_atual);
+  const preco = DATA.total_mes_kg ? DATA.total_mes_valor / DATA.total_mes_kg : 0;
+  document.getElementById('kpi-preco').textContent = 'R$ ' + preco.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  const clientesMes = (DATA.clientes_top20_kg || []).length; // aproximação: total de clientes no histórico top20
+  document.getElementById('kpi-clientes').textContent = clientesMes;
+
+  const mensalKg = DATA.mensal_kg || {};
+  const mensalValor = DATA.mensal_valor || {};
+  const keys = Object.keys(mensalKg).sort();
+  const labels = keys.map(mesLabel);
+  const dKg = keys.map(k => mensalKg[k] || 0);
+  const dValor = keys.map(k => mensalValor[k] || 0);
+
+  if (evaChart) evaChart.destroy();
+  evaChart = new Chart(document.getElementById('eva-chart').getContext('2d'), {
+    data: {
+      labels,
+      datasets: [
+        { type: 'bar', label: 'Volume (kg)', data: dKg, backgroundColor: 'rgba(108,156,55,.85)', borderRadius: 3, yAxisID: 'y' },
+        { type: 'line', label: 'Valor (R$)', data: dValor, borderColor: '#4994c7', backgroundColor: 'transparent',
+          borderWidth: 2, borderDash: [5,4], pointBackgroundColor: '#4994c7', pointRadius: 3, tension: .25, yAxisID: 'y1' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => c.dataset.yAxisID === 'y1' ? ' ' + fBRL(c.raw) : ' ' + fKg(c.raw) } },
+      },
+      scales: {
+        x: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 } } },
+        y: { position: 'left', grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 }, callback: v => Math.round(v/1000) + 't' } },
+        y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 10 }, callback: v => 'R$' + Math.round(v/1000) + 'k' } },
+      }
+    }
+  });
+
+  const rowsCli = (DATA.clientes_top20_kg || []).map(([nome, kg]) => {
+    const valor = (DATA.clientes_top20_valor || []).find(([n]) => n === nome);
+    return `<tr><td class="td-nome">${nome}</td><td class="td-kg">${fKg(kg)}</td><td class="td-valor">${fBRL(valor ? valor[1] : 0)}</td></tr>`;
+  }).join('');
+  document.getElementById('tbody-clientes').innerHTML = rowsCli ||
+    '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--txt-m)">Sem dados</td></tr>';
+
+  const rowsRef = (DATA.refs_top20_kg || []).map(([ref, kg]) => {
+    const valor = (DATA.refs_top20_valor || []).find(([r]) => r === ref);
+    return `<tr><td class="td-nome">${ref}</td><td class="td-kg">${fKg(kg)}</td><td class="td-valor">${fBRL(valor ? valor[1] : 0)}</td></tr>`;
+  }).join('');
+  document.getElementById('tbody-refs').innerHTML = rowsRef ||
+    '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--txt-m)">Sem dados</td></tr>';
+}
+
+fetch('dados_vendas_eva.json?_=' + Date.now())
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d => {
+    DATA = d;
+    document.getElementById('hdr-data').textContent = d.gerado_em || '–';
+    render();
+  })
+  .catch(() => {
+    document.querySelector('.main').innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Dados de Composto EVA não encontrados</div><div class="empty-sub">Execute o processador para gerar dados_vendas_eva.json e tente novamente.</div></div>';
+  });
+</script>
+</body>
+</html>
