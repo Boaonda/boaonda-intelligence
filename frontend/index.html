@@ -55,7 +55,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   position:relative;
   width:100%;max-width:1100px;
   margin:0 auto;
-  height:1060px;
+  height:1260px;
   padding:0 40px;
 }
 .org-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
@@ -211,7 +211,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 .alerta-val{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2);border-radius:5px;padding:4px 9px;font-size:8.5px;color:var(--coral);font-weight:600;margin-top:6px;display:inline-block}
 
 @media(max-width:900px){
-  .org-stage{height:auto;min-height:1060px}
+  .org-stage{height:auto;min-height:1260px}
   .nó-central{flex-direction:column;align-items:stretch;text-align:left}
   .nc-side{flex:none}
   .fases{grid-template-columns:1fr;padding:8px 16px 40px}
@@ -251,11 +251,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     <!-- Labels de seção -->
     <span class="sec-label" style="left:48px;top:24px">Mercado</span>
     <span class="sec-label" style="right:48px;top:24px;text-align:right">Indústria</span>
-    <span class="sec-label" style="left:50%;transform:translateX(-50%);top:568px">Equilíbrio</span>
-    <span class="sec-label" style="left:50%;transform:translateX(-50%);top:892px">Resultado Financeiro</span>
+    <span class="sec-label" style="left:50%;transform:translateX(-50%);top:708px">Equilíbrio</span>
+    <span class="sec-label" style="left:50%;transform:translateX(-50%);top:1032px">Resultado Financeiro</span>
 
     <!-- SVG CONEXÕES -->
-    <svg class="org-svg" viewBox="0 0 1020 1060" preserveAspectRatio="none">
+    <svg class="org-svg" viewBox="0 0 1020 1260" preserveAspectRatio="none">
       <defs>
         <marker id="ac" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
           <path d="M1 2L8 5L1 8" fill="none" stroke="#ed6842" stroke-width="1.5" stroke-linecap="round"/>
@@ -272,24 +272,24 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <path d="M 250 160 Q 330 155 395 145" stroke="#6c9c37" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#av)"/>
       <path d="M 625 145 Q 700 165 770 192" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
       <!-- Programação → Capacidade Fabril (futura ligação p/ ocupação/eficiência) -->
-      <path d="M 930 324 L 930 354" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
+      <path d="M 930 324 L 930 494" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
 
       <!-- Vendas/Programação alimentam o Estoque -->
-      <path d="M 145 260 Q 180 310 250 354" stroke="#6c9c37" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#av)"/>
-      <path d="M 875 324 Q 780 345 600 354" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
+      <path d="M 145 260 Q 180 380 250 494" stroke="#6c9c37" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#av)"/>
+      <path d="M 875 324 Q 780 400 600 494" stroke="#4994c7" stroke-width="1.5" fill="none" stroke-dasharray="6 4" opacity=".5" marker-end="url(#aa)"/>
 
       <!-- Tudo converge para a IA -->
-      <path d="M 405 464 Q 450 530 480 588" stroke="#ed6842" stroke-width="2" fill="none" stroke-dasharray="6 4" opacity=".6" marker-end="url(#ac)"/>
-      <path d="M 510 229 L 510 588" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
-      <path d="M 875 538 Q 800 580 540 588" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
+      <path d="M 405 604 Q 450 670 480 728" stroke="#ed6842" stroke-width="2" fill="none" stroke-dasharray="6 4" opacity=".6" marker-end="url(#ac)"/>
+      <path d="M 510 229 L 510 728" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
+      <path d="M 875 678 Q 800 720 540 728" stroke="#4994c7" stroke-width="1" fill="none" stroke-dasharray="4 5" opacity=".25" marker-end="url(#aa)"/>
 
       <!-- IA → Outputs -->
-      <path d="M 460 748 Q 350 780 220 788" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
-      <path d="M 560 748 Q 670 780 800 788" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
+      <path d="M 460 888 Q 350 920 220 928" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
+      <path d="M 560 888 Q 670 920 800 928" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".4" marker-end="url(#ac)"/>
 
       <!-- Outputs → Faturamento -->
-      <path d="M 220 868 Q 340 910 490 920" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".35" marker-end="url(#ac)"/>
-      <path d="M 800 868 Q 680 910 530 920" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".35" marker-end="url(#ac)"/>
+      <path d="M 220 1008 Q 340 1050 490 1060" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".35" marker-end="url(#ac)"/>
+      <path d="M 800 1008 Q 680 1050 530 1060" stroke="#ed6842" stroke-width="1.5" fill="none" stroke-dasharray="5 4" opacity=".35" marker-end="url(#ac)"/>
     </svg>
 
     <!-- NÓ: VENDAS (esq topo) -->
@@ -304,10 +304,15 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-cta">Analisar vendas →</div>
     </div>
 
-    <!-- NÓ-LINK: VENDAS COMPOSTO EVA (atalho compacto, abaixo de Vendas Calçado) -->
-    <div class="nó-link" style="left:40px;top:266px" onclick="abrirModulo('vendas_eva')">
-      <div class="nó-link-title">♻️ Vendas Composto EVA</div>
-      <div class="nó-link-arrow">→</div>
+    <!-- NÓ: VENDAS COMPOSTO EVA (mesmo tamanho de Vendas Calçado, abaixo dele) -->
+    <div class="nó" style="left:40px;top:276px" onclick="abrirModulo('vendas_eva')">
+      <span class="nó-icon">♻️</span>
+      <div class="nó-title">Vendas Composto EVA</div>
+      <div class="nó-desc">Matéria-prima · mercado separado · sem filtro de cliente/espécie</div>
+      <div class="nó-kpi" id="kpi-eva-valor">–</div>
+      <div class="nó-kpi-label">R$ · <span id="kpi-eva-mes">Jun/2026</span></div>
+      <div class="tags"><span class="tag" style="background:var(--card2);color:var(--txt-s)" id="tag-eva-kg">– kg</span></div>
+      <div class="nó-cta">Analisar vendas EVA →</div>
     </div>
 
     <!-- NÓ: PEDIDO EM CARTEIRA (centro topo — entre vendas e produção, box maior) -->
@@ -340,7 +345,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     </div>
 
     <!-- NÓ: CAPACIDADE FABRIL (abaixo da programação — futura ligação p/ ocupação/eficiência) -->
-    <div class="nó" style="right:40px;top:354px" onclick="abrirModulo('capacidade')">
+    <div class="nó" style="right:40px;top:494px" onclick="abrirModulo('capacidade')">
       <span class="nó-icon">⚙️</span>
       <div class="nó-title">Capacidade Fabril</div>
       <div class="nó-desc">Atelier · Pool de injetados · Setores de apoio</div>
@@ -358,7 +363,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     </div>
 
     <!-- NÓ CENTRAL: ESTOQUE (card largo, abaixo de Vendas + Pedido em Carteira) -->
-    <div class="nó-central" style="left:40px;top:354px;width:730px" onclick="abrirModulo('estoque')">
+    <div class="nó-central" style="left:40px;top:494px;width:730px" onclick="abrirModulo('estoque')">
       <div class="nc-main">
         <div class="nó-central-icon">📦</div>
         <div>
@@ -378,7 +383,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     </div>
 
     <!-- NÓ IA (base — conecta tudo) -->
-    <div class="nó-ia" style="left:50%;top:588px;transform:translateX(-50%)" onclick="abrirModulo('equilibrio')">
+    <div class="nó-ia" style="left:50%;top:728px;transform:translateX(-50%)" onclick="abrirModulo('equilibrio')">
       <div class="ia-main">IA</div>
       <div class="ia-sub">Intelligence</div>
       <div class="ia-label">Motor de equilíbrio</div>
@@ -390,19 +395,19 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
     </div>
 
     <!-- OUTPUT: COMERCIAL (esq baixo) -->
-    <div class="nó-output" style="left:140px;top:788px" onclick="abrirModulo('vendas')">
+    <div class="nó-output" style="left:140px;top:928px" onclick="abrirModulo('vendas')">
       <div class="nó-output-title">Para Comercial</div>
       <div class="nó-output-desc">O que vender · quando · para quem</div>
     </div>
 
     <!-- OUTPUT: PCP (dir baixo) -->
-    <div class="nó-output" style="right:140px;top:788px" onclick="abrirModulo('programacao')">
+    <div class="nó-output" style="right:140px;top:928px" onclick="abrirModulo('programacao')">
       <div class="nó-output-title">Para PCP</div>
       <div class="nó-output-desc">O que produzir · ordem · semana</div>
     </div>
 
     <!-- NÓ: FATURAMENTO (base central — resultado financeiro) -->
-    <div class="nó" style="left:50%;top:920px;transform:translateX(-50%)" onclick="abrirModulo('faturamento')">
+    <div class="nó" style="left:50%;top:1060px;transform:translateX(-50%)" onclick="abrirModulo('faturamento')">
       <span class="nó-icon">💰</span>
       <div class="nó-title">Faturamento</div>
       <div class="nó-desc">Realizado · Previsto · MI · ME · EC</div>
@@ -516,6 +521,16 @@ fetch('dados_faturamento.json?_='+Date.now())
     const fK=n=>{const v=Math.round(n||0);return v>=1e6?'R$'+(v/1e6).toFixed(1).replace('.',',')+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toLocaleString('pt-BR')};
     document.getElementById('kpi-fat-real').textContent=fK(miR+meR+ecR);
     document.getElementById('kpi-fat-prev').textContent=fK(miP+meP+ecP);
+  }).catch(()=>{});
+
+// Vendas Composto EVA — KPI do mês atual (mercado separado de calçados)
+fetch('dados_vendas_eva.json?_='+Date.now())
+  .then(r=>r.json()).then(d=>{
+    const fK=n=>{const v=Math.round(n||0);return v>=1e6?'R$'+(v/1e6).toFixed(1).replace('.',',')+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toLocaleString('pt-BR')};
+    document.getElementById('kpi-eva-valor').textContent = fK(d.total_mes_valor);
+    document.getElementById('tag-eva-kg').textContent = (Math.round((d.total_mes_kg||0)*10)/10).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + ' kg';
+    const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    if (d.mes_atual) document.getElementById('kpi-eva-mes').textContent = MESES[parseInt(d.mes_atual.slice(4,6))-1]+'/'+d.mes_atual.slice(0,4);
   }).catch(()=>{});
 
 // Capacidade Fabril — bloco isolado, KPIs próprios (sem cruzamento com o portal principal)

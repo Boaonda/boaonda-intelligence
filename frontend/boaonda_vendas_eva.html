@@ -62,6 +62,17 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rt td.td-valor{color:var(--azul);font-weight:600}
 .rt tr:hover td{background:rgba(255,255,255,.015)}
 
+.view-toggle{display:flex;gap:6px;margin-bottom:14px}
+.view-btn{background:var(--card2);border:1px solid var(--border);color:var(--txt-s);border-radius:7px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;font-family:'Montserrat',sans-serif}
+.view-btn.active{background:rgba(108,156,55,.15);border-color:var(--verde);color:var(--verde)}
+.chart-hint{font-size:9.5px;color:var(--txt-m);margin-top:10px;text-align:center}
+
+.drill-card{background:var(--card);border:1px solid rgba(108,156,55,.3);border-radius:12px;padding:20px;margin-bottom:28px}
+.drill-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.drill-title{font-size:13px;font-weight:800;color:var(--verde)}
+.drill-close{background:none;border:none;color:var(--txt-m);cursor:pointer;font-size:16px;padding:2px 6px;line-height:1}
+.drill-close:hover{color:var(--coral)}
+
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:12px;color:var(--txt-m)}
 .empty-icon{font-size:42px}
 .empty-msg{font-size:13px;font-weight:600}
@@ -107,12 +118,26 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
   </div>
 
   <div class="chart-wrap">
-    <div class="chart-legend">
-      <div class="leg-item"><div class="leg-dot" style="background:#6c9c37"></div>Volume (kg)</div>
-      <div class="leg-item"><div class="leg-line" style="border-color:#4994c7"></div>Valor (R$)</div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="vb-kg" onclick="setView('kg')">Volume (kg)</button>
+      <button class="view-btn" id="vb-valor" onclick="setView('valor')">Valor (R$)</button>
     </div>
     <div class="chart-inner">
       <canvas id="eva-chart"></canvas>
+    </div>
+    <div class="chart-hint">Clique numa barra para ver os clientes do mês</div>
+  </div>
+
+  <div class="drill-card" id="drill-card" style="display:none">
+    <div class="drill-head">
+      <div class="drill-title" id="drill-title">Clientes — mês</div>
+      <button class="drill-close" onclick="closeDrill()">✕</button>
+    </div>
+    <div class="table-scroll">
+      <table class="rt">
+        <thead><tr><th class="th-nome">Cliente</th><th>Kg</th><th>Valor</th></tr></thead>
+        <tbody id="tbody-drill"></tbody>
+      </table>
     </div>
   </div>
 
@@ -145,14 +170,73 @@ Chart.defaults.color = '#7d7c79';
 Chart.defaults.borderColor = '#262b3a';
 Chart.defaults.font.family = "'Montserrat',sans-serif";
 
-let DATA = null, evaChart = null;
+let DATA = null, evaChart = null, viewMode = 'kg', mesKeys = [];
 
 const R1 = n => Math.round((n || 0) * 10) / 10;
 const fKg = n => R1(n).toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' kg';
 const fBRL = n => 'R$ ' + Math.round(n || 0).toLocaleString('pt-BR');
+const fKgShort = n => {
+  const v = R1(n);
+  return v >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + 't' : Math.round(v) + 'kg';
+};
+const fBRLShort = n => {
+  const v = Math.round(n || 0);
+  return v >= 1e6 ? 'R$' + (v / 1e6).toFixed(1).replace('.', ',') + 'M'
+       : v >= 1e3 ? 'R$' + Math.round(v / 1e3) + 'k'
+       : 'R$' + v;
+};
 
 const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 function mesLabel(k) { return MESES_PT[parseInt(k.slice(4,6))-1] + '/' + k.slice(2,4); }
+
+// Plugin: rótulo do total em cima de cada barra
+const evaTotalizerPlugin = {
+  id: 'evaTotalizer',
+  afterDatasetsDraw(chart) {
+    const {ctx, scales: {y}, data} = chart;
+    const meta = chart.getDatasetMeta(0);
+    if (!meta) return;
+    data.datasets[0].data.forEach((val, i) => {
+      if (!val || !meta.data[i]) return;
+      const x = meta.data[i].x;
+      const yPx = y.getPixelForValue(val);
+      const txt = viewMode === 'kg' ? fKgShort(val) : fBRLShort(val);
+      ctx.save();
+      ctx.fillStyle = '#b6b3ac';
+      ctx.font = '700 9px Montserrat, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(txt, x, yPx - 6);
+      ctx.restore();
+    });
+  }
+};
+Chart.register(evaTotalizerPlugin);
+
+function setView(mode) {
+  viewMode = mode;
+  document.getElementById('vb-kg').classList.toggle('active', mode === 'kg');
+  document.getElementById('vb-valor').classList.toggle('active', mode === 'valor');
+  render();
+}
+
+function openDrill(mesKey) {
+  const lista = (DATA.mensal_clientes || {})[mesKey] || [];
+  document.getElementById('drill-title').textContent = 'Clientes — ' + mesLabel(mesKey);
+  const rows = lista.map(c => `<tr>
+    <td class="td-nome">${c.cliente}</td>
+    <td class="td-kg">${fKg(c.kg)}</td>
+    <td class="td-valor">${fBRL(c.valor)}</td>
+  </tr>`).join('');
+  document.getElementById('tbody-drill').innerHTML = rows ||
+    '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--txt-m)">Sem dados para este mês</td></tr>';
+  const card = document.getElementById('drill-card');
+  card.style.display = 'block';
+  card.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+function closeDrill() {
+  document.getElementById('drill-card').style.display = 'none';
+}
 
 function render() {
   if (!DATA) return;
@@ -169,31 +253,33 @@ function render() {
 
   const mensalKg = DATA.mensal_kg || {};
   const mensalValor = DATA.mensal_valor || {};
-  const keys = Object.keys(mensalKg).sort();
-  const labels = keys.map(mesLabel);
-  const dKg = keys.map(k => mensalKg[k] || 0);
-  const dValor = keys.map(k => mensalValor[k] || 0);
+  mesKeys = Object.keys(mensalKg).sort();
+  const labels = mesKeys.map(mesLabel);
+  const dataset = mesKeys.map(k => (viewMode === 'kg' ? mensalKg[k] : mensalValor[k]) || 0);
 
   if (evaChart) evaChart.destroy();
   evaChart = new Chart(document.getElementById('eva-chart').getContext('2d'), {
+    type: 'bar',
     data: {
       labels,
-      datasets: [
-        { type: 'bar', label: 'Volume (kg)', data: dKg, backgroundColor: 'rgba(108,156,55,.85)', borderRadius: 3, yAxisID: 'y' },
-        { type: 'line', label: 'Valor (R$)', data: dValor, borderColor: '#4994c7', backgroundColor: 'transparent',
-          borderWidth: 2, borderDash: [5,4], pointBackgroundColor: '#4994c7', pointRadius: 3, tension: .25, yAxisID: 'y1' },
-      ]
+      datasets: [{
+        label: viewMode === 'kg' ? 'Volume (kg)' : 'Valor (R$)', data: dataset,
+        backgroundColor: 'rgba(108,156,55,.85)', hoverBackgroundColor: 'rgba(108,156,55,1)', borderRadius: 3,
+      }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 24 } },
+      onClick: (evt, elements) => { if (elements.length) openDrill(mesKeys[elements[0].index]); },
+      onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: c => c.dataset.yAxisID === 'y1' ? ' ' + fBRL(c.raw) : ' ' + fKg(c.raw) } },
+        tooltip: { callbacks: { label: c => viewMode === 'kg' ? ' ' + fKg(c.raw) : ' ' + fBRL(c.raw) } },
       },
       scales: {
         x: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 } } },
-        y: { position: 'left', grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 }, callback: v => Math.round(v/1000) + 't' } },
-        y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 10 }, callback: v => 'R$' + Math.round(v/1000) + 'k' } },
+        y: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 },
+              callback: v => viewMode === 'kg' ? Math.round(v) + 'kg' : 'R$' + Math.round(v / 1000) + 'k' } },
       }
     }
   });

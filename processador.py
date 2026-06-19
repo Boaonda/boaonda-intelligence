@@ -366,6 +366,7 @@ def processar_vendas_eva(linhas, mes_atual, output_dir='.'):
     total_mes_kg = total_mes_valor = 0.0
     mensal_kg = defaultdict(float)
     mensal_valor = defaultdict(float)
+    mensal_clientes = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))  # mes -> cliente -> [kg, valor]
     clientes_kg = Counter()
     clientes_valor = Counter()
     refs_kg = Counter()
@@ -392,6 +393,9 @@ def processar_vendas_eva(linhas, mes_atual, output_dir='.'):
         if anomes and len(anomes) == 6 and anomes.isdigit():
             mensal_kg[anomes] += qtd_kg
             mensal_valor[anomes] += valor
+            if cliente:
+                mc = mensal_clientes[anomes][cliente]
+                mc[0] += qtd_kg; mc[1] += valor
         if ref:
             refs_kg[ref] += qtd_kg
             refs_valor[ref] += valor
@@ -409,6 +413,13 @@ def processar_vendas_eva(linhas, mes_atual, output_dir='.'):
         'total_mes_valor': round(total_mes_valor, 2),
         'mensal_kg': {k: round(v, 1) for k, v in sorted(mensal_kg.items())},
         'mensal_valor': {k: round(v, 2) for k, v in sorted(mensal_valor.items())},
+        'mensal_clientes': {
+            mes: sorted(
+                [{'cliente': c, 'kg': round(v[0], 1), 'valor': round(v[1], 2)} for c, v in clientes.items()],
+                key=lambda x: -x['kg']
+            )
+            for mes, clientes in mensal_clientes.items()
+        },
         'clientes_top20_kg': [(c, round(v, 1)) for c, v in clientes_kg.most_common(20)],
         'clientes_top20_valor': [(c, round(v, 2)) for c, v in clientes_valor.most_common(20)],
         'refs_top20_kg': [(r, round(v, 1)) for r, v in refs_kg.most_common(20)],
