@@ -909,6 +909,12 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     # pares (índices 4/5) = MI/ME/EC; kg (índices 6/7) = Composto EVA —
     # unidades distintas, nunca somadas entre si.
     dados_cfop = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0, 0, 0, 0.0, 0.0]))
+    # dados_clientes[mes_ref][canal][cliente] = [fat_vlr, prev_vlr, fat_qtd, prev_qtd]
+    # canal ME (USD/pares) e EVA (BRL/kg) — drilldown por cliente no resumo
+    # mensal por grupo. MI/EC não têm volume de clientes que justifique o
+    # drilldown (muito mais pulverizado) e não foram solicitados.
+    dados_clientes = defaultdict(lambda: {'ME': defaultdict(lambda: [0.0, 0.0, 0, 0]),
+                                           'EVA': defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])})
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
     total_fat = total_prev = sem_data_count = 0
 
@@ -966,6 +972,11 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         else:
             m['EC'][vi] += vlr; m['EC'][qi] += qtd
 
+        if canal in ('ME', 'EVA'):
+            cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
+            dc_cli = dados_clientes[mes_ref][canal][cliente]
+            dc_cli[vi] += vlr; dc_cli[qi] += qtd
+
         # Acumular por CFOP — valor (BRL/USD) soma todos os canais; a
         # quantidade vai para pares (MI/ME/EC) ou kg (EVA), nunca somadas.
         cfop_code = g(row, IDX['cfop'])
@@ -1022,9 +1033,33 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
 
     dados_cfop_out = {k: build_cfop_mes(v) for k, v in sorted(dados_cfop.items())}
 
+    def build_clientes_mes(mc):
+        out = {}
+        for canal in ('ME', 'EVA'):
+            entries = []
+            for cliente, (rv, pv, rq, pq) in mc[canal].items():
+                if not any([rv, pv, rq, pq]):
+                    continue
+                if canal == 'ME':
+                    entries.append({'cliente': cliente, 'REALIZADO_USD': round(rv, 2),
+                                     'PREVISTO_USD': round(pv, 2),
+                                     'REALIZADO_PARES': int(rq), 'PREVISTO_PARES': int(pq)})
+                else:
+                    entries.append({'cliente': cliente, 'REALIZADO': round(rv, 2),
+                                     'PREVISTO': round(pv, 2),
+                                     'REALIZADO_KG': round(rq, 1), 'PREVISTO_KG': round(pq, 1)})
+            entries.sort(key=lambda e: -(e.get('REALIZADO_USD', e.get('REALIZADO', 0)) +
+                                          e.get('PREVISTO_USD', e.get('PREVISTO', 0))))
+            if entries:
+                out[canal] = entries
+        return out
+
+    dados_clientes_out = {k: build_clientes_mes(v) for k, v in sorted(dados_clientes.items())}
+
     result = {'gerado_em':datetime.now().strftime('%d/%m/%Y %H:%M'),
               'taxa_cambio_me':taxa_cambio_me, 'dados':dados_out,
-              'dados_cfop':dados_cfop_out, 'sem_data':sem_data_out}
+              'dados_cfop':dados_cfop_out, 'dados_clientes':dados_clientes_out,
+              'sem_data':sem_data_out}
     with open(os.path.join(output_dir,'dados_faturamento.json'),'w',encoding='utf-8') as f_:
         json.dump(result, f_, ensure_ascii=False, default=str)
     print(f"    ✓ dados_faturamento.json gerado ({len(dados_out)} meses)")

@@ -115,6 +115,21 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rt tr.tr-sub td.td-r-v{color:rgba(237,104,66,.75);font-weight:600}
 .rt tr.tr-sub td.td-t-v{color:rgba(108,156,55,.8);font-weight:600}
 .rt tr.tr-sub:last-of-type td{border-bottom:1px solid rgba(255,255,255,.06)}
+.rt tr.tr-group.tr-drill{cursor:pointer}
+.rt tr.tr-group.tr-drill:hover td{background:rgba(237,104,66,.08)}
+.rt tr.tr-group.tr-drill td.td-grupo::before{content:'▸ ';color:var(--txt-m);font-size:9px;display:inline-block;width:10px}
+.rt tr.tr-group.tr-drill.aberto td.td-grupo::before{content:'▾ '}
+.rt tr.tr-clientes td{background:var(--card2);padding:0;border-bottom:1px solid rgba(255,255,255,.06)}
+.drill-clientes{padding:10px 16px 14px 38px}
+.drill-clientes-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:8px}
+.drill-clientes table{width:100%;border-collapse:collapse;font-size:10.5px}
+.drill-clientes th{text-align:right;padding:4px 10px;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
+.drill-clientes th:first-child{text-align:left}
+.drill-clientes td{text-align:right;padding:5px 10px;color:var(--txt-s);border-bottom:1px solid rgba(255,255,255,.03)}
+.drill-clientes td:first-child{text-align:left;font-weight:600;color:var(--txt)}
+.drill-clientes td.dc-real{color:var(--coral);font-weight:700}
+.drill-clientes td.dc-prev{color:var(--cinza);font-weight:600}
+.drill-clientes-empty{color:var(--txt-m);font-size:11px;padding:6px 10px}
 
 /* Sem data */
 .semdata-card{background:var(--card);border:1px solid rgba(237,104,66,.25);border-radius:12px;padding:20px;margin-bottom:28px}
@@ -376,6 +391,7 @@ const stackTotalPlugin = {
 Chart.register(stackTotalPlugin);
 
 let DATA = null, CAMBIO = 5.00, fatChart = null;
+let drillAberto = null; // 'ME' | 'EVA' | null — grupo expandido no resumo mensal
 
 const R = n => Math.round(n || 0);
 const fBRL = n => 'R$ ' + R(n).toLocaleString('pt-BR');
@@ -565,6 +581,11 @@ function popularSeletorMes() {
   });
 }
 
+function toggleDrillCliente(canal) {
+  drillAberto = drillAberto === canal ? null : canal;
+  renderResumo();
+}
+
 function renderResumo() {
   if (!DATA) return;
   const key  = document.getElementById('resumo-mes').value || mesAtual();
@@ -615,11 +636,13 @@ function renderResumo() {
     pQ: mprog.pQ+mpe.pQ+mmist.pQ, pV: mprog.pV+mpe.pV+mmist.pV,
   };
 
-  function rowGroup(label, d, fmtQ) {
+  function rowGroup(label, d, fmtQ, canalDrill) {
     fmtQ = fmtQ || fPar;
     const tQ = d.rQ + d.pQ, tV = d.rV + d.pV;
     const dash = sp ? '' : '—';
-    return `<tr class="tr-group">
+    const drillCls = canalDrill ? ' tr-drill' + (drillAberto === canalDrill ? ' aberto' : '') : '';
+    const onclick = canalDrill ? ` onclick="toggleDrillCliente('${canalDrill}')"` : '';
+    return `<tr class="tr-group${drillCls}"${onclick}>
       <td class="td-grupo">${label}</td>
       <td class="td-sep"></td>
       <td class="td-r-q">${d.rQ ? fmtQ(d.rQ) : '–'}</td>
@@ -632,7 +655,38 @@ function renderResumo() {
       <td class="td-t-q">${tQ ? fmtQ(tQ) : '–'}</td>
       <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
       <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
-    </tr>`;
+    </tr>` + (canalDrill && drillAberto === canalDrill ? rowDrillClientes(canalDrill, key) : '');
+  }
+
+  function rowDrillClientes(canal, mesKey) {
+    const lista = ((DATA.dados_clientes || {})[mesKey] || {})[canal] || [];
+    const isEva = canal === 'EVA';
+    const fmtQ = isEva ? fKg1 : fPar;
+    const vReal = e => isEva ? (e.REALIZADO || 0) : (e.REALIZADO_USD || 0) * CAMBIO;
+    const vPrev = e => isEva ? (e.PREVISTO || 0) : (e.PREVISTO_USD || 0) * CAMBIO;
+    const qReal = e => isEva ? (e.REALIZADO_KG || 0) : (e.REALIZADO_PARES || 0);
+    const qPrev = e => isEva ? (e.PREVISTO_KG || 0) : (e.PREVISTO_PARES || 0);
+    const titulo = (isEva ? 'Clientes — Composto EVA' : 'Clientes — ME') + ' · ' + mesLong(mesKey);
+    if (!lista.length) {
+      return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
+        <div class="drill-clientes-title">${titulo}</div>
+        <div class="drill-clientes-empty">Sem clientes faturados/previstos neste mês.</div>
+      </div></td></tr>`;
+    }
+    const rows = lista.map(e => `<tr>
+        <td>${e.cliente}</td>
+        <td class="dc-real">${vReal(e) ? fBRL(vReal(e)) : '–'}</td>
+        <td>${qReal(e) ? fmtQ(qReal(e)) : '–'}</td>
+        <td class="dc-prev">${sp && vPrev(e) ? fBRL(vPrev(e)) : '–'}</td>
+        <td>${sp && qPrev(e) ? fmtQ(qPrev(e)) : '–'}</td>
+      </tr>`).join('');
+    return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
+      <div class="drill-clientes-title">${titulo} · ${lista.length} cliente${lista.length > 1 ? 's' : ''}</div>
+      <table>
+        <thead><tr><th>Cliente</th><th>Realizado</th><th>Qtd.</th><th>Previsto</th><th>Qtd.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div></td></tr>`;
   }
 
   function rowSub(label, d) {
@@ -659,9 +713,9 @@ function renderResumo() {
     rowSub('MI Programado', mprog) +
     rowSub('MI Pronta Entrega', mpe) +
     (mmist.rV || mmist.pV ? rowSub('MI Venda Mista', mmist) : '') +
-    rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV) +
+    rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV, fPar, 'ME') +
     rowGroup('Faturamento E-commerce', ecV) +
-    (evaV.rV || evaV.pV ? rowGroup('Faturamento Composto EVA', evaV, fKg1) : '');
+    (evaV.rV || evaV.pV ? rowGroup('Faturamento Composto EVA', evaV, fKg1, 'EVA') : '');
 
   const tQ = gt.rQ + gt.pQ, tV = gt.rV + gt.pV;
   const dash = sp ? '' : '—';
