@@ -130,6 +130,20 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .drill-clientes td.dc-real{color:var(--coral);font-weight:700}
 .drill-clientes td.dc-prev{color:var(--cinza);font-weight:600}
 .drill-clientes-empty{color:var(--txt-m);font-size:11px;padding:6px 10px}
+.drill-clientes tr.dc-row-drill{cursor:pointer}
+.drill-clientes tr.dc-row-drill:hover td{background:rgba(255,255,255,.025)}
+.drill-clientes tr.dc-row-drill td:first-child::before{content:'▸ ';color:var(--txt-m);font-size:8px}
+.drill-clientes tr.dc-row-drill.aberto td:first-child::before{content:'▾ '}
+.drill-clientes tr.tr-pedidos td{background:rgba(0,0,0,.15);padding:0;border-bottom:1px solid rgba(255,255,255,.04)}
+.drill-pedidos{padding:8px 10px 10px 26px}
+.drill-pedidos-title{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-m);margin-bottom:6px}
+.drill-pedidos table{width:100%;border-collapse:collapse;font-size:10px}
+.drill-pedidos th{text-align:right;padding:3px 8px;color:var(--txt-m);font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+.drill-pedidos th:first-child{text-align:left}
+.drill-pedidos td{text-align:right;padding:4px 8px;color:var(--txt-s);border-bottom:1px solid rgba(255,255,255,.03)}
+.drill-pedidos td:first-child{text-align:left;font-weight:600;color:var(--txt-s)}
+.drill-pedidos td.dc-real{color:rgba(237,104,66,.8);font-weight:600}
+.drill-pedidos td.dc-prev{color:var(--cinza)}
 
 /* Sem data */
 .semdata-card{background:var(--card);border:1px solid rgba(237,104,66,.25);border-radius:12px;padding:20px;margin-bottom:28px}
@@ -392,6 +406,7 @@ Chart.register(stackTotalPlugin);
 
 let DATA = null, CAMBIO = 5.00, fatChart = null;
 let drillAberto = null; // 'ME' | 'EVA' | null — grupo expandido no resumo mensal
+let pedidoAberto = null; // nome do cliente (EVA) com pedidos expandidos
 
 const R = n => Math.round(n || 0);
 const fBRL = n => 'R$ ' + R(n).toLocaleString('pt-BR');
@@ -583,6 +598,12 @@ function popularSeletorMes() {
 
 function toggleDrillCliente(canal) {
   drillAberto = drillAberto === canal ? null : canal;
+  pedidoAberto = null;
+  renderResumo();
+}
+
+function togglePedidoCliente(cliente) {
+  pedidoAberto = pedidoAberto === cliente ? null : cliente;
   renderResumo();
 }
 
@@ -673,17 +694,42 @@ function renderResumo() {
         <div class="drill-clientes-empty">Sem clientes faturados/previstos neste mês.</div>
       </div></td></tr>`;
     }
-    const rows = lista.map(e => `<tr>
+    const rows = lista.map(e => {
+      const temPedidos = isEva && e.pedidos && e.pedidos.length;
+      const cliEsc = e.cliente.replace(/'/g, "\\'");
+      const rowCls = temPedidos ? ' class="dc-row-drill' + (pedidoAberto === e.cliente ? ' aberto' : '') + '"' : '';
+      const rowClick = temPedidos ? ` onclick="togglePedidoCliente('${cliEsc}')"` : '';
+      const tr = `<tr${rowCls}${rowClick}>
         <td>${e.cliente}</td>
         <td class="dc-real">${vReal(e) ? fBRL(vReal(e)) : '–'}</td>
         <td>${qReal(e) ? fmtQ(qReal(e)) : '–'}</td>
         <td class="dc-prev">${sp && vPrev(e) ? fBRL(vPrev(e)) : '–'}</td>
         <td>${sp && qPrev(e) ? fmtQ(qPrev(e)) : '–'}</td>
-      </tr>`).join('');
+      </tr>`;
+      return tr + (temPedidos && pedidoAberto === e.cliente ? rowPedidos(e) : '');
+    }).join('');
     return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
       <div class="drill-clientes-title">${titulo} · ${lista.length} cliente${lista.length > 1 ? 's' : ''}</div>
       <table>
         <thead><tr><th>Cliente</th><th>Realizado</th><th>Qtd.</th><th>Previsto</th><th>Qtd.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div></td></tr>`;
+  }
+
+  function rowPedidos(e) {
+    const pedidos = e.pedidos || [];
+    const rows = pedidos.map(p => `<tr>
+        <td>${p.pedido}</td>
+        <td class="dc-real">${p.REALIZADO ? fBRL(p.REALIZADO) : '–'}</td>
+        <td>${p.REALIZADO_KG ? fKg1(p.REALIZADO_KG) : '–'}</td>
+        <td class="dc-prev">${sp && p.PREVISTO ? fBRL(p.PREVISTO) : '–'}</td>
+        <td>${sp && p.PREVISTO_KG ? fKg1(p.PREVISTO_KG) : '–'}</td>
+      </tr>`).join('');
+    return `<tr class="tr-pedidos"><td colspan="5"><div class="drill-pedidos">
+      <div class="drill-pedidos-title">Pedidos — ${e.cliente} · ${pedidos.length} pedido${pedidos.length > 1 ? 's' : ''}</div>
+      <table>
+        <thead><tr><th>Pedido</th><th>Realizado</th><th>Qtd.</th><th>Previsto</th><th>Qtd.</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div></td></tr>`;
