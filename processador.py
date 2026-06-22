@@ -379,6 +379,9 @@ def processar_vendas_eva(linhas, mes_atual, output_dir='.'):
     mensal_kg = defaultdict(float)
     mensal_valor = defaultdict(float)
     mensal_clientes = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))  # mes -> cliente -> [kg, valor]
+    # mensal_pedidos[mes][cliente][pedido] = [kg, valor] — drilldown de pedidos
+    # dentro do cliente, mesma ideia do drilldown EVA do Faturamento.
+    mensal_pedidos = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0.0, 0.0])))
     clientes_kg = Counter()
     clientes_valor = Counter()
     refs_kg = Counter()
@@ -398,6 +401,7 @@ def processar_vendas_eva(linhas, mes_atual, output_dir='.'):
         anomes = g(row, IDX['anomes'])
         ref = g(row, IDX['ref'])
         cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40]
+        pedido = g(row, IDX['pedido']).strip() or '(sem pedido)'
 
         if anomes == mes_atual:
             total_mes_kg += qtd_kg
@@ -408,6 +412,8 @@ def processar_vendas_eva(linhas, mes_atual, output_dir='.'):
             if cliente:
                 mc = mensal_clientes[anomes][cliente]
                 mc[0] += qtd_kg; mc[1] += valor
+                mp = mensal_pedidos[anomes][cliente][pedido]
+                mp[0] += qtd_kg; mp[1] += valor
         if ref:
             refs_kg[ref] += qtd_kg
             refs_valor[ref] += valor
@@ -427,7 +433,13 @@ def processar_vendas_eva(linhas, mes_atual, output_dir='.'):
         'mensal_valor': {k: round(v, 2) for k, v in sorted(mensal_valor.items())},
         'mensal_clientes': {
             mes: sorted(
-                [{'cliente': c, 'kg': round(v[0], 1), 'valor': round(v[1], 2)} for c, v in clientes.items()],
+                [{'cliente': c, 'kg': round(v[0], 1), 'valor': round(v[1], 2),
+                  'pedidos': sorted(
+                      [{'pedido': p, 'kg': round(pv[0], 1), 'valor': round(pv[1], 2)}
+                       for p, pv in mensal_pedidos[mes][c].items()],
+                      key=lambda x: -x['kg']
+                  )}
+                 for c, v in clientes.items()],
                 key=lambda x: -x['kg']
             )
             for mes, clientes in mensal_clientes.items()
