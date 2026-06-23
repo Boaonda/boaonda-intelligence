@@ -490,6 +490,22 @@ def capacidade_importar():
             path_xlsx.unlink()
 
 
+@app.route('/admin/diag')
+def admin_diag():
+    """Diagnóstico da fonte 3YS (Vendas/Carteira/Programação). Mostra quantas
+    linhas a fonte (MySQL) devolve e se os campos-chave vêm preenchidos —
+    para investigar painéis zerados sem ter que olhar logs do Railway."""
+    try:
+        return app.response_class(
+            json.dumps(processador.diagnostico_3ys(), ensure_ascii=False, indent=2,
+                       default=str),
+            mimetype='application/json',
+        )
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'erro': str(ex)}), 500
+
+
 @app.route('/version')
 def version():
     import subprocess

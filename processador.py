@@ -274,6 +274,42 @@ def carregar_linhas_3ys(arquivo_3ys=None):
             linhas.append(row)
     return linhas
 
+
+def diagnostico_3ys():
+    """Diagnóstico da fonte de Vendas/Carteira/Programação. Conta linhas e
+    mede o preenchimento dos campos-chave — usado para investigar dashboards
+    zerados (ex.: view do MySQL retornando linhas com campos vazios). Não
+    aplica a trava de mínimo: reporta o que vier, mesmo vazio."""
+    info = {'mysql_host_configurado': bool(os.environ.get('MYSQL_HOST')), 'total_linhas': 0}
+    if not os.environ.get('MYSQL_HOST'):
+        info['fonte'] = 'arquivo CSV (MYSQL_HOST não está configurado)'
+        return info
+    import db_mysql
+    info['fonte'] = 'MySQL (v_entradapedidos_extended)'
+    col_valor = db_mysql.achar_coluna_valor_liquido()
+    info['coluna_valor_liquido'] = col_valor or '(NÃO encontrada na view)'
+    col_valor_sql = f'v.`{col_valor}`' if col_valor else '0'
+    db_rows = db_mysql.consultar(QUERY_3YS.format(col_valor=col_valor_sql))
+    info['total_linhas'] = len(db_rows)
+    linhas = [_linha_de_db_row(r) for r in db_rows]
+    campos = ('qtd', 'pos_item', 'abr_grp', 'cod_esp', 'anomes', 'marca', 'ref', 'vlr')
+    preench = {c: 0 for c in campos}
+    pos_vals, abr_vals = Counter(), Counter()
+    for row in linhas:
+        for c in campos:
+            if g(row, IDX[c]).strip():
+                preench[c] += 1
+        p = g(row, IDX['pos_item']).strip().upper()
+        if p: pos_vals[p] += 1
+        a = g(row, IDX['abr_grp']).strip().upper()
+        if a: abr_vals[a] += 1
+    info['campos_preenchidos'] = preench
+    info['pos_item_valores'] = pos_vals.most_common(12)
+    info['abr_grp_valores'] = abr_vals.most_common(12)
+    if linhas:
+        info['amostra_1a_linha'] = {c: g(linhas[0], IDX[c]) for c in campos}
+    return info
+
 # ─── VENDAS ──────────────────────────────────────────────────────────
 def processar_vendas(linhas, mes_atual, output_dir='.'):
     print("\n  Processando vendas...")
