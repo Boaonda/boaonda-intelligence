@@ -129,6 +129,31 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .comb-card.comb-zero .comb-livre{color:var(--txt-m)}
 .comb-res{font-size:10px;color:var(--amber)}
 
+/* GRADES — resumo de grades completas */
+.grades-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.grade-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-top:2px solid var(--coral)}
+.grade-card-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+.grade-code{font-size:15px;font-weight:800;color:var(--txt);letter-spacing:.02em}
+.grade-completas{font-size:1.5rem;font-weight:800;color:var(--coral);line-height:1}
+.grade-completas-lbl{font-size:9px;color:var(--txt-m);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+.grade-livre{font-size:10px;color:var(--txt-m);margin-top:2px}
+.grade-curve{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.grade-sz{background:var(--card);border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:9.5px;text-align:center;min-width:34px}
+.grade-sz-n{display:block;color:var(--txt-m);font-size:8px;font-weight:700}
+.grade-sz-q{display:block;color:var(--verde);font-weight:700;font-size:10.5px}
+.grade-avulso{font-size:9px;color:var(--amber);margin-top:6px}
+.grades-extra{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:10px;color:var(--txt-m)}
+.grades-extra span{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:5px 10px}
+/* Detalhe de grade dentro da cor (nível 3) */
+.cor-grades{padding:6px 18px 14px 36px;background:rgba(0,0,0,.12);border-bottom:1px solid rgba(255,255,255,.04)}
+.cor-grade-row{margin-bottom:10px}
+.cor-grade-row:last-child{margin-bottom:0}
+.cor-grade-head{font-size:10px;font-weight:700;color:var(--txt-s);margin-bottom:5px}
+.cor-grade-head .cg-code{color:var(--coral)}
+.cor-grade-head .cg-info{color:var(--txt-m);font-weight:500}
+.dr-row.cor-clickable{cursor:pointer}
+.dr-arrow-cor{color:var(--txt-m);font-size:9px;transition:transform .15s}
+.dr-row.aberta-cor .dr-arrow-cor{transform:rotate(90deg);color:var(--coral)}
 @media(max-width:800px){.crow{grid-template-columns:1fr}.main{padding:14px}}
 </style>
 </head>
@@ -198,13 +223,19 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
   </div>
 </div>
 
+<div class="stitle">Grades completas disponíveis <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--txt-m)">— pares livres por numeração</span></div>
+<div class="tcard" id="grades-container"></div>
+
+<div class="stitle">Detalhamento por modelo · linha · cor</div>
 <div class="tcard" id="drill-container"></div>
 
 </div>
 
 <script>
 let DATA = {};
+let GRADES_GLOBAL = [];
 let chartTop = null, chartStk = null;
+let corAberta = null;   // combinação (cor) expandida no nível 3
 
 // Estado drill-down: modelo → linha → combinações
 let nivel = 1;          // 1=modelos, 2=linhas, 3=combinações
@@ -247,6 +278,7 @@ fetch('dados_estoque.json?_=' + Date.now())
   .then(r => { if(!r.ok) throw new Error(); return r.json(); })
   .then(d => {
     DATA = d.refs || {};
+    GRADES_GLOBAL = d.grades_global || [];
     const t = d.totais || {};
     document.getElementById('k-livre').textContent = f(t.livre);
     document.getElementById('k-fisico').textContent = f(t.fisico);
@@ -256,9 +288,41 @@ fetch('dados_estoque.json?_=' + Date.now())
     document.getElementById('k-refs').textContent = Object.keys(DATA).length;
     document.getElementById('hdr-data').textContent = d.gerado_em || '–';
     renderCharts(t);
+    renderGradesResumo();
     renderDrill();
   })
   .catch(() => renderDrill());
+
+// ── Resumo de grades completas disponíveis ────────────────
+function renderGradesResumo(){
+  const c = document.getElementById('grades-container');
+  if(!c) return;
+  const fechadas = GRADES_GLOBAL.filter(g => g.tipo==='fechada' && g.completas>0);
+  if(!fechadas.length){
+    c.innerHTML = '<div style="padding:16px;color:var(--txt-m);font-size:12px">Sem dados de grade neste arquivo. Reenvie o ESQT com as colunas de grade para habilitar esta visão.</div>';
+    return;
+  }
+  const cards = fechadas.map(g => {
+    const curve = g.sizes.map((s,i)=>`<div class="grade-sz"><span class="grade-sz-n">${s}</span><span class="grade-sz-q">${f(g.completas*g.pattern[i])}</span></div>`).join('');
+    return `<div class="grade-card">
+      <div class="grade-card-head">
+        <span class="grade-code">Grade ${g.code}</span>
+        <span style="font-size:9px;color:var(--txt-m)">${g.tot} pares/grade</span>
+      </div>
+      <div class="grade-completas">${f(g.completas)}</div>
+      <div class="grade-completas-lbl">grades completas</div>
+      <div class="grade-livre">${f(g.livre)} pares livres${g.avulso?` · ${f(g.avulso)} avulsos`:''}</div>
+      <div class="grade-curve">${curve}</div>
+    </div>`;
+  }).join('');
+  const aberta = GRADES_GLOBAL.filter(g=>g.tipo==='aberta').reduce((s,g)=>s+g.livre,0);
+  const semnum = GRADES_GLOBAL.filter(g=>g.tipo==='sem_numeracao').reduce((s,g)=>s+g.livre,0);
+  const extras = [];
+  if(aberta) extras.push(`<span>Grade aberta (sem numeração): <b style="color:var(--txt-s)">${f(aberta)}</b> pares</span>`);
+  if(semnum) extras.push(`<span>Grade fechada sem mapeamento: <b style="color:var(--txt-s)">${f(semnum)}</b> pares</span>`);
+  c.innerHTML = `<div class="grades-grid">${cards}</div>` +
+    (extras.length?`<div class="grades-extra">${extras.join('')}</div>`:'');
+}
 
 function renderCharts(t){
   t = t || {};
@@ -302,10 +366,10 @@ function combBrd(livre,fisico){
 }
 
 // ── Navegação ──────────────────────────────────────────────
-function navModelo(nm){ modeloAtivo=nm; nivel=2; renderDrill(); }
-function navLinha(refKey, linhaDescr){ refAtiva=refKey; linhaAtiva=linhaDescr; nivel=3; renderDrill(); }
+function navModelo(nm){ modeloAtivo=nm; nivel=2; corAberta=null; renderDrill(); }
+function navLinha(refKey, linhaDescr){ refAtiva=refKey; linhaAtiva=linhaDescr; nivel=3; corAberta=null; renderDrill(); }
 function navBack(n){
-  nivel=n;
+  nivel=n; corAberta=null;
   if(n===1){ modeloAtivo=null; refAtiva=null; linhaAtiva=null; }
   if(n===2){ refAtiva=null; linhaAtiva=null; }
   renderDrill();
@@ -468,6 +532,31 @@ function renderLinhas(c){
 }
 
 // ── Nível 3 — Combinações (lista estilo analytics hub) ────
+function toggleCor(comb){
+  corAberta = corAberta===comb ? null : comb;
+  renderDrill();
+}
+
+// Detalhamento das grades de UMA cor (numeração por par)
+function renderCorGrades(grades){
+  const blocos = grades.map(g=>{
+    if(!g.livre) return '';  // visão de disponível — ignora grades sem livre
+    if(g.tipo==='aberta'){
+      return `<div class="cor-grade-row"><div class="cor-grade-head">Grade aberta <span class="cg-info">— sem numeração definida · ${f(g.livre)} pares livres</span></div></div>`;
+    }
+    if(g.tipo==='sem_numeracao'){
+      return `<div class="cor-grade-row"><div class="cor-grade-head"><span class="cg-code">${g.code}</span> <span class="cg-info">— numeração não mapeada · ${f(g.livre)} pares livres</span></div></div>`;
+    }
+    const curve = g.sizes.map((s,i)=>`<div class="grade-sz"><span class="grade-sz-n">${s}</span><span class="grade-sz-q">${f(g.per_size[s]||0)}</span></div>`).join('');
+    return `<div class="cor-grade-row">
+      <div class="cor-grade-head">Grade <span class="cg-code">${g.code}</span>
+        <span class="cg-info">— ${f(g.completas)} grades completas · ${f(g.livre)} pares livres${g.avulso?` · ${f(g.avulso)} avulsos`:''}</span></div>
+      <div class="grade-curve">${curve}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+  return `<div class="cor-grades">${blocos||'<span style="font-size:10px;color:var(--txt-m)">Sem detalhe de grade.</span>'}</div>`;
+}
+
 function renderCombinacoes(c){
   const d = DATA[refAtiva];
   if(!d){ navBack(1); return; }
@@ -485,15 +574,22 @@ function renderCombinacoes(c){
     const brd=combBrd(cv.livre,cv.fisico);
     const nome=combDisplayName(comb);
     const pCor=cv.livre===0?'var(--red)':cv.livre<50?'var(--amber)':'var(--verde)';
-    return `<div class="dr-row ${brd}">
+    const grades = cv.grades || [];
+    const temGrade = grades.some(g=>g.tipo==='fechada');
+    const aberta = corAberta===comb;
+    const resumoGrade = grades.filter(g=>g.tipo==='fechada' && g.completas>0)
+      .map(g=>`<span style="color:var(--coral);font-weight:700">${g.code}</span>×${f(g.completas)}`).join(' · ')
+      || '<span style="color:var(--txt-m)">grade aberta</span>';
+    return `<div class="dr-row ${brd}${temGrade?' cor-clickable':''}${aberta?' aberta-cor':''}"${temGrade?` onclick="toggleCor('${comb.replace(/'/g,"\\'")}')"`:''}>
       <div class="dr-left">
-        <div class="dr-name">${nome}</div>
+        <div class="dr-name">${temGrade?'<span class="dr-arrow-cor">▸</span> ':''}${nome}</div>
+        <div class="dr-sub">${resumoGrade}</div>
       </div>
       <div class="dr-right">
         <span class="dr-livre" style="color:${pCor}">${f(cv.livre)}</span>
         ${cv.reservas?`<span style="font-size:10px;color:var(--amber)">res: ${f(cv.reservas)}</span>`:''}
       </div>
-    </div>`;
+    </div>` + (aberta ? renderCorGrades(grades) : '');
   }).join('');
 
   const tipo=tipoDescr(linhaAtiva||'');

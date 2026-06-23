@@ -26,6 +26,45 @@ META_SEMANAL = 30000
 LOCAIS_ESTOQUE = {'156','157','158','159','160','234','30','VI'}
 GRUPOS_OK = ['MERCADO INTERNO','ISENTO','ECOMMERCE','E-COMMERCE','EXPORTA','MOULD']
 
+# Mapeamento de grades de pronta entrega → numeração e proporção de pares.
+# Chave = LocEst (coluna "GradeDoLocalDeEstoque"/local de estoque do ESQT).
+# Origem: planilha "GRADES PRONTA ENTREGA.xlsx" (abas EVA + TR). Para atualizar
+# (novas grades/numerações), reenvie a planilha e este dicionário é regerado.
+# 'sizes' são os rótulos de numeração (alguns são faixas, ex.: '33/34');
+# 'pattern' é a quantidade de pares por numeração dentro de UMA grade completa.
+GRADES_NUMERACAO = {
+    '101': {'code': 'G', 'sizes': ['33/34', '35/36', '37/38', '39/40'], 'pattern': [2, 4, 4, 2]},
+    '102': {'code': 'J', 'sizes': ['37/38', '39/40', '41/42', '43/44'], 'pattern': [2, 4, 4, 2]},
+    '103': {'code': 'R', 'sizes': ['34', '35', '36', '37', '38', '39'], 'pattern': [1, 2, 3, 3, 2, 1]},
+    '104': {'code': 'S', 'sizes': ['33/34', '35', '36', '37', '38', '39/40'], 'pattern': [1, 2, 3, 3, 2, 1]},
+    '107': {'code': 'I', 'sizes': ['33/34', '35/36', '37/38', '39/40'], 'pattern': [2, 5, 4, 1]},
+    '118': {'code': 'XE', 'sizes': ['38', '39', '40', '41', '42', '43'], 'pattern': [1, 2, 3, 3, 2, 1]},
+    '134': {'code': 'XU', 'sizes': ['37', '38', '39', '40', '41', '42', '43'], 'pattern': [1, 1, 2, 3, 2, 2, 1]},
+    '135': {'code': 'XV', 'sizes': ['35/36', '37/38'], 'pattern': [3, 3]},
+    '137': {'code': 'XX', 'sizes': ['35', '36', '37', '38'], 'pattern': [1, 2, 2, 1]},
+    '138': {'code': 'XZ', 'sizes': ['39/40', '41/42'], 'pattern': [3, 3]},
+    '148': {'code': 'WR', 'sizes': ['35/36', '37/38', '39/40'], 'pattern': [2, 2, 2]},
+    '149': {'code': 'WS', 'sizes': ['34', '35', '36', '37', '38', '39', '40'], 'pattern': [1, 2, 3, 2, 2, 1, 1]},
+    '150': {'code': 'WT', 'sizes': ['39', '40', '41', '42'], 'pattern': [1, 2, 2, 1]},
+    '151': {'code': 'WU', 'sizes': ['39', '40', '41', '42'], 'pattern': [1, 2, 2, 1]},
+    '152': {'code': 'WV', 'sizes': ['35', '36', '37', '38'], 'pattern': [1, 2, 2, 1]},
+    '153': {'code': 'F', 'sizes': ['25/26', '27/28', '29/30', '31/32'], 'pattern': [2, 4, 4, 2]},
+    '154': {'code': 'WW', 'sizes': ['37', '38', '39', '40', '41', '42', '43', '44'], 'pattern': [1, 1, 2, 2, 2, 2, 1, 1]},
+    '156': {'code': 'WY', 'sizes': ['40', '41', '42', '43'], 'pattern': [1, 2, 2, 1]},
+    '157': {'code': 'WZ', 'sizes': ['38', '39', '40', '41', '42', '43', '44'], 'pattern': [1, 2, 2, 3, 2, 1, 1]},
+    '158': {'code': 'FA', 'sizes': ['21/22', '23/24', '25/26', '27/28', '29/30', '31/32'], 'pattern': [2, 2, 2, 2, 2, 2]},
+    '159': {'code': 'FB', 'sizes': ['21/22', '23/24', '25/26', '27/28', '29/30', '31/32'], 'pattern': [1, 1, 2, 2, 3, 3]},
+    '192': {'code': 'BO2', 'sizes': ['35', '36', '37', '38'], 'pattern': [1, 2, 2, 1]},
+    '302': {'code': 'B35X', 'sizes': ['35'], 'pattern': [6]},
+    '303': {'code': 'B36X', 'sizes': ['36'], 'pattern': [6]},
+    '304': {'code': 'B37X', 'sizes': ['37'], 'pattern': [6]},
+    '305': {'code': 'B38X', 'sizes': ['38'], 'pattern': [6]},
+    '306': {'code': 'B39/40x', 'sizes': ['39/40'], 'pattern': [6]},
+    '307': {'code': 'B35/36', 'sizes': ['35/36'], 'pattern': [6]},
+    '308': {'code': 'B37/38', 'sizes': ['37/38'], 'pattern': [6]},
+    '309': {'code': 'B39/40', 'sizes': ['39/40'], 'pattern': [6]},
+}
+
 IDX = {
     'razao':1,'ref':7,'descr':8,'forma':9,'qtd':10,
     'dt_ent':11,'dt_fat':12,'pedido':13,'anomes':18,
@@ -792,9 +831,12 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
                     except: return ''
                 local = _g(1)
                 if local.endswith('.0'): local = local[:-2]
+                locest = _g(13)
+                if locest.endswith('.0'): locest = locest[:-2]
                 rows_norm.append((local, _g(2), _g(3), _g(5),
                                   parse_n(_g(8)),  parse_n(_g(9)),
-                                  parse_n(_g(10)), parse_n(_g(11)), parse_n(_g(12))))
+                                  parse_n(_g(10)), parse_n(_g(11)), parse_n(_g(12)),
+                                  locest, _g(15)))
     else:
         try: import xlrd
         except ImportError:
@@ -805,36 +847,86 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
             def ge(c, _r=r): return str(ws.cell_value(_r, c)).strip()
             local = ge(1)
             if local.endswith('.0'): local = local[:-2]
+            locest = ge(13) if ws.ncols > 13 else ''
+            if locest.endswith('.0'): locest = locest[:-2]
+            gradecode = ge(15) if ws.ncols > 15 else ''
             rows_norm.append((local, ge(2), ge(3), ge(5),
                               parse_n(ge(8)),  parse_n(ge(9)),
-                              parse_n(ge(10)), parse_n(ge(11)), parse_n(ge(12))))
+                              parse_n(ge(10)), parse_n(ge(11)), parse_n(ge(12)),
+                              locest, gradecode))
+
+    # Grade fechada → numeração: indexada por código (1:1 com LocEst no mapa).
+    GRADE_BY_CODE = {v['code']: {'locest': k, **v} for k, v in GRADES_NUMERACAO.items()}
+    ABERTA = '__ABERTA__'  # chave interna para estoque sem grade fechada
+
+    def grade_breakdown(code, livre):
+        """Quebra os pares livres de uma grade fechada mapeada em
+        grades completas + avulsos + pares por numeração (base: livre)."""
+        info = GRADE_BY_CODE.get(code)
+        if not info:
+            return None
+        tot = sum(info['pattern']) or 1
+        livre_i = int(round(livre))
+        completas = livre_i // tot
+        avulso = livre_i - completas * tot
+        return {'code': code, 'tot': tot, 'completas': completas, 'avulso': avulso,
+                'sizes': info['sizes'], 'pattern': info['pattern'],
+                'per_size': {s: completas * p for s, p in zip(info['sizes'], info['pattern'])}}
 
     estoque = defaultdict(lambda: {
         'fisico':0,'reservas':0,'livre':0,'vlr_fisico':0.0,'vlr_livre':0.0,'locais':set(),
+        'grades': defaultdict(lambda: {'livre':0,'fisico':0}),   # ref -> code/ABERTA -> {}
         'linhas': defaultdict(lambda: {
             'fisico':0,'reservas':0,'livre':0,'locais':set(),
-            'combinacoes': defaultdict(lambda: {'fisico':0,'reservas':0,'livre':0})
+            'combinacoes': defaultdict(lambda: {
+                'fisico':0,'reservas':0,'livre':0,
+                'grades': defaultdict(lambda: {'livre':0,'fisico':0})
+            })
         })
     })
+    grade_glob = defaultdict(lambda: {'livre':0,'fisico':0})   # code/ABERTA -> {} (global)
 
-    for local, ref, descr, comb, fisico, reservas, livre, vlr_f, vlr_l in rows_norm:
+    for local, ref, descr, comb, fisico, reservas, livre, vlr_f, vlr_l, locest, gradecode in rows_norm:
         if local not in LOCAIS_ESTOQUE: continue
+        # Código da grade: usa o mapa por LocEst (mais confiável que o texto).
+        gmap = GRADES_NUMERACAO.get(locest)
+        gkey = (gmap['code'] if gmap else gradecode.strip()) or ABERTA
         e = estoque[ref]
         e['fisico'] += fisico; e['reservas'] += reservas; e['livre'] += livre
         e['vlr_fisico'] += vlr_f; e['vlr_livre'] += vlr_l; e['locais'].add(local)
+        e['grades'][gkey]['livre'] += livre; e['grades'][gkey]['fisico'] += fisico
+        grade_glob[gkey]['livre'] += livre; grade_glob[gkey]['fisico'] += fisico
         if descr:
             ln = e['linhas'][descr]
             ln['fisico'] += fisico; ln['reservas'] += reservas; ln['livre'] += livre
             ln['locais'].add(local)
             if comb:
-                ln['combinacoes'][comb]['fisico'] += fisico
-                ln['combinacoes'][comb]['reservas'] += reservas
-                ln['combinacoes'][comb]['livre'] += livre
+                cv = ln['combinacoes'][comb]
+                cv['fisico'] += fisico; cv['reservas'] += reservas; cv['livre'] += livre
+                cv['grades'][gkey]['livre'] += livre; cv['grades'][gkey]['fisico'] += fisico
 
     total_f = sum(d['fisico'] for d in estoque.values())
     total_r = sum(d['reservas'] for d in estoque.values())
     total_l = sum(d['livre'] for d in estoque.values())
     print(f"    Físico: {total_f:,.0f} | Reservas: {total_r:,.0f} | Livre: {total_l:,.0f}")
+
+    def grades_list(grades_dict):
+        """Serializa o dict de grades de uma combinação/ref para o JSON."""
+        out = []
+        for gkey, gv in sorted(grades_dict.items(), key=lambda x: -x[1]['livre']):
+            livre = int(gv['livre']); fis = int(gv['fisico'])
+            if gkey == ABERTA:
+                out.append({'tipo':'aberta','livre':livre,'fisico':fis})
+            else:
+                gb = grade_breakdown(gkey, gv['livre'])
+                if gb:
+                    out.append({'tipo':'fechada','code':gkey,'livre':livre,'fisico':fis,
+                                'completas':gb['completas'],'avulso':gb['avulso'],
+                                'tot':gb['tot'],'sizes':gb['sizes'],'pattern':gb['pattern'],
+                                'per_size':gb['per_size']})
+                else:
+                    out.append({'tipo':'sem_numeracao','code':gkey,'livre':livre,'fisico':fis})
+        return out
 
     estoque_out = {}
     for ref, d in sorted(estoque.items(), key=lambda x: -x[1]['livre']):
@@ -847,11 +939,14 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
             'fisico':int(d['fisico']),'reservas':int(d['reservas']),'livre':int(d['livre']),
             'vlr_fisico':round(d['vlr_fisico'],2),'vlr_livre':round(d['vlr_livre'],2),
             'locais': all_locais, 'qtd_combinacoes': total_combs,
+            'grades': grades_list(d['grades']),
             'linhas': {
                 descr: {
                     'fisico':int(ln['fisico']),'reservas':int(ln['reservas']),'livre':int(ln['livre']),
                     'locais':sorted(list(ln['locais'])),'qtd_combinacoes':len(ln['combinacoes']),
-                    'combinacoes':{k:{kk:int(vv) for kk,vv in v.items()}
+                    'combinacoes':{
+                        k: {'fisico':int(v['fisico']),'reservas':int(v['reservas']),'livre':int(v['livre']),
+                            'grades': grades_list(v['grades'])}
                         for k,v in sorted(ln['combinacoes'].items(), key=lambda x:-x[1]['livre'])}
                 }
                 for descr, ln in linhas_sorted
@@ -862,15 +957,18 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
         'vlr_fisico':round(sum(d['vlr_fisico'] for d in estoque.values()),2),
         'vlr_livre':round(sum(d['vlr_livre'] for d in estoque.values()),2)
     }
+    # Resumo global de grades completas disponíveis (base: livre)
+    grades_global = grades_list(grade_glob)
     # Gravar dados_estoque.json
     with open(os.path.join(output_dir, 'dados_estoque.json'), 'w', encoding='utf-8') as f_:
         json.dump({
             'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
             'totais': totais_est,
+            'grades_global': grades_global,
             'refs': estoque_out,
         }, f_, ensure_ascii=False, default=str)
     print(f"    ✓ dados_estoque.json gerado ({len(estoque_out)} refs)")
-    return {'refs': estoque_out, 'totais': totais_est}
+    return {'refs': estoque_out, 'totais': totais_est, 'grades_global': grades_global}
 
 # ─── FATURAMENTO ─────────────────────────────────────────────────────
 ANOMESFATURA_COL = 19  # coluna anomesfatura no CSV 3YS (yyyymm da emissão NF)
