@@ -506,6 +506,170 @@ def admin_diag():
         return jsonify({'erro': str(ex)}), 500
 
 
+# ─────────────────────────────────────────────
+#  INTELIGÊNCIA — chat com IA sobre os dados do portal (Fase A)
+# ─────────────────────────────────────────────
+# Modelo e preços (Sonnet 4.6: US$ 3 / 1M entrada, US$ 15 / 1M saída).
+IA_MODELO        = 'claude-sonnet-4-6'
+IA_PRECO_IN_MTOK = 3.0
+IA_PRECO_OUT_MTOK = 15.0
+
+# Nome do contexto → arquivo JSON em DATA_DIR. 'estoque' é tratado à parte
+# (resumido), pois o JSON completo tem ~240k chars.
+IA_CONTEXTO_ARQUIVOS = {
+    'programacao':  'dados_programacao.json',
+    'ocupacao':     'dados_ocupacao_semanal.json',
+    'vendas':       'dados_vendas.json',
+    'vendas_eva':   'dados_vendas_eva.json',
+    'faturamento':  'dados_faturamento.json',
+    'carteira':     'dados_carteira.json',
+    'refs':         'dados_refs_tabela.json',
+    'capacidade':   'dados_capacidade.json',
+    'portal':       'dados_portal.json',
+}
+
+IA_SYSTEM_BASE = """Você é o assistente de inteligência do Boaonda Intelligence, \
+sistema de gestão da Boaonda Calçados (Mould Indústria de Matrizes Ltda, Sapiranga/RS).
+
+Você tem acesso aos dados reais do portal abaixo e deve responder perguntas do \
+gestor de forma direta, analítica e em português brasileiro.
+
+REGRAS:
+- Responda sempre baseado nos dados fornecidos, nunca invente números.
+- Seja direto: comece com a resposta, depois explique o raciocínio.
+- Use linguagem de negócios (pares, semana, meta, ocupação, gargalo).
+- Quando identificar um problema ou oportunidade, sinalize claramente.
+- Formato: texto corrido, sem markdown excessivo, máximo 4 parágrafos.
+- Se os dados não forem suficientes para responder, diga claramente.
+
+CONTEXTO DO NEGÓCIO:
+- Meta semanal de produção: 30.000 pares.
+- Canais de venda: MI (Mercado Interno), ME (Mercado Externo), EC (E-commerce).
+- Espécies MI: Programação (cod 1), Pronta Entrega (cod 22), Venda Mista (cod 31).
+- Teto do atelier: 29.000 pares/semana convencional + 6.000 montado.
+- Gargalo = indicador com maior % de ocupação entre todos os tetos."""
+
+
+def _ia_carregar_json(nome):
+    try:
+        with open(DATA_DIR / nome, encoding='utf-8') as f_:
+            return json.load(f_)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def resumir_estoque():
+    """Versão compacta do estoque para o contexto da IA: totais + top 15 refs
+    por estoque livre + resumo de grades completas. Evita enviar os ~240k chars
+    do dados_estoque.json em toda pergunta."""
+    d = _ia_carregar_json('dados_estoque.json')
+    if not d:
+        return None
+    refs = d.get('refs', {})
+    top = sorted(refs.items(), key=lambda kv: -(kv[1].get('livre', 0)))[:15]
+    return {
+        'gerado_em': d.get('gerado_em'),
+        'totais': d.get('totais', {}),
+        'top15_refs_por_livre': [
+            {'ref': k, 'livre': v.get('livre', 0), 'fisico': v.get('fisico', 0),
+             'reservas': v.get('reservas', 0)}
+            for k, v in top
+        ],
+        'grades_completas_disponiveis': d.get('grades_global', []),
+    }
+
+
+def montar_contexto(contextos_list):
+    """Lê os JSONs solicitados de DATA_DIR e devolve (texto_para_prompt,
+    lista_de_contextos_efetivamente_usados)."""
+    if not contextos_list:
+        contextos_list = ['portal']
+    blocos, usados = [], []
+    for ctx in contextos_list:
+        if ctx == 'estoque':
+            dados = resumir_estoque()
+        else:
+            arq = IA_CONTEXTO_ARQUIVOS.get(ctx)
+            dados = _ia_carregar_json(arq) if arq else None
+        if dados is None:
+            continue
+        blocos.append(f"### {ctx.upper()}\n" +
+                      json.dumps(dados, ensure_ascii=False, separators=(',', ':')))
+        usados.append(ctx)
+    if not usados:  # nada carregou — cai para o portal (resumo da home)
+        dados = _ia_carregar_json('dados_portal.json')
+        if dados is not None:
+            blocos.append("### PORTAL\n" + json.dumps(dados, ensure_ascii=False))
+            usados.append('portal')
+    return "\n\n".join(blocos), usados
+
+
+@app.route('/api/inteligencia', methods=['POST'])
+def api_inteligencia():
+    payload   = request.get_json(silent=True) or {}
+    pergunta  = (payload.get('pergunta') or '').strip()
+    contextos = payload.get('contextos') or []
+    historico = payload.get('historico') or []   # [{role, content}, ...]
+
+    if not pergunta:
+        return jsonify({'erro': 'Pergunta vazia.'}), 400
+    if not os.environ.get('ANTHROPIC_API_KEY'):
+        return jsonify({'erro': 'ANTHROPIC_API_KEY não está configurada no servidor. '
+                                'Configure a variável no Railway para habilitar a Inteligência.'}), 503
+
+    try:
+        import anthropic
+    except ImportError:
+        return jsonify({'erro': "Biblioteca 'anthropic' não instalada no servidor."}), 500
+
+    contexto_txt, contextos_usados = montar_contexto(contextos)
+    system = IA_SYSTEM_BASE + "\n\nDADOS DO PORTAL:\n" + (contexto_txt or '(sem dados carregados)')
+
+    # Histórico: últimas 6 trocas (3 perguntas + 3 respostas) já vem limitado do
+    # frontend; reforçamos aqui. Só pares user/assistant de texto.
+    mensagens = []
+    for m in historico[-6:]:
+        role = m.get('role')
+        cont = (m.get('content') or '').strip()
+        if role in ('user', 'assistant') and cont:
+            mensagens.append({'role': role, 'content': cont})
+    mensagens.append({'role': 'user', 'content': pergunta})
+
+    try:
+        client = anthropic.Anthropic()
+        resp = client.messages.create(
+            model=IA_MODELO,
+            max_tokens=1500,
+            thinking={'type': 'disabled'},   # Q&A direto — sem raciocínio estendido
+            system=system,
+            messages=mensagens,
+        )
+    except anthropic.AuthenticationError:
+        return jsonify({'erro': 'Chave da API Anthropic inválida.'}), 502
+    except anthropic.APIStatusError as ex:
+        traceback.print_exc()
+        return jsonify({'erro': f'Erro da API Anthropic ({ex.status_code}). Tente novamente.'}), 502
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'erro': f'Falha ao consultar a IA: {ex}'}), 500
+
+    if resp.stop_reason == 'refusal':
+        return jsonify({'erro': 'A IA recusou responder a esta solicitação.'}), 200
+
+    texto = next((b.text for b in resp.content if b.type == 'text'), '').strip()
+    u = resp.usage
+    tin  = u.input_tokens + getattr(u, 'cache_read_input_tokens', 0) + getattr(u, 'cache_creation_input_tokens', 0)
+    tout = u.output_tokens
+    custo = round(tin * IA_PRECO_IN_MTOK / 1e6 + tout * IA_PRECO_OUT_MTOK / 1e6, 4)
+
+    return jsonify({
+        'resposta': texto,
+        'contextos_usados': contextos_usados,
+        'tokens_usados': tin + tout,
+        'custo_estimado_usd': custo,
+    })
+
+
 @app.route('/version')
 def version():
     import subprocess

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — IA Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --border:#262b3a;--line2:#333a4d;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh;display:flex;flex-direction:column}
+
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.breadcrumb{font-size:10px;color:var(--txt-m);margin-bottom:6px;letter-spacing:.04em}
+.h-badge{display:inline-block;background:rgba(73,148,199,.12);border:1px solid rgba(73,148,199,.3);color:var(--azul);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:1.4rem;font-weight:800;color:var(--txt)}
+.h-sub{font-size:11px;color:var(--txt-s);margin-top:4px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.h-meta strong{color:var(--txt-s)}
+
+.main{flex:1;display:flex;flex-direction:column;max-width:980px;width:100%;margin:0 auto;padding:18px 24px 0;min-height:0}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.chip{background:var(--card2);border:1px solid var(--line2);color:var(--txt-s);border-radius:20px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s;font-family:'Montserrat',sans-serif}
+.chip:hover{border-color:var(--azul);color:var(--azul)}
+
+/* Conversa */
+.chat{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding:4px 2px 16px}
+.msg{max-width:80%;display:flex;flex-direction:column;gap:6px}
+.msg.user{align-self:flex-end;align-items:flex-end}
+.msg.ia{align-self:flex-start;align-items:flex-start}
+.bubble{border-radius:14px;padding:13px 16px;font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.msg.user .bubble{background:rgba(237,104,66,.14);border:1px solid rgba(237,104,66,.28);color:var(--txt);border-bottom-right-radius:4px}
+.msg.ia .bubble{background:var(--card);border:1px solid var(--border);color:var(--txt-s);border-bottom-left-radius:4px}
+.msg-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:9px;color:var(--txt-m)}
+.ctx-badge{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:9px;color:var(--txt-s)}
+.ctx-badge b{color:var(--azul);font-weight:700}
+.custo{color:var(--txt-m)}
+
+/* Loading */
+.loading-dots{display:inline-flex;gap:4px;align-items:center}
+.loading-dots span{width:6px;height:6px;border-radius:50%;background:var(--azul);animation:bd 1.2s ease-in-out infinite}
+.loading-dots span:nth-child(2){animation-delay:.2s}
+.loading-dots span:nth-child(3){animation-delay:.4s}
+@keyframes bd{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--txt-m);text-align:center;padding:30px}
+.empty-icon{font-size:40px}
+.empty-msg{font-size:14px;font-weight:700;color:var(--txt-s)}
+.empty-sub{font-size:11px;max-width:380px;line-height:1.8}
+
+/* Input */
+.composer{position:sticky;bottom:0;background:var(--bg);padding:12px 0 18px;border-top:1px solid var(--border)}
+.composer-row{display:flex;gap:10px;align-items:flex-end}
+.composer textarea{flex:1;resize:none;background:var(--card2);border:1px solid var(--line2);border-radius:10px;padding:11px 14px;color:var(--txt);font-size:13px;font-family:'Montserrat',sans-serif;outline:none;max-height:120px;line-height:1.5}
+.composer textarea:focus{border-color:var(--azul)}
+.send-btn{background:var(--azul);color:#fff;border:none;border-radius:10px;padding:0 20px;height:44px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;transition:.15s;white-space:nowrap}
+.send-btn:hover:not(:disabled){background:#3f84b5}
+.send-btn:disabled{opacity:.5;cursor:not-allowed}
+.composer-hint{font-size:9px;color:var(--txt-m);margin-top:6px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="breadcrumb">Boaonda Intelligence › IA Intelligence</div>
+    <div class="h-badge">🤖 IA Intelligence</div>
+    <div class="h-title">Inteligência</div>
+    <div class="h-sub">Faça perguntas em linguagem natural sobre os dados do portal — programação, ocupação, vendas, estoque, faturamento e carteira</div>
+  </div>
+  <div class="h-meta">Modelo: <strong>Claude Sonnet 4.6</strong><br>Base: <strong id="hdr-data">–</strong></div>
+</div>
+
+<div class="main">
+  <div class="chips" id="chips"></div>
+  <div class="chat" id="chat">
+    <div class="empty" id="empty">
+      <div class="empty-icon">💬</div>
+      <div class="empty-msg">Pergunte qualquer coisa sobre os dados do portal</div>
+      <div class="empty-sub">A IA seleciona automaticamente os dados relevantes para cada pergunta (programação, ocupação, vendas, estoque, faturamento, carteira) e responde com base nos números reais. Use um dos atalhos acima ou escreva sua própria pergunta.</div>
+    </div>
+  </div>
+
+  <div class="composer">
+    <div class="composer-row">
+      <textarea id="inp" rows="1" placeholder="Faça uma pergunta..." oninput="autoGrow(this)" onkeydown="onKey(event)"></textarea>
+      <button class="send-btn" id="send" onclick="enviar()">Enviar</button>
+    </div>
+    <div class="composer-hint">As respostas são geradas por IA a partir dos dados do portal · o histórico não é salvo ao recarregar a página</div>
+  </div>
+</div>
+
+<script>
+const CHIPS = [
+  'Qual semana tem mais folga em julho?',
+  'Onde está o gargalo da produção?',
+  'Quais refs estão com estoque crítico?',
+  'Como está o faturamento previsto do mês?',
+  'Quais pedidos em carteira estão em risco?',
+  'Qual canal está crescendo mais?',
+];
+
+// Mapa palavra-chave → contexto (JSON). Acento/caixa ignorados.
+const REGRAS = [
+  {kw:['semana','producao','programacao','meta','pcp','montad','convencional'], ctx:['programacao']},
+  {kw:['ocupacao','eficiencia','gargalo'],                                       ctx:['ocupacao']},
+  {kw:['capacidade','atelier','pool','injetad','palmilha','sola','pintura'],     ctx:['ocupacao','capacidade']},
+  {kw:['estoque','disponivel','livre','grade','numeracao','par '],              ctx:['estoque']},
+  {kw:['venda','canal',' mi',' me','ecom','e-commerce','mercado'],              ctx:['vendas']},
+  {kw:['eva','composto'],                                                        ctx:['vendas_eva']},
+  {kw:['faturamento','receita','previsto','realizado','cfop','r$'],             ctx:['faturamento']},
+  {kw:['carteira','pedido aberto','etapa','atraso','prazo'],                    ctx:['carteira']},
+  {kw:['referencia','produto'],                                                 ctx:['refs']},
+];
+
+function normaliza(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+}
+function detectarContextos(pergunta){
+  const p = normaliza(pergunta);
+  const set = new Set();
+  REGRAS.forEach(r=>{ if(r.kw.some(k=>p.includes(normaliza(k)))) r.ctx.forEach(c=>set.add(c)); });
+  return set.size ? [...set] : ['portal'];  // fallback: resumo da home
+}
+
+const CTX_LABEL = {programacao:'Programação',ocupacao:'Ocupação',capacidade:'Capacidade',
+  estoque:'Estoque',vendas:'Vendas',vendas_eva:'Vendas EVA',faturamento:'Faturamento',
+  carteira:'Carteira',refs:'Referências',portal:'Resumo geral'};
+
+let historico = [];   // [{role:'user'|'assistant', content}]
+let enviando = false;
+
+const chatEl  = document.getElementById('chat');
+const emptyEl = document.getElementById('empty');
+const inpEl   = document.getElementById('inp');
+const sendEl  = document.getElementById('send');
+
+// Chips
+const chipsEl = document.getElementById('chips');
+CHIPS.forEach(c=>{
+  const b=document.createElement('button');
+  b.className='chip'; b.textContent=c;
+  b.onclick=()=>{ inpEl.value=c; autoGrow(inpEl); enviar(); };
+  chipsEl.appendChild(b);
+});
+
+// Data de atualização (do portal)
+fetch('dados_portal.json?_='+Date.now()).then(r=>r.ok?r.json():null).then(d=>{
+  if(d&&d.gerado_em) document.getElementById('hdr-data').textContent=d.gerado_em;
+}).catch(()=>{});
+
+function autoGrow(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+function onKey(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); enviar(); } }
+
+function escapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addUser(texto){
+  emptyEl.style.display='none';
+  const m=document.createElement('div'); m.className='msg user';
+  m.innerHTML=`<div class="bubble">${escapeHtml(texto)}</div>`;
+  chatEl.appendChild(m); scrollEnd();
+}
+
+function addLoading(){
+  const m=document.createElement('div'); m.className='msg ia'; m.id='loading';
+  m.innerHTML=`<div class="bubble"><span class="loading-dots"><span></span><span></span><span></span></span>
+    <span style="font-size:11px;color:var(--txt-m);margin-left:8px">Analisando dados...</span></div>`;
+  chatEl.appendChild(m); scrollEnd();
+}
+function removeLoading(){ const l=document.getElementById('loading'); if(l) l.remove(); }
+
+function addIA(texto, contextos, custo){
+  const m=document.createElement('div'); m.className='msg ia';
+  const badges=(contextos||[]).map(c=>CTX_LABEL[c]||c).join(' · ');
+  const custoTxt = (custo!=null) ? '~US$ '+Number(custo).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
+  m.innerHTML=`<div class="bubble">${escapeHtml(texto)}</div>
+    <div class="msg-foot">
+      ${badges?`<span class="ctx-badge">Contextos: <b>${badges}</b></span>`:''}
+      ${custoTxt?`<span class="custo">${custoTxt}</span>`:''}
+    </div>`;
+  chatEl.appendChild(m); scrollEnd();
+}
+
+function addErro(texto){
+  const m=document.createElement('div'); m.className='msg ia';
+  m.innerHTML=`<div class="bubble" style="border-color:rgba(239,68,68,.4);color:#f3a9a0">⚠️ ${escapeHtml(texto)}</div>`;
+  chatEl.appendChild(m); scrollEnd();
+}
+
+function scrollEnd(){ chatEl.scrollTop=chatEl.scrollHeight; }
+
+async function enviar(){
+  if(enviando) return;
+  const pergunta=(inpEl.value||'').trim();
+  if(!pergunta) return;
+
+  enviando=true; sendEl.disabled=true;
+  inpEl.value=''; autoGrow(inpEl);
+  addUser(pergunta);
+
+  const contextos=detectarContextos(pergunta);
+  addLoading();
+
+  try{
+    const r=await fetch('/api/inteligencia',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pergunta, contextos, historico: historico.slice(-6)})
+    });
+    const data=await r.json();
+    removeLoading();
+    if(!r.ok || data.erro){
+      addErro(data.erro || ('Erro '+r.status));
+    } else {
+      addIA(data.resposta, data.contextos_usados, data.custo_estimado_usd);
+      historico.push({role:'user',content:pergunta});
+      historico.push({role:'assistant',content:data.resposta});
+      if(historico.length>6) historico=historico.slice(-6);
+    }
+  }catch(e){
+    removeLoading();
+    addErro('Falha de comunicação com o servidor: '+e.message);
+  }finally{
+    enviando=false; sendEl.disabled=false; inpEl.focus();
+  }
+}
+</script>
+</body>
+</html>

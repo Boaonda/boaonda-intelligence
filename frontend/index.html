@@ -408,11 +408,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       </div>
     </div>
 
-    <!-- NÓ IA (base — conecta tudo) -->
-    <div class="nó-ia" style="left:50%;top:728px;transform:translateX(-50%)" onclick="abrirModulo('equilibrio')">
+    <!-- NÓ IA (base — conecta tudo) → abre a aba de Inteligência (chat com IA) -->
+    <div class="nó-ia" style="left:50%;top:728px;transform:translateX(-50%)" onclick="abrirModulo('inteligencia')">
       <div class="ia-main">IA</div>
       <div class="ia-sub">Intelligence</div>
-      <div class="ia-label">Motor de equilíbrio</div>
+      <div class="ia-label">Pergunte aos dados</div>
       <div class="ia-dots">
         <div class="ia-dot"></div>
         <div class="ia-dot"></div>
@@ -503,6 +503,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 <div class="page" id="page-faturamento">
   <iframe class="mod-frame" id="frame-faturamento" src="" title="Faturamento"></iframe>
 </div>
+<div class="page" id="page-inteligencia">
+  <iframe class="mod-frame" id="frame-inteligencia" src="" title="IA Intelligence"></iframe>
+</div>
 
 <div class="page" id="page-equilibrio">
   <div class="mod-header">
@@ -525,6 +528,7 @@ const MODS={
   carteira:{file:'boaonda_carteira.html',label:'Pedido em Carteira'},
   capacidade:{file:'boaonda_capacidade_fabril.html',label:'Capacidade Fabril'},
   faturamento:{file:'boaonda_faturamento.html',label:'Faturamento'},
+  inteligencia:{file:'boaonda_inteligencia.html',label:'IA Intelligence'},
   equilibrio:{file:null,label:'Equilíbrio'},
 };
 function f(n){return Math.round(n||0).toLocaleString('pt-BR')}

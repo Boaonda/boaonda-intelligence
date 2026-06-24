@@ -3,3 +3,4 @@ xlrd
 openpyxl
 gunicorn
 pymysql
+anthropic
