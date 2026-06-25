@@ -129,21 +129,13 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .comb-card.comb-zero .comb-livre{color:var(--txt-m)}
 .comb-res{font-size:10px;color:var(--amber)}
 
-/* GRADES — resumo de grades completas */
-.grades-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.grade-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-top:2px solid var(--coral)}
-.grade-card-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
-.grade-code{font-size:15px;font-weight:800;color:var(--txt);letter-spacing:.02em}
-.grade-completas{font-size:1.5rem;font-weight:800;color:var(--coral);line-height:1}
-.grade-completas-lbl{font-size:9px;color:var(--txt-m);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
-.grade-livre{font-size:10px;color:var(--txt-m);margin-top:2px}
-.grade-curve{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
-.grade-sz{background:var(--card);border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:9.5px;text-align:center;min-width:34px}
-.grade-sz-n{display:block;color:var(--txt-m);font-size:8px;font-weight:700}
-.grade-sz-q{display:block;color:var(--verde);font-weight:700;font-size:10.5px}
-.grade-avulso{font-size:9px;color:var(--amber);margin-top:6px}
-.grades-extra{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:10px;color:var(--txt-m)}
-.grades-extra span{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:5px 10px}
+/* FILTRO ATIVOS/FL */
+.filtro-estoque{display:flex;gap:6px;margin-bottom:16px}
+.fbtn{background:var(--card2);border:1px solid var(--border);color:var(--txt-s);border-radius:7px;padding:6px 16px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:.12s}
+.fbtn:hover{border-color:var(--coral)}
+.fbtn.active{background:var(--coral);border-color:var(--coral);color:#fff}
+.kpi.fl{border-top-color:var(--amber)}
+.kpi-v.fl{color:var(--amber)}
 /* Detalhe de grade dentro da cor (nível 3) */
 .cor-grades{padding:6px 18px 14px 36px;background:rgba(0,0,0,.12);border-bottom:1px solid rgba(255,255,255,.04)}
 .cor-grade-row{margin-bottom:10px}
@@ -174,6 +166,12 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 </div>
 
 <div class="main">
+
+<div class="filtro-estoque" id="filtro-estoque">
+  <button class="fbtn active" id="fbtn-TODOS" onclick="setFiltro('TODOS')">Todos</button>
+  <button class="fbtn" id="fbtn-ATIVOS" onclick="setFiltro('ATIVOS')">Ativos</button>
+  <button class="fbtn" id="fbtn-FL" onclick="setFiltro('FL')">FL</button>
+</div>
 
 <div class="stitle">Resumo do estoque</div>
 <div class="kpi-grid">
@@ -210,6 +208,11 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
     <div class="kpi-s">ICARAI · CAREN · ZEN · CAPRI</div>
     <div class="badge crit">livre = 0</div>
   </div>
+  <div class="kpi fl">
+    <div class="kpi-l">Itens FL</div>
+    <div class="kpi-v fl" id="k-fl-livre">0</div>
+    <div class="kpi-s" id="k-fl-sub">Pares livres — modelos fora de linha</div>
+  </div>
 </div>
 
 <div class="crow">
@@ -223,9 +226,6 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
   </div>
 </div>
 
-<div class="stitle">Grades completas disponíveis <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--txt-m)">— pares livres por numeração</span></div>
-<div class="tcard" id="grades-container"></div>
-
 <div class="stitle">Detalhamento por modelo · linha · cor</div>
 <div class="tcard" id="drill-container"></div>
 
@@ -233,7 +233,8 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 
 <script>
 let DATA = {};
-let GRADES_GLOBAL = [];
+let DATA_ALL = {};
+let filtroAtivo = 'TODOS';   // 'TODOS' | 'ATIVOS' | 'FL'
 let chartTop = null, chartStk = null;
 let corAberta = null;   // combinação (cor) expandida no nível 3
 
@@ -273,56 +274,67 @@ function buildModelMap(){
 function statusBrd(livre,pL){ return livre===0?'brd-crit':pL<30?'brd-warn':'brd-ok'; }
 function statusPctCor(pL){ return pL<30?'var(--red)':pL<60?'var(--amber)':'var(--verde)'; }
 
+// ── Classificação Ativo / FL ───────────────────────────────
+// Um modelo é FL quando TODAS as combinações de cor (em todas as
+// linhas) estão marcadas com o prefixo [FL] ou [PL]. Modelo sem
+// nenhuma combinação mapeada é tratado como ativo (não-FL).
+function ehFl(d){
+  const combs = [];
+  Object.values(d.linhas||{}).forEach(ln=>{
+    Object.keys(ln.combinacoes||{}).forEach(k=>combs.push(k));
+  });
+  if(!combs.length) return false;
+  return combs.every(k=>k.startsWith('[FL]')||k.startsWith('[PL]'));
+}
+
+function filtrarPorAtivo(all, modo){
+  if(modo==='TODOS') return all;
+  const out = {};
+  Object.entries(all).forEach(([k,d])=>{
+    const fl = ehFl(d);
+    if((modo==='FL' && fl) || (modo==='ATIVOS' && !fl)) out[k]=d;
+  });
+  return out;
+}
+
+function recalcularTotais(){
+  const refsArr = Object.values(DATA);
+  const t = {
+    fisico: refsArr.reduce((s,d)=>s+d.fisico,0),
+    reservas: refsArr.reduce((s,d)=>s+d.reservas,0),
+    livre: refsArr.reduce((s,d)=>s+d.livre,0),
+  };
+  document.getElementById('k-livre').textContent = f(t.livre);
+  document.getElementById('k-fisico').textContent = f(t.fisico);
+  document.getElementById('k-reservas').textContent = f(t.reservas);
+  document.getElementById('k-pct-reservas').textContent = pct(t.reservas,t.fisico) + '% do físico';
+  document.getElementById('k-pct-livre').textContent = pct(t.livre,t.fisico) + '% do físico';
+  document.getElementById('k-refs').textContent = Object.keys(DATA).length;
+  renderCharts(t);
+}
+
+function setFiltro(modo){
+  filtroAtivo = modo;
+  ['TODOS','ATIVOS','FL'].forEach(m=>document.getElementById('fbtn-'+m).classList.toggle('active', m===modo));
+  DATA = filtrarPorAtivo(DATA_ALL, modo);
+  nivel=1; modeloAtivo=null; refAtiva=null; linhaAtiva=null; corAberta=null;
+  recalcularTotais();
+  renderDrill();
+}
+
 // ── Fetch ──────────────────────────────────────────────────
 fetch('dados_estoque.json?_=' + Date.now())
   .then(r => { if(!r.ok) throw new Error(); return r.json(); })
   .then(d => {
-    DATA = d.refs || {};
-    GRADES_GLOBAL = d.grades_global || [];
-    const t = d.totais || {};
-    document.getElementById('k-livre').textContent = f(t.livre);
-    document.getElementById('k-fisico').textContent = f(t.fisico);
-    document.getElementById('k-reservas').textContent = f(t.reservas);
-    document.getElementById('k-pct-reservas').textContent = pct(t.reservas,t.fisico) + '% do físico';
-    document.getElementById('k-pct-livre').textContent = pct(t.livre,t.fisico) + '% do físico';
-    document.getElementById('k-refs').textContent = Object.keys(DATA).length;
+    DATA_ALL = d.refs || {};
     document.getElementById('hdr-data').textContent = d.gerado_em || '–';
-    renderCharts(t);
-    renderGradesResumo();
-    renderDrill();
+    const flRefs = Object.values(DATA_ALL).filter(ehFl);
+    const flLivre = flRefs.reduce((s,r)=>s+r.livre,0);
+    document.getElementById('k-fl-livre').textContent = f(flLivre);
+    document.getElementById('k-fl-sub').textContent = `${flRefs.length} modelo${flRefs.length!==1?'s':''} fora de linha`;
+    setFiltro('TODOS');
   })
   .catch(() => renderDrill());
-
-// ── Resumo de grades completas disponíveis ────────────────
-function renderGradesResumo(){
-  const c = document.getElementById('grades-container');
-  if(!c) return;
-  const fechadas = GRADES_GLOBAL.filter(g => g.tipo==='fechada' && g.completas>0);
-  if(!fechadas.length){
-    c.innerHTML = '<div style="padding:16px;color:var(--txt-m);font-size:12px">Sem dados de grade neste arquivo. Reenvie o ESQT com as colunas de grade para habilitar esta visão.</div>';
-    return;
-  }
-  const cards = fechadas.map(g => {
-    const curve = g.sizes.map((s,i)=>`<div class="grade-sz"><span class="grade-sz-n">${s}</span><span class="grade-sz-q">${f(g.completas*g.pattern[i])}</span></div>`).join('');
-    return `<div class="grade-card">
-      <div class="grade-card-head">
-        <span class="grade-code">Grade ${g.code}</span>
-        <span style="font-size:9px;color:var(--txt-m)">${g.tot} pares/grade</span>
-      </div>
-      <div class="grade-completas">${f(g.completas)}</div>
-      <div class="grade-completas-lbl">grades completas</div>
-      <div class="grade-livre">${f(g.livre)} pares livres${g.avulso?` · ${f(g.avulso)} avulsos`:''}</div>
-      <div class="grade-curve">${curve}</div>
-    </div>`;
-  }).join('');
-  const aberta = GRADES_GLOBAL.filter(g=>g.tipo==='aberta').reduce((s,g)=>s+g.livre,0);
-  const semnum = GRADES_GLOBAL.filter(g=>g.tipo==='sem_numeracao').reduce((s,g)=>s+g.livre,0);
-  const extras = [];
-  if(aberta) extras.push(`<span>Grade aberta (sem numeração): <b style="color:var(--txt-s)">${f(aberta)}</b> pares</span>`);
-  if(semnum) extras.push(`<span>Grade fechada sem mapeamento: <b style="color:var(--txt-s)">${f(semnum)}</b> pares</span>`);
-  c.innerHTML = `<div class="grades-grid">${cards}</div>` +
-    (extras.length?`<div class="grades-extra">${extras.join('')}</div>`:'');
-}
 
 function renderCharts(t){
   t = t || {};
