@@ -76,7 +76,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;display:flex;flex-di
     <div class="h-title">Inteligência</div>
     <div class="h-sub">Faça perguntas em linguagem natural sobre os dados do portal — programação, ocupação, vendas, estoque, faturamento e carteira</div>
   </div>
-  <div class="h-meta">Modelo: <strong>Claude Sonnet 4.6</strong><br>Base: <strong id="hdr-data">–</strong></div>
+  <div class="h-meta">Modelo: <strong>Claude Sonnet 4.6</strong><br>Base: <strong id="hdr-data">–</strong><br><span id="hdr-uso" style="color:var(--txt-m)">–</span></div>
 </div>
 
 <div class="main">
@@ -157,6 +157,17 @@ fetch('dados_portal.json?_='+Date.now()).then(r=>r.ok?r.json():null).then(d=>{
   if(d&&d.gerado_em) document.getElementById('hdr-data').textContent=d.gerado_em;
 }).catch(()=>{});
 
+// Medidor de gasto da IA (mês atual)
+function fmtUSD(n){ return 'US$ '+Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function atualizarUso(u){
+  if(!u) return;
+  const lim = (u.limite_mensal_usd>0) ? ' / '+fmtUSD(u.limite_mensal_usd) : '';
+  const np  = u.perguntas_mes||0;
+  document.getElementById('hdr-uso').textContent =
+    'IA '+u.mes+': '+fmtUSD(u.custo_mes)+lim+' · '+np+' pergunta'+(np===1?'':'s');
+}
+fetch('/api/inteligencia/uso').then(r=>r.ok?r.json():null).then(atualizarUso).catch(()=>{});
+
 function autoGrow(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
 function onKey(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); enviar(); } }
 
@@ -220,8 +231,10 @@ async function enviar(){
     removeLoading();
     if(!r.ok || data.erro){
       addErro(data.erro || ('Erro '+r.status));
+      if(data.uso) atualizarUso(data.uso);   // ex.: limite mensal atingido
     } else {
       addIA(data.resposta, data.contextos_usados, data.custo_estimado_usd);
+      if(data.uso) atualizarUso(data.uso);
       historico.push({role:'user',content:pergunta});
       historico.push({role:'assistant',content:data.resposta});
       if(historico.length>6) historico=historico.slice(-6);

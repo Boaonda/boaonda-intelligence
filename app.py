@@ -334,6 +334,11 @@ input[type=number]:focus{border-color:var(--coral)}
       <input type="number" name="prazo_producao_dias" min="1" max="365" value="{{ prazo }}" required>
       <div class="hint">Lead time médio de produção. Usado para calcular se um pedido em carteira ainda tem tempo hábil de produção (hoje + prazo &gt; entrega prevista = em atraso) e para destacar a semana de referência na Programação.</div>
     </div>
+    <div class="field">
+      <label>Limite mensal de gasto da IA (US$)</label>
+      <input type="number" name="ia_limite_mensal_usd" min="0" max="100000" step="0.01" value="{{ ia_limite }}" required>
+      <div class="hint">Teto de gasto mensal da aba Inteligência (chat com IA). Ao atingir, novas perguntas são bloqueadas até virar o mês ou aumentar o teto. Use 0 para não bloquear. Recomenda-se também definir um limite de gasto no Console da Anthropic como rede de segurança.</div>
+    </div>
     <button class="btn" type="submit">Salvar</button>
   </form>
 
@@ -352,22 +357,30 @@ def config():
     except (FileNotFoundError, json.JSONDecodeError):
         cfg = {}
     prazo = cfg.get('prazo_producao_dias', 45)
+    ia_limite = cfg.get('ia_limite_mensal_usd', IA_LIMITE_PADRAO_USD)
 
     message, ok = None, True
     if request.method == 'POST':
         try:
             novo_prazo = int(request.form.get('prazo_producao_dias', ''))
             if novo_prazo < 1 or novo_prazo > 365:
-                raise ValueError
-        except ValueError:
-            message, ok = 'Informe um número de dias entre 1 e 365.', False
+                raise ValueError('prazo')
+            novo_limite = float(request.form.get('ia_limite_mensal_usd', ''))
+            if novo_limite < 0 or novo_limite > 100000:
+                raise ValueError('limite')
+        except ValueError as ve:
+            message = ('Informe um número de dias entre 1 e 365.' if str(ve) == 'prazo'
+                       else 'Informe um limite de gasto válido (0 a 100000).')
+            ok = False
         else:
-            prazo = novo_prazo
+            prazo, ia_limite = novo_prazo, round(novo_limite, 2)
+            cfg['prazo_producao_dias'] = prazo
+            cfg['ia_limite_mensal_usd'] = ia_limite
             with open(config_path, 'w', encoding='utf-8') as f_:
-                json.dump({'prazo_producao_dias': prazo}, f_, ensure_ascii=False, indent=2)
-            message = f'Configuração salva: prazo produtivo de {prazo} dias.'
+                json.dump(cfg, f_, ensure_ascii=False, indent=2)
+            message = f'Configuração salva: prazo {prazo} dias · limite IA US$ {ia_limite:.2f}/mês.'
 
-    return render_template_string(_CONFIG_HTML, message=message, ok=ok, prazo=prazo)
+    return render_template_string(_CONFIG_HTML, message=message, ok=ok, prazo=prazo, ia_limite=ia_limite)
 
 
 _RECARREGAR_HTML = '''<!DOCTYPE html>
@@ -550,12 +563,63 @@ CONTEXTO DO NEGÓCIO:
 - Gargalo = indicador com maior % de ocupação entre todos os tetos."""
 
 
+IA_LIMITE_PADRAO_USD = 50.0   # teto mensal padrão se não configurado
+IA_USO_ARQUIVO       = 'ia_uso.json'   # acumulado de gasto, no volume (DATA_DIR)
+
+
 def _ia_carregar_json(nome):
     try:
         with open(DATA_DIR / nome, encoding='utf-8') as f_:
             return json.load(f_)
     except (FileNotFoundError, json.JSONDecodeError):
         return None
+
+
+def _ia_limite_mensal():
+    cfg = _ia_carregar_json('config_producao.json') or {}
+    try:
+        return float(cfg.get('ia_limite_mensal_usd', IA_LIMITE_PADRAO_USD))
+    except (TypeError, ValueError):
+        return IA_LIMITE_PADRAO_USD
+
+
+def _ia_uso_carregar():
+    return _ia_carregar_json(IA_USO_ARQUIVO) or {}
+
+
+def _ia_uso_resumo():
+    """Gasto e nº de perguntas do mês e do dia atuais + limite configurado."""
+    dados = _ia_uso_carregar()
+    mes = datetime.now().strftime('%Y-%m')
+    dia = datetime.now().strftime('%Y-%m-%d')
+    m = dados.get(mes, {})
+    d = (m.get('dias', {}) or {}).get(dia, {})
+    return {
+        'mes': mes,
+        'custo_mes': round(m.get('custo', 0.0), 4),
+        'perguntas_mes': int(m.get('perguntas', 0)),
+        'custo_hoje': round(d.get('custo', 0.0), 4),
+        'perguntas_hoje': int(d.get('perguntas', 0)),
+        'limite_mensal_usd': _ia_limite_mensal(),
+    }
+
+
+def _ia_uso_registrar(custo):
+    """Soma o custo de uma pergunta ao acumulado do mês/dia (no volume)."""
+    dados = _ia_uso_carregar()
+    mes = datetime.now().strftime('%Y-%m')
+    dia = datetime.now().strftime('%Y-%m-%d')
+    m = dados.setdefault(mes, {'custo': 0.0, 'perguntas': 0, 'dias': {}})
+    m['custo'] = round(m.get('custo', 0.0) + custo, 6)
+    m['perguntas'] = int(m.get('perguntas', 0)) + 1
+    d = m.setdefault('dias', {}).setdefault(dia, {'custo': 0.0, 'perguntas': 0})
+    d['custo'] = round(d.get('custo', 0.0) + custo, 6)
+    d['perguntas'] = int(d.get('perguntas', 0)) + 1
+    try:
+        with open(DATA_DIR / IA_USO_ARQUIVO, 'w', encoding='utf-8') as f_:
+            json.dump(dados, f_, ensure_ascii=False)
+    except Exception:
+        traceback.print_exc()
 
 
 def resumir_estoque():
@@ -617,6 +681,18 @@ def api_inteligencia():
         return jsonify({'erro': 'ANTHROPIC_API_KEY não está configurada no servidor. '
                                 'Configure a variável no Railway para habilitar a Inteligência.'}), 503
 
+    # Limite mensal de gasto — bloqueia novas perguntas quando atingido.
+    limite = _ia_limite_mensal()
+    resumo = _ia_uso_resumo()
+    if limite > 0 and resumo['custo_mes'] >= limite:
+        return jsonify({
+            'erro': f"Limite mensal de gasto da IA atingido "
+                    f"(US$ {resumo['custo_mes']:.2f} de US$ {limite:.2f}). "
+                    f"Ajuste o teto em Configurações para continuar.",
+            'limite_atingido': True,
+            'uso': resumo,
+        }), 200
+
     try:
         import anthropic
     except ImportError:
@@ -661,13 +737,20 @@ def api_inteligencia():
     tin  = u.input_tokens + getattr(u, 'cache_read_input_tokens', 0) + getattr(u, 'cache_creation_input_tokens', 0)
     tout = u.output_tokens
     custo = round(tin * IA_PRECO_IN_MTOK / 1e6 + tout * IA_PRECO_OUT_MTOK / 1e6, 4)
+    _ia_uso_registrar(custo)
 
     return jsonify({
         'resposta': texto,
         'contextos_usados': contextos_usados,
         'tokens_usados': tin + tout,
         'custo_estimado_usd': custo,
+        'uso': _ia_uso_resumo(),
     })
+
+
+@app.route('/api/inteligencia/uso')
+def api_inteligencia_uso():
+    return jsonify(_ia_uso_resumo())
 
 
 @app.route('/admin/env-check')
