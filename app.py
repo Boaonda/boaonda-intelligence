@@ -717,11 +717,19 @@ def api_inteligencia():
             model=IA_MODELO,
             max_tokens=1500,
             thinking={'type': 'disabled'},   # Q&A direto — sem raciocínio estendido
-            system=system,
+            # Cache do bloco de dados: como o contexto é idêntico entre perguntas
+            # da mesma sessão, a partir da 2ª pergunta ele é lido do cache
+            # (muito mais barato e bem mais leve no limite de tokens/minuto).
+            system=[{'type': 'text', 'text': system, 'cache_control': {'type': 'ephemeral'}}],
             messages=mensagens,
         )
     except anthropic.AuthenticationError:
         return jsonify({'erro': 'Chave da API Anthropic inválida.'}), 502
+    except anthropic.RateLimitError:
+        return jsonify({'erro': 'Limite de uso por minuto da conta Anthropic atingido '
+                                '(o portal envia muitos dados por pergunta). Aguarde cerca '
+                                'de 1 minuto e tente novamente. Se acontecer com frequência, '
+                                'aumente o tier de rate limit no Console da Anthropic.'}), 429
     except anthropic.APIStatusError as ex:
         traceback.print_exc()
         return jsonify({'erro': f'Erro da API Anthropic ({ex.status_code}). Tente novamente.'}), 502
@@ -734,9 +742,21 @@ def api_inteligencia():
 
     texto = next((b.text for b in resp.content if b.type == 'text'), '').strip()
     u = resp.usage
-    tin  = u.input_tokens + getattr(u, 'cache_read_input_tokens', 0) + getattr(u, 'cache_creation_input_tokens', 0)
+    tin_normal = u.input_tokens
+    tin_cache_escrita = getattr(u, 'cache_creation_input_tokens', 0) or 0
+    tin_cache_leitura = getattr(u, 'cache_read_input_tokens', 0) or 0
     tout = u.output_tokens
-    custo = round(tin * IA_PRECO_IN_MTOK / 1e6 + tout * IA_PRECO_OUT_MTOK / 1e6, 4)
+    # Preços de cache da Anthropic: escrita = 1,25x o preço normal de input,
+    # leitura (cache hit) = 0,1x — é o que torna a 2ª+ pergunta da sessão
+    # muito mais barata e mais leve no limite de tokens/minuto.
+    custo = round(
+        tin_normal * IA_PRECO_IN_MTOK / 1e6
+        + tin_cache_escrita * (IA_PRECO_IN_MTOK * 1.25) / 1e6
+        + tin_cache_leitura * (IA_PRECO_IN_MTOK * 0.1) / 1e6
+        + tout * IA_PRECO_OUT_MTOK / 1e6,
+        4,
+    )
+    tin = tin_normal + tin_cache_escrita + tin_cache_leitura
     _ia_uso_registrar(custo)
 
     return jsonify({
