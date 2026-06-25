@@ -274,51 +274,59 @@ function buildModelMap(){
 function statusBrd(livre,pL){ return livre===0?'brd-crit':pL<30?'brd-warn':'brd-ok'; }
 function statusPctCor(pL){ return pL<30?'var(--red)':pL<60?'var(--amber)':'var(--verde)'; }
 
-// ── Classificação Ativo / FL ───────────────────────────────
-// Um modelo é FL quando TODAS as combinações de cor (em todas as
-// linhas) estão marcadas com o prefixo [FL] ou [PL]. Modelo sem
-// nenhuma combinação mapeada é tratado como ativo (não-FL).
-function ehFl(d){
-  const combs = [];
-  Object.values(d.linhas||{}).forEach(ln=>{
-    Object.keys(ln.combinacoes||{}).forEach(k=>combs.push(k));
-  });
-  if(!combs.length) return false;
-  return combs.every(k=>k.startsWith('[FL]')||k.startsWith('[PL]'));
-}
+// ── Classificação Ativo / FL — por COR (combinação) ────────
+// A unidade atômica é a combinação de cor: FL quando a chave começa
+// com [FL] ou [PL]. Linhas e modelos não têm um rótulo fixo — eles
+// aparecem no filtro Ativos/FL conforme tenham pelo menos uma cor
+// daquele tipo, com os totais recalculados só a partir das cores
+// que batem o filtro (uma cor isolada FL dentro de uma linha
+// majoritariamente ativa aparece no filtro FL com seu próprio volume,
+// e a mesma linha continua aparecendo no filtro Ativos com o resto).
+function combEhFl(combKey){ return combKey.startsWith('[FL]') || combKey.startsWith('[PL]'); }
 
-function filtrarPorAtivo(all, modo){
+function somaCombs(combs, campo){ return Object.values(combs).reduce((s,c)=>s+(c[campo]||0),0); }
+
+// Filtra DATA_ALL recalculando linha/ref a partir das cores que batem o filtro.
+// Linhas sem nenhuma combinação mapeada são tratadas como ativas (mantidas
+// em TODOS/ATIVOS, removidas em FL).
+function aplicarFiltro(all, modo){
   if(modo==='TODOS') return all;
   const out = {};
-  Object.entries(all).forEach(([k,d])=>{
-    const fl = ehFl(d);
-    if((modo==='FL' && fl) || (modo==='ATIVOS' && !fl)) out[k]=d;
+  Object.entries(all).forEach(([refKey,d])=>{
+    const linhasF = {};
+    Object.entries(d.linhas||{}).forEach(([linhaDescr,ln])=>{
+      const todasCombs = Object.keys(ln.combinacoes||{});
+      if(!todasCombs.length){
+        if(modo==='ATIVOS') linhasF[linhaDescr]=ln;  // sem mapeamento → tratado como ativo
+        return;
+      }
+      const combsF = {};
+      todasCombs.forEach(k=>{
+        const fl = combEhFl(k);
+        if((modo==='FL' && fl) || (modo==='ATIVOS' && !fl)) combsF[k]=ln.combinacoes[k];
+      });
+      if(Object.keys(combsF).length){
+        linhasF[linhaDescr] = {...ln, combinacoes:combsF, qtd_combinacoes:Object.keys(combsF).length,
+          fisico:somaCombs(combsF,'fisico'), reservas:somaCombs(combsF,'reservas'), livre:somaCombs(combsF,'livre')};
+      }
+    });
+    if(Object.keys(linhasF).length){
+      const linhasArr = Object.values(linhasF);
+      out[refKey] = {...d, linhas:linhasF,
+        qtd_combinacoes: linhasArr.reduce((s,ln)=>s+ln.qtd_combinacoes,0),
+        fisico: linhasArr.reduce((s,ln)=>s+ln.fisico,0),
+        reservas: linhasArr.reduce((s,ln)=>s+ln.reservas,0),
+        livre: linhasArr.reduce((s,ln)=>s+ln.livre,0)};
+    }
   });
   return out;
-}
-
-function recalcularTotais(){
-  const refsArr = Object.values(DATA);
-  const t = {
-    fisico: refsArr.reduce((s,d)=>s+d.fisico,0),
-    reservas: refsArr.reduce((s,d)=>s+d.reservas,0),
-    livre: refsArr.reduce((s,d)=>s+d.livre,0),
-  };
-  document.getElementById('k-livre').textContent = f(t.livre);
-  document.getElementById('k-fisico').textContent = f(t.fisico);
-  document.getElementById('k-reservas').textContent = f(t.reservas);
-  document.getElementById('k-pct-reservas').textContent = pct(t.reservas,t.fisico) + '% do físico';
-  document.getElementById('k-pct-livre').textContent = pct(t.livre,t.fisico) + '% do físico';
-  document.getElementById('k-refs').textContent = Object.keys(DATA).length;
-  renderCharts(t);
 }
 
 function setFiltro(modo){
   filtroAtivo = modo;
   ['TODOS','ATIVOS','FL'].forEach(m=>document.getElementById('fbtn-'+m).classList.toggle('active', m===modo));
-  DATA = filtrarPorAtivo(DATA_ALL, modo);
+  DATA = aplicarFiltro(DATA_ALL, modo);
   nivel=1; modeloAtivo=null; refAtiva=null; linhaAtiva=null; corAberta=null;
-  recalcularTotais();
   renderDrill();
 }
 
@@ -328,24 +336,40 @@ fetch('dados_estoque.json?_=' + Date.now())
   .then(d => {
     DATA_ALL = d.refs || {};
     document.getElementById('hdr-data').textContent = d.gerado_em || '–';
-    const flRefs = Object.values(DATA_ALL).filter(ehFl);
-    const flLivre = flRefs.reduce((s,r)=>s+r.livre,0);
+    // KPIs e gráficos do topo sempre olham o estoque inteiro, sem filtro
+    const t = d.totais || {};
+    document.getElementById('k-livre').textContent = f(t.livre);
+    document.getElementById('k-fisico').textContent = f(t.fisico);
+    document.getElementById('k-reservas').textContent = f(t.reservas);
+    document.getElementById('k-pct-reservas').textContent = pct(t.reservas,t.fisico) + '% do físico';
+    document.getElementById('k-pct-livre').textContent = pct(t.livre,t.fisico) + '% do físico';
+    document.getElementById('k-refs').textContent = Object.keys(DATA_ALL).length;
+    renderCharts(t);
+    // Box "Itens FL" — soma de TODAS as cores marcadas FL/PL em todo o estoque
+    let flLivre=0, flCombs=0;
+    Object.values(DATA_ALL).forEach(ref=>{
+      Object.values(ref.linhas||{}).forEach(ln=>{
+        Object.entries(ln.combinacoes||{}).forEach(([k,cv])=>{
+          if(combEhFl(k)){ flLivre += cv.livre; flCombs++; }
+        });
+      });
+    });
     document.getElementById('k-fl-livre').textContent = f(flLivre);
-    document.getElementById('k-fl-sub').textContent = `${flRefs.length} modelo${flRefs.length!==1?'s':''} fora de linha`;
+    document.getElementById('k-fl-sub').textContent = `${flCombs} cor${flCombs!==1?'es':''} fora de linha`;
     setFiltro('TODOS');
   })
   .catch(() => renderDrill());
 
 function renderCharts(t){
   t = t || {};
-  const refs = Object.keys(DATA);
+  const refs = Object.keys(DATA_ALL);
   const top15 = refs.slice(0,15);
   if(chartTop) chartTop.destroy();
   chartTop = new Chart(document.getElementById('c-top'),{type:'bar',data:{
     labels:top15.map(r=>nomeModelo(r)),
     datasets:[
-      {label:'Livre',data:top15.map(r=>DATA[r].livre),backgroundColor:'#10B98188',borderRadius:3},
-      {label:'Reservas',data:top15.map(r=>DATA[r].reservas),backgroundColor:'#F59E0B55',borderRadius:3},
+      {label:'Livre',data:top15.map(r=>DATA_ALL[r].livre),backgroundColor:'#10B98188',borderRadius:3},
+      {label:'Reservas',data:top15.map(r=>DATA_ALL[r].reservas),backgroundColor:'#F59E0B55',borderRadius:3},
     ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},tooltip:{...TIP,mode:'index'}},
       scales:{x:{stacked:true,ticks:{callback:v=>f(v)}},y:{stacked:true,grid:{display:false},ticks:{font:{size:10}}}}}
