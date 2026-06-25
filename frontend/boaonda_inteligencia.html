@@ -108,27 +108,19 @@ const CHIPS = [
   'Qual canal está crescendo mais?',
 ];
 
-// Mapa palavra-chave → contexto (JSON). Acento/caixa ignorados.
-const REGRAS = [
-  {kw:['semana','producao','programacao','meta','pcp','montad','convencional'], ctx:['programacao']},
-  {kw:['ocupacao','eficiencia','gargalo'],                                       ctx:['ocupacao']},
-  {kw:['capacidade','atelier','pool','injetad','palmilha','sola','pintura'],     ctx:['ocupacao','capacidade']},
-  {kw:['estoque','disponivel','livre','grade','numeracao','par '],              ctx:['estoque']},
-  {kw:['venda','canal',' mi',' me','ecom','e-commerce','mercado'],              ctx:['vendas']},
-  {kw:['eva','composto'],                                                        ctx:['vendas_eva']},
-  {kw:['faturamento','receita','previsto','realizado','cfop','r$'],             ctx:['faturamento']},
-  {kw:['carteira','pedido aberto','etapa','atraso','prazo'],                    ctx:['carteira']},
-  {kw:['referencia','produto'],                                                 ctx:['refs']},
-];
+// Estrategia: enviar (quase) tudo em toda pergunta — garante que a IA nunca
+// fica "cega" por uma frase fora do padrao. A capacidade fabril (JSON mais
+// pesado, ~114 KB) so entra quando a pergunta e sobre ela.
+const CTX_BASE = ['programacao','ocupacao','carteira','vendas','vendas_eva','faturamento','refs','estoque'];
 
 function normaliza(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 }
 function detectarContextos(pergunta){
   const p = normaliza(pergunta);
-  const set = new Set();
-  REGRAS.forEach(r=>{ if(r.kw.some(k=>p.includes(normaliza(k)))) r.ctx.forEach(c=>set.add(c)); });
-  return set.size ? [...set] : ['portal'];  // fallback: resumo da home
+  const set = new Set(CTX_BASE);
+  if(/capacidade|atelier|pool|injetad|palmilha|sola|pintura|teto/.test(p)) set.add('capacidade');
+  return [...set];
 }
 
 const CTX_LABEL = {programacao:'Programação',ocupacao:'Ocupação',capacidade:'Capacidade',
@@ -192,7 +184,10 @@ function removeLoading(){ const l=document.getElementById('loading'); if(l) l.re
 
 function addIA(texto, contextos, custo){
   const m=document.createElement('div'); m.className='msg ia';
-  const badges=(contextos||[]).map(c=>CTX_LABEL[c]||c).join(' · ');
+  const lista=contextos||[];
+  const badges = lista.length>=7
+    ? 'Todos os dados' + (lista.includes('capacidade') ? ' + Capacidade' : '')
+    : lista.map(c=>CTX_LABEL[c]||c).join(' · ');
   const custoTxt = (custo!=null) ? '~US$ '+Number(custo).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
   m.innerHTML=`<div class="bubble">${escapeHtml(texto)}</div>
     <div class="msg-foot">
