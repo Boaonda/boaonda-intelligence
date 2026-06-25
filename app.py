@@ -670,6 +670,26 @@ def api_inteligencia():
     })
 
 
+@app.route('/admin/env-check')
+def admin_env_check():
+    """Confirma quais variáveis de ambiente sensíveis o processo está enxergando
+    (apenas presença/sufixo, nunca o valor). Para depurar a Inteligência sem
+    precisar olhar logs do Railway."""
+    def _mask(nome):
+        v = os.environ.get(nome) or ''
+        v = v.strip()
+        if not v:
+            return {'configurada': False}
+        return {'configurada': True, 'tamanho': len(v),
+                'comeca_com': v[:7], 'termina_com': v[-4:],
+                'tem_espaco_nas_pontas': v != os.environ.get(nome, '')}
+    return jsonify({
+        'ANTHROPIC_API_KEY': _mask('ANTHROPIC_API_KEY'),
+        'MYSQL_HOST': {'configurada': bool(os.environ.get('MYSQL_HOST'))},
+        'DATA_DIR': os.environ.get('DATA_DIR') or '(default frontend/)',
+    })
+
+
 @app.route('/version')
 def version():
     import subprocess
