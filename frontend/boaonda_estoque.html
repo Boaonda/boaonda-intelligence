@@ -6,6 +6,7 @@
 <title>Boaonda — Estoque Disponível</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
@@ -130,10 +131,13 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .comb-res{font-size:10px;color:var(--amber)}
 
 /* FILTRO ATIVOS/FL */
-.filtro-estoque{display:flex;gap:6px;margin-bottom:16px}
+.filtro-estoque{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.filtro-grupo{display:flex;gap:6px}
 .fbtn{background:var(--card2);border:1px solid var(--border);color:var(--txt-s);border-radius:7px;padding:6px 16px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:.12s}
 .fbtn:hover{border-color:var(--coral)}
 .fbtn.active{background:var(--coral);border-color:var(--coral);color:#fff}
+.btn-export{background:var(--card2);border:1px solid var(--azul);color:var(--azul);border-radius:7px;padding:6px 16px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:.12s;display:flex;align-items:center;gap:6px}
+.btn-export:hover{background:var(--azul);color:#fff}
 .kpi.fl{border-top-color:var(--amber)}
 .kpi-v.fl{color:var(--amber)}
 /* Detalhe de grade dentro da cor (nível 3) */
@@ -168,9 +172,12 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 <div class="main">
 
 <div class="filtro-estoque" id="filtro-estoque">
-  <button class="fbtn active" id="fbtn-TODOS" onclick="setFiltro('TODOS')">Todos</button>
-  <button class="fbtn" id="fbtn-ATIVOS" onclick="setFiltro('ATIVOS')">Ativos</button>
-  <button class="fbtn" id="fbtn-FL" onclick="setFiltro('FL')">FL</button>
+  <div class="filtro-grupo">
+    <button class="fbtn active" id="fbtn-TODOS" onclick="setFiltro('TODOS')">Todos</button>
+    <button class="fbtn" id="fbtn-ATIVOS" onclick="setFiltro('ATIVOS')">Ativos</button>
+    <button class="fbtn" id="fbtn-FL" onclick="setFiltro('FL')">FL</button>
+  </div>
+  <button class="btn-export" onclick="exportarExcel()">⬇ Exportar Excel</button>
 </div>
 
 <div class="stitle">Resumo do estoque</div>
@@ -328,6 +335,58 @@ function setFiltro(modo){
   DATA = aplicarFiltro(DATA_ALL, modo);
   nivel=1; modeloAtivo=null; refAtiva=null; linhaAtiva=null; corAberta=null;
   renderDrill();
+}
+
+// ── Exportar Excel — respeita o filtro Todos/Ativos/FL ativo ─────
+const FILTRO_LABEL = {TODOS:'Todos', ATIVOS:'Ativos', FL:'FL'};
+
+function exportarExcel(){
+  if(typeof XLSX === 'undefined'){ alert('Biblioteca de exportação não carregou. Recarregue a página e tente novamente.'); return; }
+
+  const linhasModelo = [];
+  const linhasModeloLinha = [];
+  const linhasModeloLinhaCor = [];
+
+  const mmap = buildModelMap();   // já reflete DATA (filtrada pelo modo ativo)
+  Object.entries(mmap).forEach(([nm, refs])=>{
+    const fisico = refs.reduce((s,[,d])=>s+d.fisico,0);
+    const reservas = refs.reduce((s,[,d])=>s+d.reservas,0);
+    const livre = refs.reduce((s,[,d])=>s+d.livre,0);
+    const qtdLinhas = refs.reduce((s,[,d])=>s+Object.keys(d.linhas||{}).length,0);
+    const qtdCombs = refs.reduce((s,[,d])=>s+(d.qtd_combinacoes||0),0);
+    linhasModelo.push({
+      'Modelo': nm, 'Físico': fisico, 'Reservas': reservas, 'Livre': livre,
+      '% Livre': pct(livre,fisico), 'Linhas': qtdLinhas, 'Combinações': qtdCombs
+    });
+
+    refs.forEach(([refKey,d])=>{
+      Object.entries(d.linhas||{}).forEach(([linhaDescr,ln])=>{
+        linhasModeloLinha.push({
+          'Modelo': nm, 'Linha': numLinha(linhaDescr), 'Tipo': tipoDescr(linhaDescr),
+          'Físico': ln.fisico, 'Reservas': ln.reservas, 'Livre': ln.livre,
+          '% Livre': pct(ln.livre,ln.fisico), 'Locais': (ln.locais||[]).join(', ')
+        });
+        Object.entries(ln.combinacoes||{}).forEach(([combKey,cv])=>{
+          linhasModeloLinhaCor.push({
+            'Modelo': nm, 'Linha': numLinha(linhaDescr), 'Tipo': tipoDescr(linhaDescr),
+            'Cor': combDisplayName(combKey), 'FL': combEhFl(combKey) ? 'Sim' : '',
+            'Físico': cv.fisico, 'Reservas': cv.reservas, 'Livre': cv.livre,
+            '% Livre': pct(cv.livre,cv.fisico)
+          });
+        });
+      });
+    });
+  });
+
+  linhasModelo.sort((a,b)=>b.Livre-a.Livre);
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasModelo), 'Modelo');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasModeloLinha), 'Modelo-Linha');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasModeloLinhaCor), 'Modelo-Linha-Cor');
+
+  const dataStr = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `estoque_${FILTRO_LABEL[filtroAtivo].toLowerCase()}_${dataStr}.xlsx`);
 }
 
 // ── Fetch ──────────────────────────────────────────────────
