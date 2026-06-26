@@ -132,10 +132,12 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 
 /* FILTRO ATIVOS/FL */
 .filtro-estoque{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.filtro-grupo{display:flex;gap:6px}
+.filtro-grupo{display:flex;align-items:center;gap:6px}
+.filtro-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
 .fbtn{background:var(--card2);border:1px solid var(--border);color:var(--txt-s);border-radius:7px;padding:6px 16px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:.12s}
 .fbtn:hover{border-color:var(--coral)}
 .fbtn.active{background:var(--coral);border-color:var(--coral);color:#fff}
+.fbtn.toggle.active{background:var(--azul);border-color:var(--azul)}
 .btn-export{background:var(--card2);border:1px solid var(--azul);color:var(--azul);border-radius:7px;padding:6px 16px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:.12s;display:flex;align-items:center;gap:6px}
 .btn-export:hover{background:var(--azul);color:#fff}
 .kpi.fl{border-top-color:var(--amber)}
@@ -180,6 +182,8 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
     <button class="fbtn active" id="fbtn-TODOS" onclick="setFiltro('TODOS')">Todos</button>
     <button class="fbtn" id="fbtn-ATIVOS" onclick="setFiltro('ATIVOS')">Ativos</button>
     <button class="fbtn" id="fbtn-FL" onclick="setFiltro('FL')">FL</button>
+    <span class="filtro-sep"></span>
+    <button class="fbtn toggle" id="fbtn-saldo" onclick="toggleSaldo()">Ocultar zerados</button>
   </div>
   <button class="btn-export" onclick="exportarExcel()">⬇ Exportar Excel</button>
 </div>
@@ -246,6 +250,7 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 let DATA = {};
 let DATA_ALL = {};
 let filtroAtivo = 'TODOS';   // 'TODOS' | 'ATIVOS' | 'FL'
+let ocultarZerados = false;  // esconde linhas com livre=0 em todos os níveis
 let chartTop = null, chartStk = null;
 let corAberta = null;   // combinação (cor) expandida no nível 3
 
@@ -341,6 +346,12 @@ function setFiltro(modo){
   renderDrill();
 }
 
+function toggleSaldo(){
+  ocultarZerados = !ocultarZerados;
+  document.getElementById('fbtn-saldo').classList.toggle('active', ocultarZerados);
+  renderDrill();
+}
+
 // ── Exportar Excel — respeita o filtro Todos/Ativos/FL ativo ─────
 const FILTRO_LABEL = {TODOS:'Todos', ATIVOS:'Ativos', FL:'FL'};
 
@@ -359,6 +370,7 @@ function exportarExcel(){
     const livre = refs.reduce((s,[,d])=>s+d.livre,0);
     const qtdLinhas = refs.reduce((s,[,d])=>s+Object.keys(d.linhas||{}).length,0);
     const qtdCombs = refs.reduce((s,[,d])=>s+(d.qtd_combinacoes||0),0);
+    if(ocultarZerados && livre<=0) return;
     linhasModelo.push({
       'Modelo': nm, 'Físico': fisico, 'Reservas': reservas, 'Livre': livre,
       '% Livre': pct(livre,fisico), 'Linhas': qtdLinhas, 'Combinações': qtdCombs
@@ -366,12 +378,14 @@ function exportarExcel(){
 
     refs.forEach(([refKey,d])=>{
       Object.entries(d.linhas||{}).forEach(([linhaDescr,ln])=>{
+        if(ocultarZerados && ln.livre<=0) return;
         linhasModeloLinha.push({
           'Modelo': nm, 'Linha': numLinha(linhaDescr), 'Tipo': tipoDescr(linhaDescr),
           'Físico': ln.fisico, 'Reservas': ln.reservas, 'Livre': ln.livre,
           '% Livre': pct(ln.livre,ln.fisico), 'Locais': (ln.locais||[]).join(', ')
         });
         Object.entries(ln.combinacoes||{}).forEach(([combKey,cv])=>{
+          if(ocultarZerados && cv.livre<=0) return;
           const cor = combDisplayName(combKey);
           const fl = combEhFl(combKey) ? 'Sim' : '';
           linhasModeloLinhaCor.push({
@@ -414,7 +428,8 @@ function exportarExcel(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasTamanho), 'Modelo-Linha-Cor-Tamanho');
 
   const dataStr = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `estoque_${FILTRO_LABEL[filtroAtivo].toLowerCase()}_${dataStr}.xlsx`);
+  const sufSaldo = ocultarZerados ? '_com_saldo' : '';
+  XLSX.writeFile(wb, `estoque_${FILTRO_LABEL[filtroAtivo].toLowerCase()}${sufSaldo}_${dataStr}.xlsx`);
 }
 
 // ── Fetch ──────────────────────────────────────────────────
@@ -549,6 +564,7 @@ function renderModelos(c){
     return {nm,fisico,reservas,livre,qtdLinhas,qtdCombs,refs};
   });
   if(searchQ) modelos=modelos.filter(m=>m.nm.toLowerCase().includes(searchQ));
+  if(ocultarZerados) modelos=modelos.filter(m=>m.livre>0);
   modelos.sort((a,b)=>b.livre-a.livre);
 
   const wrap = document.createElement('div');
@@ -605,6 +621,8 @@ function renderLinhas(c){
         locais:d.locais||[],qtdCombs:d.qtd_combinacoes||0});
     }
   });
+
+  if(ocultarZerados) linhas = linhas.filter(ln=>ln.livre>0);
 
   // Totalizador
   const totalLivre = linhas.reduce((s,ln)=>s+ln.livre,0);
@@ -691,7 +709,8 @@ function renderCombinacoes(c){
   } else {
     combs = d.combinacoes || {};
   }
-  const sorted = Object.entries(combs).sort(([,a],[,b])=>b.livre-a.livre);
+  let sorted = Object.entries(combs).sort(([,a],[,b])=>b.livre-a.livre);
+  if(ocultarZerados) sorted = sorted.filter(([,cv])=>cv.livre>0);
 
   const rows = sorted.map(([comb,cv])=>{
     const brd=combBrd(cv.livre,cv.fisico);
