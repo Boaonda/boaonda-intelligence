@@ -350,6 +350,7 @@ function exportarExcel(){
   const linhasModelo = [];
   const linhasModeloLinha = [];
   const linhasModeloLinhaCor = [];
+  const linhasTamanho = [];
 
   const mmap = buildModelMap();   // já reflete DATA (filtrada pelo modo ativo)
   Object.entries(mmap).forEach(([nm, refs])=>{
@@ -371,11 +372,33 @@ function exportarExcel(){
           '% Livre': pct(ln.livre,ln.fisico), 'Locais': (ln.locais||[]).join(', ')
         });
         Object.entries(ln.combinacoes||{}).forEach(([combKey,cv])=>{
+          const cor = combDisplayName(combKey);
+          const fl = combEhFl(combKey) ? 'Sim' : '';
           linhasModeloLinhaCor.push({
             'Modelo': nm, 'Linha': numLinha(linhaDescr), 'Tipo': tipoDescr(linhaDescr),
-            'Cor': combDisplayName(combKey), 'FL': combEhFl(combKey) ? 'Sim' : '',
+            'Cor': cor, 'FL': fl,
             'Físico': cv.fisico, 'Reservas': cv.reservas, 'Livre': cv.livre,
             '% Livre': pct(cv.livre,cv.fisico)
+          });
+
+          (cv.grades||[]).forEach(g=>{
+            const base = {'Modelo': nm, 'Linha': numLinha(linhaDescr), 'Tipo': tipoDescr(linhaDescr), 'Cor': cor, 'FL': fl};
+            if(g.tipo==='fechada'){
+              g.sizes.forEach(s=>{
+                linhasTamanho.push({...base, 'Grade': g.code, 'Tamanho': s,
+                  'Pares livres': g.per_size[s]||0, 'Grades completas': g.completas});
+              });
+              if(g.avulso){
+                linhasTamanho.push({...base, 'Grade': g.code, 'Tamanho': 'Avulso',
+                  'Pares livres': g.avulso, 'Grades completas': ''});
+              }
+            } else if(g.tipo==='aberta'){
+              linhasTamanho.push({...base, 'Grade': 'Aberta', 'Tamanho': '—',
+                'Pares livres': g.livre, 'Grades completas': ''});
+            } else if(g.tipo==='sem_numeracao'){
+              linhasTamanho.push({...base, 'Grade': g.code, 'Tamanho': 'Sem numeração',
+                'Pares livres': g.livre, 'Grades completas': ''});
+            }
           });
         });
       });
@@ -388,6 +411,7 @@ function exportarExcel(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasModelo), 'Modelo');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasModeloLinha), 'Modelo-Linha');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasModeloLinhaCor), 'Modelo-Linha-Cor');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasTamanho), 'Modelo-Linha-Cor-Tamanho');
 
   const dataStr = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, `estoque_${FILTRO_LABEL[filtroAtivo].toLowerCase()}_${dataStr}.xlsx`);
