@@ -1009,6 +1009,12 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
 # ─── FATURAMENTO ─────────────────────────────────────────────────────
 ANOMESFATURA_COL = 19  # coluna anomesfatura no CSV 3YS (yyyymm da emissão NF)
 
+# CFOPs de conserto/reparo (saída de mercadoria/bem recebido de terceiro
+# para conserto ou reparo — mesmo estado e interestadual). Essas notas
+# continuam visíveis na aba "Faturamento por CFOP" para controle, mas
+# não compõem o faturamento geral (resumo por grupo nem totais).
+CFOPS_FORA_DO_GERAL = {'5916', '6916'}
+
 def classifica_faturamento(cod, abr, marca=''):
     """Retorna (canal, tipo) para a área de Faturamento.
 
@@ -1110,29 +1116,37 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             sem_data_count += 1
             continue
 
-        m = dados[mes_ref]
-        vi, qi = (0, 2) if status == 'fat' else (1, 3)
-        if canal == 'MI':
-            m['MI'][tipo][vi] += vlr; m['MI'][tipo][qi] += qtd
-        elif canal == 'ME':
-            m['ME'][vi] += vlr; m['ME'][qi] += qtd     # USD
-        elif canal == 'EVA':
-            m['EVA'][vi] += vlr; m['EVA'][qi] += qtd   # kg
-        else:
-            m['EC'][vi] += vlr; m['EC'][qi] += qtd
+        cfop_code = g(row, IDX['cfop'])
+        eh_conserto_reparo = cfop_code in CFOPS_FORA_DO_GERAL
 
-        if canal in ('ME', 'EVA'):
-            cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
-            dc_cli = dados_clientes[mes_ref][canal][cliente]
-            dc_cli[vi] += vlr; dc_cli[qi] += qtd
-            if canal == 'EVA':
-                pedido = g(row, IDX['pedido']).strip() or '(sem pedido)'
-                dp_ped = dados_pedidos_eva[mes_ref][cliente][pedido]
-                dp_ped[vi] += vlr; dp_ped[qi] += qtd
+        vi, qi = (0, 2) if status == 'fat' else (1, 3)
+        if not eh_conserto_reparo:
+            m = dados[mes_ref]
+            if canal == 'MI':
+                m['MI'][tipo][vi] += vlr; m['MI'][tipo][qi] += qtd
+            elif canal == 'ME':
+                m['ME'][vi] += vlr; m['ME'][qi] += qtd     # USD
+            elif canal == 'EVA':
+                m['EVA'][vi] += vlr; m['EVA'][qi] += qtd   # kg
+            else:
+                m['EC'][vi] += vlr; m['EC'][qi] += qtd
+
+            if canal in ('ME', 'EVA'):
+                cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
+                dc_cli = dados_clientes[mes_ref][canal][cliente]
+                dc_cli[vi] += vlr; dc_cli[qi] += qtd
+                if canal == 'EVA':
+                    pedido = g(row, IDX['pedido']).strip() or '(sem pedido)'
+                    dp_ped = dados_pedidos_eva[mes_ref][cliente][pedido]
+                    dp_ped[vi] += vlr; dp_ped[qi] += qtd
+
+            if status == 'fat':  total_fat  += qtd
+            else:                total_prev += qtd
 
         # Acumular por CFOP — valor (BRL/USD) soma todos os canais; a
         # quantidade vai para pares (MI/ME/EC) ou kg (EVA), nunca somadas.
-        cfop_code = g(row, IDX['cfop'])
+        # Conserto/reparo entra aqui mesmo estando fora do resumo por
+        # grupo, para permanecer visível na aba de CFOP.
         if cfop_code:
             dc = dados_cfop[mes_ref][cfop_code]
             vi_c = (2 if canal == 'ME' else 0) + (0 if status == 'fat' else 1)
@@ -1142,9 +1156,6 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             else:
                 qi_c = 4 if status == 'fat' else 5
             dc[qi_c] += qtd
-
-        if status == 'fat':  total_fat  += qtd
-        else:                total_prev += qtd
 
     print(f"    Faturado: {total_fat:,} pares | Previsto: {total_prev:,} pares | Sem data: {sem_data_count}")
 
@@ -1181,6 +1192,8 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 if fkg or pkg:
                     entry['REALIZADO_KG'] = round(fkg, 1)
                     entry['PREVISTO_KG'] = round(pkg, 1)
+                if cfop_code in CFOPS_FORA_DO_GERAL:
+                    entry['FORA_DO_GERAL'] = True
                 out[cfop_code] = entry
         return out
 

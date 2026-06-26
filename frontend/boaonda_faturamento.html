@@ -119,6 +119,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rt tr.tr-group.tr-drill:hover td{background:rgba(237,104,66,.08)}
 .rt tr.tr-group.tr-drill td.td-grupo::before{content:'▸ ';color:var(--txt-m);font-size:9px;display:inline-block;width:10px}
 .rt tr.tr-group.tr-drill.aberto td.td-grupo::before{content:'▾ '}
+.rt tr.tr-fora-geral td{background:#1b1d23;color:#6b6a68}
+.rt tr.tr-fora-geral td.td-grupo{color:#8a8884}
+.rt tr.tr-fora-geral td.td-r-v,.rt tr.tr-fora-geral td.td-p-v,.rt tr.tr-fora-geral td.td-t-v{color:#8a8884}
+.rt tr.tr-fora-geral td.td-r-p,.rt tr.tr-fora-geral td.td-t-p{font-size:9px;font-style:italic;color:#5f5e5b}
+.badge-fora-geral{display:inline-block;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a8884;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:1px 6px;margin-left:6px;vertical-align:middle}
 .rt tr.tr-clientes td{background:var(--card2);padding:0;border-bottom:1px solid rgba(255,255,255,.06)}
 .drill-clientes{padding:10px 16px 14px 38px}
 .drill-clientes-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:8px}
@@ -820,6 +825,7 @@ const CFOP_DESC = {
   '5403':'Venda c/ ST (contribuinte) — mesmo estado',
   '5910':'Remessa em bonificação, doação ou brinde',
   '5916':'Saída de mercadorias ou bens recebidos de terceiros para conserto ou reparo',
+  '6916':'Saída de mercadorias ou bens recebidos de terceiros para conserto ou reparo (outros estados)',
   '5949':'Outra saída de mercadoria ou prestação de serviço não especificada',
   '6101':'Venda de produção — outros estados',
   '6102':'Venda de mercadoria — outros estados',
@@ -882,9 +888,11 @@ function renderCfop() {
   document.getElementById('cfop-th-prev').textContent = sp ? 'PREVISTO — ' + fimMes(key) : 'PREVISTO';
   document.getElementById('cfop-th-tot').textContent  = 'TOTAL GERAL — ' + mesLong(key).toUpperCase();
 
-  // Totais para %
+  // Totais para % — exclui CFOPs de conserto/reparo (FORA_DO_GERAL):
+  // ficam visíveis na tabela, mas não compõem o faturamento geral.
   let totR = 0, totT = 0;
   Object.values(cfops).forEach(d => {
+    if (d.FORA_DO_GERAL) return;
     const rv = (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
     const pv = sp ? (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO : 0;
     totR += rv; totT += rv + pv;
@@ -913,19 +921,23 @@ function renderCfop() {
       const pQ = sp ? qtyRaw(d, 'PREVISTO') : 0;
       const tV = rV+pV, tQ = rQ+pQ;
       const dash = sp ? '' : '—';
-      return `<tr>
-        <td class="td-grupo">${cfopLabel(code)}</td>
+      const foraGeral = !!d.FORA_DO_GERAL;
+      const rowCls = foraGeral ? ' class="tr-fora-geral"' : '';
+      const pctR = foraGeral ? 'não soma' : (rV ? pct(rV, totR) : '–');
+      const pctT = foraGeral ? 'não soma' : (tV ? pct(tV, totT) : '–');
+      return `<tr${rowCls}${foraGeral ? ' title="Conserto/reparo — não compõe o faturamento geral"' : ''}>
+        <td class="td-grupo">${cfopLabel(code)}${foraGeral ? ' <span class="badge-fora-geral">não soma</span>' : ''}</td>
         <td class="td-sep"></td>
         <td class="td-r-q">${rQ ? fmtQ(rQ) : '–'}</td>
         <td class="td-r-v">${rV ? fBRL(rV) : '–'}</td>
-        <td class="td-r-p">${rV ? pct(rV, totR) : '–'}</td>
+        <td class="td-r-p">${pctR}</td>
         <td class="td-sep"></td>
         <td class="td-p-q">${sp ? (pQ ? fmtQ(pQ) : '–') : dash}</td>
         <td class="td-p-v">${sp ? (pV ? fBRL(pV) : '–') : dash}</td>
         <td class="td-sep"></td>
         <td class="td-t-q">${tQ ? fmtQ(tQ) : '–'}</td>
         <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
-        <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
+        <td class="td-t-p">${pctT}</td>
       </tr>`;
     }).join('');
 
@@ -934,6 +946,7 @@ function renderCfop() {
 
   let gtRV=0, gtRQ=0, gtPV=0, gtPQ=0;
   Object.values(cfops).forEach(d => {
+    if (d.FORA_DO_GERAL) return;
     gtRV += (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
     gtRQ += d.REALIZADO_PARES||0;
     if (sp) { gtPV += (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO; gtPQ += d.PREVISTO_PARES||0; }
