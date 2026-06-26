@@ -185,7 +185,7 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
     <span class="filtro-sep"></span>
     <button class="fbtn toggle" id="fbtn-saldo" onclick="toggleSaldo()">Ocultar zerados</button>
   </div>
-  <button class="btn-export" onclick="exportarExcel()">⬇ Exportar Excel</button>
+  <button class="btn-export" id="btn-export" onclick="exportarExcel()">⬇ Exportar Excel</button>
 </div>
 
 <div class="stitle">Resumo do estoque</div>
@@ -363,8 +363,16 @@ function exportarExcel(){
   const linhasModeloLinhaCor = [];
   const linhasTamanho = [];
 
-  const mmap = buildModelMap();   // já reflete DATA (filtrada pelo modo ativo)
+  // Respeita também o item selecionado no drill-down (modelo / linha) além do filtro Todos/Ativos/FL
+  let mmap = buildModelMap();   // já reflete DATA (filtrada pelo modo ativo)
+  if(modeloAtivo && mmap[modeloAtivo]){
+    mmap = {[modeloAtivo]: mmap[modeloAtivo]};
+  }
+
   Object.entries(mmap).forEach(([nm, refs])=>{
+    if(refAtiva && linhaAtiva){
+      refs = refs.filter(([refKey])=>refKey===refAtiva);
+    }
     const fisico = refs.reduce((s,[,d])=>s+d.fisico,0);
     const reservas = refs.reduce((s,[,d])=>s+d.reservas,0);
     const livre = refs.reduce((s,[,d])=>s+d.livre,0);
@@ -377,7 +385,11 @@ function exportarExcel(){
     });
 
     refs.forEach(([refKey,d])=>{
-      Object.entries(d.linhas||{}).forEach(([linhaDescr,ln])=>{
+      let linhasEntries = Object.entries(d.linhas||{});
+      if(refAtiva && linhaAtiva && refKey===refAtiva){
+        linhasEntries = linhasEntries.filter(([linhaDescr])=>linhaDescr===linhaAtiva);
+      }
+      linhasEntries.forEach(([linhaDescr,ln])=>{
         if(ocultarZerados && ln.livre<=0) return;
         linhasModeloLinha.push({
           'Modelo': nm, 'Linha': numLinha(linhaDescr), 'Tipo': tipoDescr(linhaDescr),
@@ -429,7 +441,11 @@ function exportarExcel(){
 
   const dataStr = new Date().toISOString().slice(0,10);
   const sufSaldo = ocultarZerados ? '_com_saldo' : '';
-  XLSX.writeFile(wb, `estoque_${FILTRO_LABEL[filtroAtivo].toLowerCase()}${sufSaldo}_${dataStr}.xlsx`);
+  const slug = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+  let sufEscopo = '';
+  if(linhaAtiva) sufEscopo = `_${slug(modeloAtivo)}_linha${numLinha(linhaAtiva)}`;
+  else if(modeloAtivo) sufEscopo = `_${slug(modeloAtivo)}`;
+  XLSX.writeFile(wb, `estoque_${FILTRO_LABEL[filtroAtivo].toLowerCase()}${sufSaldo}${sufEscopo}_${dataStr}.xlsx`);
 }
 
 // ── Fetch ──────────────────────────────────────────────────
@@ -544,6 +560,16 @@ function renderDrill(){
   if(nivel===1) renderModelos(c);
   else if(nivel===2) renderLinhas(c);
   else renderCombinacoes(c);
+  atualizarBtnExport();
+}
+
+function atualizarBtnExport(){
+  const btn = document.getElementById('btn-export');
+  if(!btn) return;
+  let escopo = '';
+  if(linhaAtiva) escopo = ` (${modeloAtivo} · Linha ${numLinha(linhaAtiva)})`;
+  else if(modeloAtivo) escopo = ` (${modeloAtivo})`;
+  btn.textContent = `⬇ Exportar Excel${escopo}`;
 }
 
 // ── Nível 1 — Modelos ──────────────────────────────────────
