@@ -134,6 +134,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .drill-clientes table{width:100%;border-collapse:collapse;font-size:10.5px}
 .drill-clientes th{text-align:right;padding:4px 10px;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
 .drill-clientes th:first-child{text-align:left}
+.drill-clientes th.th-sort{cursor:pointer;user-select:none}
+.drill-clientes th.th-sort:hover{color:var(--txt-s)}
+.drill-clientes th.th-sort.ativo{color:var(--coral)}
+.drill-clientes th.th-sort.ativo::after{content:' ▾';font-size:8px}
 .drill-clientes td{text-align:right;padding:5px 10px;color:var(--txt-s);border-bottom:1px solid rgba(255,255,255,.03)}
 .drill-clientes td:first-child{text-align:left;font-weight:600;color:var(--txt)}
 .drill-clientes td.dc-real{color:var(--coral);font-weight:700}
@@ -414,8 +418,10 @@ const stackTotalPlugin = {
 Chart.register(stackTotalPlugin);
 
 let DATA = null, CAMBIO = 5.00, fatChart = null;
-let drillAberto = null; // 'ME' | 'EVA' | null — grupo expandido no resumo mensal
+let drillAberto = null; // 'ME' | 'EVA' | 'MISTA' | null — grupo expandido no resumo mensal
 let pedidoAberto = null; // nome do cliente (EVA) com pedidos expandidos
+let pedidoMistaAberto = null; // número do pedido (MISTA) com referências expandidas
+let sortPedidosMista = null; // null = ordem padrão (total desc) | 'REALIZADO' | 'REALIZADO_PARES' | 'PREVISTO' | 'PREVISTO_PARES'
 
 const R = n => Math.round(n || 0);
 const fBRL = n => 'R$ ' + R(n).toLocaleString('pt-BR');
@@ -616,6 +622,16 @@ function togglePedidoCliente(cliente) {
   renderResumo();
 }
 
+function togglePedidoMista(pedido) {
+  pedidoMistaAberto = pedidoMistaAberto === pedido ? null : pedido;
+  renderResumo();
+}
+
+function setSortPedidosMista(campo) {
+  sortPedidosMista = campo;
+  renderResumo();
+}
+
 function renderResumo() {
   if (!DATA) return;
   const key  = document.getElementById('resumo-mes').value || mesAtual();
@@ -745,7 +761,10 @@ function renderResumo() {
   }
 
   function rowDrillPedidosMista(mesKey) {
-    const lista = ((DATA.dados_pedidos_mista || {})[mesKey]) || [];
+    let lista = ((DATA.dados_pedidos_mista || {})[mesKey]) || [];
+    if (sortPedidosMista) {
+      lista = [...lista].sort((a, b) => (b[sortPedidosMista] || 0) - (a[sortPedidosMista] || 0));
+    }
     const titulo = 'Pedidos — MI Venda Mista · ' + mesLong(mesKey);
     if (!lista.length) {
       return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
@@ -753,19 +772,42 @@ function renderResumo() {
         <div class="drill-clientes-empty">Sem pedidos faturados/previstos neste mês.</div>
       </div></td></tr>`;
     }
-    const rows = lista.map(p => `<tr>
+    const th = (campo, label) => `<th class="th-sort${sortPedidosMista === campo ? ' ativo' : ''}" onclick="setSortPedidosMista('${campo}')">${label}</th>`;
+    const rows = lista.map(p => {
+      const pedEsc = p.pedido.replace(/'/g, "\\'");
+      const aberto = pedidoMistaAberto === p.pedido;
+      const tr = `<tr class="dc-row-drill${aberto ? ' aberto' : ''}" onclick="togglePedidoMista('${pedEsc}')">
         <td>${p.pedido}</td>
         <td>${p.cliente}</td>
-        <td>${p.ref || '–'}${p.qtd_refs > 1 ? ' (+' + (p.qtd_refs - 1) + ')' : ''}</td>
         <td class="dc-real">${p.REALIZADO ? fBRL(p.REALIZADO) : '–'}</td>
         <td>${p.REALIZADO_PARES ? fPar(p.REALIZADO_PARES) : '–'}</td>
         <td class="dc-prev">${sp && p.PREVISTO ? fBRL(p.PREVISTO) : '–'}</td>
         <td>${sp && p.PREVISTO_PARES ? fPar(p.PREVISTO_PARES) : '–'}</td>
-      </tr>`).join('');
+      </tr>`;
+      return tr + (aberto ? rowRefsMista(p) : '');
+    }).join('');
     return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
       <div class="drill-clientes-title">${titulo} · ${lista.length} pedido${lista.length > 1 ? 's' : ''}</div>
       <table>
-        <thead><tr><th>Pedido</th><th>Cliente</th><th>Referência</th><th>Realizado</th><th>Qtd.</th><th>Previsto</th><th>Qtd.</th></tr></thead>
+        <thead><tr><th>Pedido</th><th>Cliente</th>${th('REALIZADO', 'Realizado')}${th('REALIZADO_PARES', 'Qtd.')}${th('PREVISTO', 'Previsto')}${th('PREVISTO_PARES', 'Qtd.')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div></td></tr>`;
+  }
+
+  function rowRefsMista(p) {
+    const refs = p.refs || [];
+    const rows = refs.map(r => `<tr>
+        <td>${r.ref}</td>
+        <td class="dc-real">${r.REALIZADO ? fBRL(r.REALIZADO) : '–'}</td>
+        <td>${r.REALIZADO_PARES ? fPar(r.REALIZADO_PARES) : '–'}</td>
+        <td class="dc-prev">${sp && r.PREVISTO ? fBRL(r.PREVISTO) : '–'}</td>
+        <td>${sp && r.PREVISTO_PARES ? fPar(r.PREVISTO_PARES) : '–'}</td>
+      </tr>`).join('');
+    return `<tr class="tr-pedidos"><td colspan="6"><div class="drill-pedidos">
+      <div class="drill-pedidos-title">Referências — Pedido ${p.pedido} · ${p.cliente} · ${refs.length} referência${refs.length > 1 ? 's' : ''}</div>
+      <table>
+        <thead><tr><th>Referência</th><th>Realizado</th><th>Qtd.</th><th>Previsto</th><th>Qtd.</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div></td></tr>`;

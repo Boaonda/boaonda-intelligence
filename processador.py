@@ -1070,12 +1070,14 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     # dados_pedidos_eva[mes_ref][cliente][pedido] = [fat_vlr, prev_vlr, fat_kg, prev_kg]
     # 2º nível do drilldown de Composto EVA — só EVA, conforme solicitado.
     dados_pedidos_eva = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])))
-    # dados_pedidos_mista[mes_ref][pedido] = {cliente, refs:Counter, rv, pv, rq, pq}
+    # dados_pedidos_mista[mes_ref][pedido] = {cliente, refs:{ref:[rv,pv,rq,pq]}, rv, pv, rq, pq}
     # Drilldown de MI Venda Mista (espécie 31) — lista plana de pedidos, para
     # auditoria visual do número (investigar possível discrepância apontada
-    # pelo usuário frente a outra fonte de referência).
+    # pelo usuário frente a outra fonte de referência). O detalhe por
+    # referência só é exibido em um 2º nível, ao expandir o pedido.
     dados_pedidos_mista = defaultdict(lambda: defaultdict(lambda: {
-        'cliente': '', 'refs': Counter(), 'rv': 0.0, 'pv': 0.0, 'rq': 0, 'pq': 0}))
+        'cliente': '', 'refs': defaultdict(lambda: [0.0, 0.0, 0, 0]),
+        'rv': 0.0, 'pv': 0.0, 'rq': 0, 'pq': 0}))
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
     total_fat = total_prev = sem_data_count = 0
 
@@ -1149,10 +1151,11 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             if canal == 'MI' and tipo == 'MISTA':
                 pedido = g(row, IDX['pedido']).strip() or '(sem pedido)'
                 cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
-                ref = g(row, IDX['ref']).strip()
+                ref = g(row, IDX['ref']).strip() or '(sem referência)'
                 pm = dados_pedidos_mista[mes_ref][pedido]
                 pm['cliente'] = cliente
-                if ref: pm['refs'][ref] += qtd
+                rf = pm['refs'][ref]
+                rf[vi] += vlr; rf[qi] += qtd
                 if status == 'fat': pm['rv'] += vlr; pm['rq'] += qtd
                 else:                pm['pv'] += vlr; pm['pq'] += qtd
 
@@ -1253,11 +1256,17 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         for pedido, d in pm.items():
             if not any([d['rv'], d['pv'], d['rq'], d['pq']]):
                 continue
-            ref_principal = d['refs'].most_common(1)[0][0] if d['refs'] else ''
-            pedidos.append({'pedido': pedido, 'cliente': d['cliente'], 'ref': ref_principal,
-                             'qtd_refs': len(d['refs']),
+            refs = []
+            for ref, (rv, pv, rq, pq) in d['refs'].items():
+                if not any([rv, pv, rq, pq]):
+                    continue
+                refs.append({'ref': ref, 'REALIZADO': round(rv, 2), 'PREVISTO': round(pv, 2),
+                             'REALIZADO_PARES': int(rq), 'PREVISTO_PARES': int(pq)})
+            refs.sort(key=lambda r: -(r['REALIZADO'] + r['PREVISTO']))
+            pedidos.append({'pedido': pedido, 'cliente': d['cliente'],
                              'REALIZADO': round(d['rv'], 2), 'PREVISTO': round(d['pv'], 2),
-                             'REALIZADO_PARES': int(d['rq']), 'PREVISTO_PARES': int(d['pq'])})
+                             'REALIZADO_PARES': int(d['rq']), 'PREVISTO_PARES': int(d['pq']),
+                             'refs': refs})
         pedidos.sort(key=lambda p: -(p['REALIZADO'] + p['PREVISTO']))
         return pedidos
 
