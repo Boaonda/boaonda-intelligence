@@ -157,6 +157,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .drill-pedidos td:first-child{text-align:left;font-weight:600;color:var(--txt-s)}
 .drill-pedidos td.dc-real{color:rgba(237,104,66,.8);font-weight:600}
 .drill-pedidos td.dc-prev{color:var(--cinza)}
+.drill-pedidos-empty{font-size:10.5px;color:var(--txt-m);padding:6px 0 2px;font-style:italic}
+.rt tr.tr-pedidos td{background:rgba(0,0,0,.28);border-top:1px solid rgba(237,104,66,.25);border-bottom:1px solid rgba(237,104,66,.25)}
 
 /* Sem data */
 .semdata-card{background:var(--card);border:1px solid rgba(237,104,66,.25);border-radius:12px;padding:20px;margin-bottom:28px}
@@ -797,6 +799,12 @@ function renderResumo() {
 
   function rowRefsMista(p) {
     const refs = p.refs || [];
+    if (!refs.length) {
+      return `<tr class="tr-pedidos"><td colspan="6"><div class="drill-pedidos">
+        <div class="drill-pedidos-title">Referências — Pedido ${p.pedido} · ${p.cliente}</div>
+        <div class="drill-pedidos-empty">Sem detalhamento por referência disponível para este pedido — reprocesse a base (processador.py atual) e atualize o upload para ver este detalhe.</div>
+      </div></td></tr>`;
+    }
     const rows = refs.map(r => `<tr>
         <td>${r.ref}</td>
         <td class="dc-real">${r.REALIZADO ? fBRL(r.REALIZADO) : '–'}</td>
