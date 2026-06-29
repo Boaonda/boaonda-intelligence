@@ -1076,7 +1076,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     # pelo usuário frente a outra fonte de referência). O detalhe por
     # referência só é exibido em um 2º nível, ao expandir o pedido.
     dados_pedidos_mista = defaultdict(lambda: defaultdict(lambda: {
-        'cliente': '', 'refs': defaultdict(lambda: [0.0, 0.0, 0, 0]),
+        'cliente': '', 'etapa': '', 'refs': defaultdict(lambda: [0.0, 0.0, 0, 0]),
         'rv': 0.0, 'pv': 0.0, 'rq': 0, 'pq': 0}))
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
     total_fat = total_prev = sem_data_count = 0
@@ -1154,6 +1154,10 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 ref = g(row, IDX['ref']).strip() or '(sem referência)'
                 pm = dados_pedidos_mista[mes_ref][pedido]
                 pm['cliente'] = cliente
+                # Etapa só é relevante para pedidos ainda em aberto (previsto) —
+                # uma vez faturado, o campo no ERP fica obsoleto/sem sentido.
+                if status == 'prev':
+                    pm['etapa'] = corrigir_mojibake(g(row, IDX['etapa'])) or 'NÃO INFORMADO'
                 rf = pm['refs'][ref]
                 rf[vi] += vlr; rf[qi] += qtd
                 if status == 'fat': pm['rv'] += vlr; pm['rq'] += qtd
@@ -1263,7 +1267,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 refs.append({'ref': ref, 'REALIZADO': round(rv, 2), 'PREVISTO': round(pv, 2),
                              'REALIZADO_PARES': int(rq), 'PREVISTO_PARES': int(pq)})
             refs.sort(key=lambda r: -(r['REALIZADO'] + r['PREVISTO']))
-            pedidos.append({'pedido': pedido, 'cliente': d['cliente'],
+            pedidos.append({'pedido': pedido, 'cliente': d['cliente'], 'etapa': d['etapa'],
                              'REALIZADO': round(d['rv'], 2), 'PREVISTO': round(d['pv'], 2),
                              'REALIZADO_PARES': int(d['rq']), 'PREVISTO_PARES': int(d['pq']),
                              'refs': refs})

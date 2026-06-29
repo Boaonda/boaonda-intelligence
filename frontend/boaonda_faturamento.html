@@ -131,6 +131,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rt tr.tr-clientes td{background:var(--card2);padding:0;border-bottom:1px solid rgba(255,255,255,.06)}
 .drill-clientes{padding:10px 16px 14px 38px}
 .drill-clientes-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:8px}
+.drill-clientes-sub{font-size:9px;font-weight:600;color:var(--txt-m);margin-bottom:6px}
 .drill-clientes table{width:100%;border-collapse:collapse;font-size:10.5px}
 .drill-clientes th{text-align:right;padding:4px 10px;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
 .drill-clientes th:first-child{text-align:left}
@@ -138,6 +139,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .drill-clientes th.th-sort:hover{color:var(--txt-s)}
 .drill-clientes th.th-sort.ativo{color:var(--coral)}
 .drill-clientes th.th-sort.ativo::after{content:' ▾';font-size:8px}
+.drill-clientes-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px}
+.drill-clientes-head .drill-clientes-title{margin-bottom:0}
+.drill-modo-toggle{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--txt-m);text-transform:uppercase;letter-spacing:.06em;flex-shrink:0}
+.drill-modo-toggle select{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--txt-s);font-size:10px;outline:none;text-transform:none;letter-spacing:0;font-weight:600;cursor:pointer;font-family:inherit}
 .drill-clientes td{text-align:right;padding:5px 10px;color:var(--txt-s);border-bottom:1px solid rgba(255,255,255,.03)}
 .drill-clientes td:first-child{text-align:left;font-weight:600;color:var(--txt)}
 .drill-clientes td.dc-real{color:var(--coral);font-weight:700}
@@ -424,6 +429,8 @@ let drillAberto = null; // 'ME' | 'EVA' | 'MISTA' | null — grupo expandido no 
 let pedidoAberto = null; // nome do cliente (EVA) com pedidos expandidos
 let pedidoMistaAberto = null; // número do pedido (MISTA) com referências expandidas
 let sortPedidosMista = null; // null = ordem padrão (total desc) | 'REALIZADO' | 'REALIZADO_PARES' | 'PREVISTO' | 'PREVISTO_PARES'
+let mistaModo = 'pedido'; // 'pedido' | 'etapa' — viés de visualização do drilldown MISTA
+let etapaMistaAberta = null; // etapa expandida na visão "por Etapa"
 
 const R = n => Math.round(n || 0);
 const fBRL = n => 'R$ ' + R(n).toLocaleString('pt-BR');
@@ -634,6 +641,19 @@ function setSortPedidosMista(campo) {
   renderResumo();
 }
 
+function setMistaModo(modo) {
+  mistaModo = modo;
+  pedidoMistaAberto = null;
+  etapaMistaAberta = null;
+  renderResumo();
+}
+
+function toggleEtapaMista(etapa) {
+  etapaMistaAberta = etapaMistaAberta === etapa ? null : etapa;
+  pedidoMistaAberto = null;
+  renderResumo();
+}
+
 function renderResumo() {
   if (!DATA) return;
   const key  = document.getElementById('resumo-mes').value || mesAtual();
@@ -763,16 +783,34 @@ function renderResumo() {
   }
 
   function rowDrillPedidosMista(mesKey) {
-    let lista = ((DATA.dados_pedidos_mista || {})[mesKey]) || [];
-    if (sortPedidosMista) {
-      lista = [...lista].sort((a, b) => (b[sortPedidosMista] || 0) - (a[sortPedidosMista] || 0));
-    }
-    const titulo = 'Pedidos — MI Venda Mista · ' + mesLong(mesKey);
-    if (!lista.length) {
+    const listaTodos = ((DATA.dados_pedidos_mista || {})[mesKey]) || [];
+
+    const head = `
+      <div class="drill-clientes-head">
+        <div class="drill-clientes-title">Pedidos — MI Venda Mista · ${mesLong(mesKey)}</div>
+        <div class="drill-modo-toggle">
+          <span>ver por</span>
+          <select onchange="setMistaModo(this.value)">
+            <option value="pedido" ${mistaModo === 'pedido' ? 'selected' : ''}>Pedido</option>
+            <option value="etapa" ${mistaModo === 'etapa' ? 'selected' : ''}>Etapa (previstos)</option>
+          </select>
+        </div>
+      </div>`;
+
+    if (!listaTodos.length) {
       return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
-        <div class="drill-clientes-title">${titulo}</div>
+        ${head}
         <div class="drill-clientes-empty">Sem pedidos faturados/previstos neste mês.</div>
       </div></td></tr>`;
+    }
+
+    if (mistaModo === 'etapa') {
+      return rowDrillMistaPorEtapa(listaTodos, head);
+    }
+
+    let lista = listaTodos;
+    if (sortPedidosMista) {
+      lista = [...lista].sort((a, b) => (b[sortPedidosMista] || 0) - (a[sortPedidosMista] || 0));
     }
     const th = (campo, label) => `<th class="th-sort${sortPedidosMista === campo ? ' ativo' : ''}" onclick="setSortPedidosMista('${campo}')">${label}</th>`;
     const rows = lista.map(p => {
@@ -789,9 +827,73 @@ function renderResumo() {
       return tr + (aberto ? rowRefsMista(p) : '');
     }).join('');
     return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
-      <div class="drill-clientes-title">${titulo} · ${lista.length} pedido${lista.length > 1 ? 's' : ''}</div>
+      ${head}
+      <div class="drill-clientes-sub">${lista.length} pedido${lista.length > 1 ? 's' : ''}</div>
       <table>
         <thead><tr><th>Pedido</th><th>Cliente</th>${th('REALIZADO', 'Realizado')}${th('REALIZADO_PARES', 'Qtd.')}${th('PREVISTO', 'Previsto')}${th('PREVISTO_PARES', 'Qtd.')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div></td></tr>`;
+  }
+
+  function rowDrillMistaPorEtapa(listaTodos, head) {
+    const comPrevisto = listaTodos.filter(p => p.PREVISTO_PARES > 0);
+    const porEtapa = {};
+    comPrevisto.forEach(p => {
+      const et = p.etapa || 'NÃO INFORMADO';
+      if (!porEtapa[et]) porEtapa[et] = { etapa: et, previsto: 0, pares: 0, pedidos: [] };
+      porEtapa[et].previsto += p.PREVISTO;
+      porEtapa[et].pares += p.PREVISTO_PARES;
+      porEtapa[et].pedidos.push(p);
+    });
+    const etapas = Object.values(porEtapa).sort((a, b) => b.previsto - a.previsto);
+
+    if (!etapas.length) {
+      return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
+        ${head}
+        <div class="drill-clientes-empty">Sem pedidos previstos (em aberto) neste mês — apenas faturados, sem etapa relevante.</div>
+      </div></td></tr>`;
+    }
+
+    const rows = etapas.map(et => {
+      const aberta = etapaMistaAberta === et.etapa;
+      const etEsc = et.etapa.replace(/'/g, "\\'");
+      const tr = `<tr class="dc-row-drill${aberta ? ' aberto' : ''}" onclick="toggleEtapaMista('${etEsc}')">
+        <td>${et.etapa}</td>
+        <td>${fPar(et.pedidos.length)} ped.</td>
+        <td class="dc-prev">${fBRL(et.previsto)}</td>
+        <td>${fPar(et.pares)}</td>
+      </tr>`;
+      return tr + (aberta ? rowPedidosPorEtapa(et.pedidos) : '');
+    }).join('');
+
+    return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
+      ${head}
+      <div class="drill-clientes-sub">${etapas.length} etapa${etapas.length > 1 ? 's' : ''} · ${comPrevisto.length} pedido${comPrevisto.length > 1 ? 's' : ''} previsto${comPrevisto.length > 1 ? 's' : ''}</div>
+      <table>
+        <thead><tr><th>Etapa</th><th>Pedidos</th><th>Previsto</th><th>Qtd.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div></td></tr>`;
+  }
+
+  function rowPedidosPorEtapa(pedidos) {
+    const ordenado = [...pedidos].sort((a, b) => b.PREVISTO - a.PREVISTO);
+    const rows = ordenado.map(p => {
+      const pedEsc = p.pedido.replace(/'/g, "\\'");
+      const aberto = pedidoMistaAberto === p.pedido;
+      const tr = `<tr class="dc-row-drill${aberto ? ' aberto' : ''}" onclick="togglePedidoMista('${pedEsc}')">
+        <td>${p.pedido}</td>
+        <td>${p.cliente}</td>
+        <td class="dc-prev">${fBRL(p.PREVISTO)}</td>
+        <td>${fPar(p.PREVISTO_PARES)}</td>
+      </tr>`;
+      return tr + (aberto ? rowRefsMista(p) : '');
+    }).join('');
+    return `<tr class="tr-pedidos"><td colspan="4"><div class="drill-pedidos">
+      <div class="drill-pedidos-title">Pedidos · ${pedidos.length} pedido${pedidos.length > 1 ? 's' : ''}</div>
+      <table>
+        <thead><tr><th>Pedido</th><th>Cliente</th><th>Previsto</th><th>Qtd.</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div></td></tr>`;
