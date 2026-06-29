@@ -488,8 +488,11 @@ function renderCharts(){
 // ── Drilldown — Pares por mês de entrega prevista ───────────
 let mesEntregaAtivo = null;
 let mesEntregaLabelAtivo = '';
+let entregaModo = 'cliente';   // 'cliente' | 'modelo'
 let clienteEntregaAtivo = null;
+let modeloEntregaAtivo = null;
 let CLIENTES_ENTREGA_REF = [];
+let MODELOS_ENTREGA_REF = [];
 
 function mesKey(dataBr){
   if(!dataBr) return null;
@@ -501,16 +504,29 @@ function toggleMesEntrega(key, label){
   if(mesEntregaAtivo === key){ mesEntregaAtivo = null; }
   else { mesEntregaAtivo = key; mesEntregaLabelAtivo = label; }
   clienteEntregaAtivo = null;
+  modeloEntregaAtivo = null;
   renderEntregaDrill();
 }
 function fecharEntregaDrill(){
   mesEntregaAtivo = null;
   clienteEntregaAtivo = null;
+  modeloEntregaAtivo = null;
+  renderEntregaDrill();
+}
+function setEntregaModo(modo){
+  entregaModo = modo;
+  clienteEntregaAtivo = null;
+  modeloEntregaAtivo = null;
   renderEntregaDrill();
 }
 function toggleClienteEntrega(idx){
   const nome = CLIENTES_ENTREGA_REF[idx];
   clienteEntregaAtivo = (clienteEntregaAtivo===nome) ? null : nome;
+  renderEntregaDrill();
+}
+function toggleModeloEntrega(idx){
+  const ref = MODELOS_ENTREGA_REF[idx];
+  modeloEntregaAtivo = (modeloEntregaAtivo===ref) ? null : ref;
   renderEntregaDrill();
 }
 
@@ -520,31 +536,67 @@ function renderEntregaDrill(){
   if(!mesEntregaAtivo){ wrap.innerHTML = ''; return; }
 
   const pedidos = (DATA.pedidos||[]).filter(p=>mesKey(p.dt_faturam)===mesEntregaAtivo);
-  const porCliente = {};
-  pedidos.forEach(p=>{
-    const k = p.cliente;
-    if(!porCliente[k]) porCliente[k] = {cliente:k, pares:0, pedidos:[]};
-    porCliente[k].pares += p.pares;
-    porCliente[k].pedidos.push(p);
-  });
-  const clientes = Object.values(porCliente).sort((a,b)=>b.pares-a.pares);
 
-  CLIENTES_ENTREGA_REF = [];
+  let count, listaHtml;
+  if(entregaModo === 'modelo'){
+    const porModelo = {};
+    pedidos.forEach(p=>{
+      const refs = (p.refs && Object.keys(p.refs).length) ? p.refs : {[p.ref_principal||'–']: p.pares};
+      Object.entries(refs).forEach(([ref,qtd])=>{
+        if(!porModelo[ref]) porModelo[ref] = {ref, pares:0, clientes:new Set(), pedidos:[]};
+        porModelo[ref].pares += qtd;
+        porModelo[ref].clientes.add(p.cliente);
+        porModelo[ref].pedidos.push({cliente:p.cliente, pedido:p.pedido, qtd});
+      });
+    });
+    const modelos = Object.values(porModelo).sort((a,b)=>b.pares-a.pares);
+    count = modelos.length;
+    MODELOS_ENTREGA_REF = [];
+    listaHtml = modelos.map(m=>`
+      <div class="drill-cliente ${modeloEntregaAtivo===m.ref?'ativa':''}" onclick="toggleModeloEntrega(${MODELOS_ENTREGA_REF.push(m.ref)-1})">
+        <div class="drill-arrow">${modeloEntregaAtivo===m.ref?'▾':'▸'}</div>
+        <div class="dc-nome">${m.ref}</div>
+        <div class="dc-ped">${f(m.clientes.size)} cli.</div>
+        <div class="dc-pares">${f(m.pares)} pares</div>
+      </div>
+      ${modeloEntregaAtivo===m.ref ? renderClientesModelo(m.pedidos) : ''}
+    `).join('');
+  } else {
+    const porCliente = {};
+    pedidos.forEach(p=>{
+      const k = p.cliente;
+      if(!porCliente[k]) porCliente[k] = {cliente:k, pares:0, pedidos:[]};
+      porCliente[k].pares += p.pares;
+      porCliente[k].pedidos.push(p);
+    });
+    const clientes = Object.values(porCliente).sort((a,b)=>b.pares-a.pares);
+    count = clientes.length;
+    CLIENTES_ENTREGA_REF = [];
+    listaHtml = clientes.map(c=>`
+      <div class="drill-cliente ${clienteEntregaAtivo===c.cliente?'ativa':''}" onclick="toggleClienteEntrega(${CLIENTES_ENTREGA_REF.push(c.cliente)-1})">
+        <div class="drill-arrow">${clienteEntregaAtivo===c.cliente?'▾':'▸'}</div>
+        <div class="dc-nome">${c.cliente}</div>
+        <div class="dc-ped">${f(c.pedidos.length)} ped.</div>
+        <div class="dc-pares">${f(c.pares)} pares</div>
+      </div>
+      ${clienteEntregaAtivo===c.cliente ? renderProdutosCliente(c.pedidos) : ''}
+    `).join('');
+  }
+
   wrap.innerHTML = `
     <div class="drill">
       <div class="drill-head">
-        <span>${clientes.length} cliente(s) — entrega em ${mesEntregaLabelAtivo||mesEntregaAtivo}</span>
-        <span class="drill-close" onclick="event.stopPropagation();fecharEntregaDrill()">fechar ✕</span>
-      </div>
-      ${clientes.map(c=>`
-        <div class="drill-cliente ${clienteEntregaAtivo===c.cliente?'ativa':''}" onclick="toggleClienteEntrega(${CLIENTES_ENTREGA_REF.push(c.cliente)-1})">
-          <div class="drill-arrow">${clienteEntregaAtivo===c.cliente?'▾':'▸'}</div>
-          <div class="dc-nome">${c.cliente}</div>
-          <div class="dc-ped">${f(c.pedidos.length)} ped.</div>
-          <div class="dc-pares">${f(c.pares)} pares</div>
+        <span>${count} ${entregaModo==='modelo'?'modelo':'cliente'}(s) — entrega em ${mesEntregaLabelAtivo||mesEntregaAtivo}</span>
+        <div class="drill-sort">
+          <span>ver por</span>
+          <select onchange="setEntregaModo(this.value)">
+            <option value="cliente" ${entregaModo==='cliente'?'selected':''}>Cliente</option>
+            <option value="modelo" ${entregaModo==='modelo'?'selected':''}>Modelo</option>
+          </select>
+          <span class="drill-close" onclick="event.stopPropagation();fecharEntregaDrill()">fechar ✕</span>
         </div>
-        ${clienteEntregaAtivo===c.cliente ? renderProdutosCliente(c.pedidos) : ''}
-      `).join('')}
+      </div>
+      ${listaHtml}
     </div>`;
 }
 
@@ -567,6 +619,30 @@ function renderProdutosCliente(pedidosCliente){
           ${linhas.map(l=>`
             <tr>
               <td>${l.ref}</td>
+              <td style="text-align:right;font-weight:700;color:var(--txt)">${f(l.pares)}</td>
+              <td>${[...l.pedidos].join(', ')}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderClientesModelo(pedidosModelo){
+  const porCliente = {};
+  pedidosModelo.forEach(p=>{
+    if(!porCliente[p.cliente]) porCliente[p.cliente] = {cliente:p.cliente, pares:0, pedidos:new Set()};
+    porCliente[p.cliente].pares += p.qtd;
+    porCliente[p.cliente].pedidos.add(p.pedido);
+  });
+  const linhas = Object.values(porCliente).sort((a,b)=>b.pares-a.pares);
+  return `
+    <div class="drill-detail">
+      <table>
+        <thead><tr><th>Cliente</th><th style="text-align:right">Pares</th><th>Pedido(s)</th></tr></thead>
+        <tbody>
+          ${linhas.map(l=>`
+            <tr>
+              <td>${l.cliente}</td>
               <td style="text-align:right;font-weight:700;color:var(--txt)">${f(l.pares)}</td>
               <td>${[...l.pedidos].join(', ')}</td>
             </tr>`).join('')}
