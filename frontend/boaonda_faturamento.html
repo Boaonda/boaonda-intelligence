@@ -119,6 +119,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rt tr.tr-group.tr-drill:hover td{background:rgba(237,104,66,.08)}
 .rt tr.tr-group.tr-drill td.td-grupo::before{content:'▸ ';color:var(--txt-m);font-size:9px;display:inline-block;width:10px}
 .rt tr.tr-group.tr-drill.aberto td.td-grupo::before{content:'▾ '}
+.rt tr.tr-sub.tr-drill{cursor:pointer}
+.rt tr.tr-sub.tr-drill:hover td{background:rgba(255,255,255,.025)}
+.rt tr.tr-sub.tr-drill td.td-grupo::before{content:'▸ ';color:var(--txt-m);font-size:8px;display:inline-block;width:10px}
+.rt tr.tr-sub.tr-drill.aberto td.td-grupo::before{content:'▾ '}
 .rt tr.tr-fora-geral td{background:#1b1d23;color:#6b6a68}
 .rt tr.tr-fora-geral td.td-grupo{color:#8a8884}
 .rt tr.tr-fora-geral td.td-r-v,.rt tr.tr-fora-geral td.td-p-v,.rt tr.tr-fora-geral td.td-t-v{color:#8a8884}
@@ -740,6 +744,53 @@ function renderResumo() {
     </div></td></tr>`;
   }
 
+  function rowDrillPedidosMista(mesKey) {
+    const lista = ((DATA.dados_pedidos_mista || {})[mesKey]) || [];
+    const titulo = 'Pedidos — MI Venda Mista · ' + mesLong(mesKey);
+    if (!lista.length) {
+      return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
+        <div class="drill-clientes-title">${titulo}</div>
+        <div class="drill-clientes-empty">Sem pedidos faturados/previstos neste mês.</div>
+      </div></td></tr>`;
+    }
+    const rows = lista.map(p => `<tr>
+        <td>${p.pedido}</td>
+        <td>${p.cliente}</td>
+        <td>${p.ref || '–'}${p.qtd_refs > 1 ? ' (+' + (p.qtd_refs - 1) + ')' : ''}</td>
+        <td class="dc-real">${p.REALIZADO ? fBRL(p.REALIZADO) : '–'}</td>
+        <td>${p.REALIZADO_PARES ? fPar(p.REALIZADO_PARES) : '–'}</td>
+        <td class="dc-prev">${sp && p.PREVISTO ? fBRL(p.PREVISTO) : '–'}</td>
+        <td>${sp && p.PREVISTO_PARES ? fPar(p.PREVISTO_PARES) : '–'}</td>
+      </tr>`).join('');
+    return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
+      <div class="drill-clientes-title">${titulo} · ${lista.length} pedido${lista.length > 1 ? 's' : ''}</div>
+      <table>
+        <thead><tr><th>Pedido</th><th>Cliente</th><th>Referência</th><th>Realizado</th><th>Qtd.</th><th>Previsto</th><th>Qtd.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div></td></tr>`;
+  }
+
+  function rowSubDrill(label, d, canalDrill) {
+    const tQ = d.rQ + d.pQ, tV = d.rV + d.pV;
+    const dash = sp ? '' : '—';
+    const drillCls = ' tr-drill' + (drillAberto === canalDrill ? ' aberto' : '');
+    return `<tr class="tr-sub${drillCls}" onclick="toggleDrillCliente('${canalDrill}')">
+      <td class="td-grupo">↳ ${label}</td>
+      <td class="td-sep"></td>
+      <td class="td-r-q">${d.rQ ? fPar(d.rQ) : '–'}</td>
+      <td class="td-r-v">${d.rV ? fBRL(d.rV) : '–'}</td>
+      <td class="td-r-p">${d.rV ? pct(d.rV, totR) : '–'}</td>
+      <td class="td-sep"></td>
+      <td class="td-p-q">${sp ? (d.pQ ? fPar(d.pQ) : '–') : dash}</td>
+      <td class="td-p-v">${sp ? (d.pV ? fBRL(d.pV) : '–') : dash}</td>
+      <td class="td-sep"></td>
+      <td class="td-t-q">${tQ ? fPar(tQ) : '–'}</td>
+      <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
+      <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
+    </tr>` + (drillAberto === canalDrill ? rowDrillPedidosMista(key) : '');
+  }
+
   function rowSub(label, d) {
     const tQ = d.rQ + d.pQ, tV = d.rV + d.pV;
     const dash = sp ? '' : '—';
@@ -763,7 +814,7 @@ function renderResumo() {
     rowGroup('Faturamento MI', miTotal) +
     rowSub('MI Programado', mprog) +
     rowSub('MI Pronta Entrega', mpe) +
-    (mmist.rV || mmist.pV ? rowSub('MI Venda Mista', mmist) : '') +
+    (mmist.rV || mmist.pV ? rowSubDrill('MI Venda Mista', mmist, 'MISTA') : '') +
     rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV, fPar, 'ME') +
     rowGroup('Faturamento E-commerce', ecV) +
     (evaV.rV || evaV.pV ? rowGroup('Faturamento Composto EVA', evaV, fKg1, 'EVA') : '');

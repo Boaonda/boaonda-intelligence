@@ -1070,6 +1070,12 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     # dados_pedidos_eva[mes_ref][cliente][pedido] = [fat_vlr, prev_vlr, fat_kg, prev_kg]
     # 2º nível do drilldown de Composto EVA — só EVA, conforme solicitado.
     dados_pedidos_eva = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])))
+    # dados_pedidos_mista[mes_ref][pedido] = {cliente, refs:Counter, rv, pv, rq, pq}
+    # Drilldown de MI Venda Mista (espécie 31) — lista plana de pedidos, para
+    # auditoria visual do número (investigar possível discrepância apontada
+    # pelo usuário frente a outra fonte de referência).
+    dados_pedidos_mista = defaultdict(lambda: defaultdict(lambda: {
+        'cliente': '', 'refs': Counter(), 'rv': 0.0, 'pv': 0.0, 'rq': 0, 'pq': 0}))
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
     total_fat = total_prev = sem_data_count = 0
 
@@ -1139,6 +1145,16 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                     pedido = g(row, IDX['pedido']).strip() or '(sem pedido)'
                     dp_ped = dados_pedidos_eva[mes_ref][cliente][pedido]
                     dp_ped[vi] += vlr; dp_ped[qi] += qtd
+
+            if canal == 'MI' and tipo == 'MISTA':
+                pedido = g(row, IDX['pedido']).strip() or '(sem pedido)'
+                cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
+                ref = g(row, IDX['ref']).strip()
+                pm = dados_pedidos_mista[mes_ref][pedido]
+                pm['cliente'] = cliente
+                if ref: pm['refs'][ref] += qtd
+                if status == 'fat': pm['rv'] += vlr; pm['rq'] += qtd
+                else:                pm['pv'] += vlr; pm['pq'] += qtd
 
             if status == 'fat':  total_fat  += qtd
             else:                total_prev += qtd
@@ -1232,9 +1248,25 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
 
     dados_clientes_out = {k: build_clientes_mes(v, k) for k, v in sorted(dados_clientes.items())}
 
+    def build_pedidos_mista_mes(pm):
+        pedidos = []
+        for pedido, d in pm.items():
+            if not any([d['rv'], d['pv'], d['rq'], d['pq']]):
+                continue
+            ref_principal = d['refs'].most_common(1)[0][0] if d['refs'] else ''
+            pedidos.append({'pedido': pedido, 'cliente': d['cliente'], 'ref': ref_principal,
+                             'qtd_refs': len(d['refs']),
+                             'REALIZADO': round(d['rv'], 2), 'PREVISTO': round(d['pv'], 2),
+                             'REALIZADO_PARES': int(d['rq']), 'PREVISTO_PARES': int(d['pq'])})
+        pedidos.sort(key=lambda p: -(p['REALIZADO'] + p['PREVISTO']))
+        return pedidos
+
+    dados_pedidos_mista_out = {k: build_pedidos_mista_mes(v) for k, v in sorted(dados_pedidos_mista.items())}
+
     result = {'gerado_em':datetime.now().strftime('%d/%m/%Y %H:%M'),
               'taxa_cambio_me':taxa_cambio_me, 'dados':dados_out,
               'dados_cfop':dados_cfop_out, 'dados_clientes':dados_clientes_out,
+              'dados_pedidos_mista':dados_pedidos_mista_out,
               'sem_data':sem_data_out}
     with open(os.path.join(output_dir,'dados_faturamento.json'),'w',encoding='utf-8') as f_:
         json.dump(result, f_, ensure_ascii=False, default=str)
