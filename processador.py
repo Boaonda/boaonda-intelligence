@@ -1070,14 +1070,18 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     # dados_pedidos_eva[mes_ref][cliente][pedido] = [fat_vlr, prev_vlr, fat_kg, prev_kg]
     # 2º nível do drilldown de Composto EVA — só EVA, conforme solicitado.
     dados_pedidos_eva = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])))
-    # dados_pedidos_mista[mes_ref][pedido] = {cliente, refs:{ref:[rv,pv,rq,pq]}, rv, pv, rq, pq}
-    # Drilldown de MI Venda Mista (espécie 31) — lista plana de pedidos, para
-    # auditoria visual do número (investigar possível discrepância apontada
-    # pelo usuário frente a outra fonte de referência). O detalhe por
-    # referência só é exibido em um 2º nível, ao expandir o pedido.
-    dados_pedidos_mista = defaultdict(lambda: defaultdict(lambda: {
-        'cliente': '', 'etapa': '', 'refs': defaultdict(lambda: [0.0, 0.0, 0, 0]),
-        'rv': 0.0, 'pv': 0.0, 'rq': 0, 'pq': 0}))
+    # dados_pedidos_mi[tipo][mes_ref][pedido] = {cliente, etapa, refs:{ref:[rv,pv,rq,pq]}, rv, pv, rq, pq}
+    # Drilldown de MI Venda Mista (espécie 31) e MI Pronta Entrega (espécie
+    # 22) — lista plana de pedidos, para auditoria visual do número
+    # (investigar possível discrepância apontada pelo usuário frente a outra
+    # fonte de referência). O detalhe por referência só é exibido em um 2º
+    # nível, ao expandir o pedido; a etapa só é exibida em um agrupamento
+    # alternativo, e só para pedidos ainda em aberto (previsto).
+    def _novo_pedido_mi():
+        return {'cliente': '', 'etapa': '', 'refs': defaultdict(lambda: [0.0, 0.0, 0, 0]),
+                'rv': 0.0, 'pv': 0.0, 'rq': 0, 'pq': 0}
+    dados_pedidos_mi = {'MISTA': defaultdict(lambda: defaultdict(_novo_pedido_mi)),
+                         'PE': defaultdict(lambda: defaultdict(_novo_pedido_mi))}
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
     total_fat = total_prev = sem_data_count = 0
 
@@ -1148,11 +1152,11 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                     dp_ped = dados_pedidos_eva[mes_ref][cliente][pedido]
                     dp_ped[vi] += vlr; dp_ped[qi] += qtd
 
-            if canal == 'MI' and tipo == 'MISTA':
+            if canal == 'MI' and tipo in ('MISTA', 'PE'):
                 pedido = g(row, IDX['pedido']).strip() or '(sem pedido)'
                 cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
                 ref = g(row, IDX['ref']).strip() or '(sem referência)'
-                pm = dados_pedidos_mista[mes_ref][pedido]
+                pm = dados_pedidos_mi[tipo][mes_ref][pedido]
                 pm['cliente'] = cliente
                 # Etapa só é relevante para pedidos ainda em aberto (previsto) —
                 # uma vez faturado, o campo no ERP fica obsoleto/sem sentido.
@@ -1255,7 +1259,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
 
     dados_clientes_out = {k: build_clientes_mes(v, k) for k, v in sorted(dados_clientes.items())}
 
-    def build_pedidos_mista_mes(pm):
+    def build_pedidos_mi_mes(pm):
         pedidos = []
         for pedido, d in pm.items():
             if not any([d['rv'], d['pv'], d['rq'], d['pq']]):
@@ -1274,12 +1278,14 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         pedidos.sort(key=lambda p: -(p['REALIZADO'] + p['PREVISTO']))
         return pedidos
 
-    dados_pedidos_mista_out = {k: build_pedidos_mista_mes(v) for k, v in sorted(dados_pedidos_mista.items())}
+    dados_pedidos_mista_out = {k: build_pedidos_mi_mes(v) for k, v in sorted(dados_pedidos_mi['MISTA'].items())}
+    dados_pedidos_pe_out = {k: build_pedidos_mi_mes(v) for k, v in sorted(dados_pedidos_mi['PE'].items())}
 
     result = {'gerado_em':datetime.now().strftime('%d/%m/%Y %H:%M'),
               'taxa_cambio_me':taxa_cambio_me, 'dados':dados_out,
               'dados_cfop':dados_cfop_out, 'dados_clientes':dados_clientes_out,
               'dados_pedidos_mista':dados_pedidos_mista_out,
+              'dados_pedidos_pe':dados_pedidos_pe_out,
               'sem_data':sem_data_out}
     with open(os.path.join(output_dir,'dados_faturamento.json'),'w',encoding='utf-8') as f_:
         json.dump(result, f_, ensure_ascii=False, default=str)

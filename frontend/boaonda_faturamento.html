@@ -425,12 +425,14 @@ const stackTotalPlugin = {
 Chart.register(stackTotalPlugin);
 
 let DATA = null, CAMBIO = 5.00, fatChart = null;
-let drillAberto = null; // 'ME' | 'EVA' | 'MISTA' | null — grupo expandido no resumo mensal
+let drillAberto = null; // 'ME' | 'EVA' | 'MISTA' | 'PE' | null — grupo expandido no resumo mensal
 let pedidoAberto = null; // nome do cliente (EVA) com pedidos expandidos
-let pedidoMistaAberto = null; // número do pedido (MISTA) com referências expandidas
-let sortPedidosMista = null; // null = ordem padrão (total desc) | 'REALIZADO' | 'REALIZADO_PARES' | 'PREVISTO' | 'PREVISTO_PARES'
-let mistaModo = 'pedido'; // 'pedido' | 'etapa' — viés de visualização do drilldown MISTA
-let etapaMistaAberta = null; // etapa expandida na visão "por Etapa"
+// Estado do drilldown de pedidos MI (MISTA e PE compartilham a mesma UI —
+// só um grupo fica aberto por vez, então um único conjunto de variáveis basta).
+let pedidoMiAberto = null; // número do pedido com referências expandidas
+let sortPedidosMi = null; // null = ordem padrão (total desc) | 'REALIZADO' | 'REALIZADO_PARES' | 'PREVISTO' | 'PREVISTO_PARES'
+let modoPedidosMi = 'pedido'; // 'pedido' | 'etapa' — viés de visualização do drilldown
+let etapaMiAberta = null; // etapa expandida na visão "por Etapa"
 
 const R = n => Math.round(n || 0);
 const fBRL = n => 'R$ ' + R(n).toLocaleString('pt-BR');
@@ -623,6 +625,9 @@ function popularSeletorMes() {
 function toggleDrillCliente(canal) {
   drillAberto = drillAberto === canal ? null : canal;
   pedidoAberto = null;
+  pedidoMiAberto = null;
+  etapaMiAberta = null;
+  modoPedidosMi = 'pedido';
   renderResumo();
 }
 
@@ -631,26 +636,26 @@ function togglePedidoCliente(cliente) {
   renderResumo();
 }
 
-function togglePedidoMista(pedido) {
-  pedidoMistaAberto = pedidoMistaAberto === pedido ? null : pedido;
+function togglePedidoMi(pedido) {
+  pedidoMiAberto = pedidoMiAberto === pedido ? null : pedido;
   renderResumo();
 }
 
-function setSortPedidosMista(campo) {
-  sortPedidosMista = campo;
+function setSortPedidosMi(campo) {
+  sortPedidosMi = campo;
   renderResumo();
 }
 
-function setMistaModo(modo) {
-  mistaModo = modo;
-  pedidoMistaAberto = null;
-  etapaMistaAberta = null;
+function setModoPedidosMi(modo) {
+  modoPedidosMi = modo;
+  pedidoMiAberto = null;
+  etapaMiAberta = null;
   renderResumo();
 }
 
-function toggleEtapaMista(etapa) {
-  etapaMistaAberta = etapaMistaAberta === etapa ? null : etapa;
-  pedidoMistaAberto = null;
+function toggleEtapaMi(etapa) {
+  etapaMiAberta = etapaMiAberta === etapa ? null : etapa;
+  pedidoMiAberto = null;
   renderResumo();
 }
 
@@ -782,17 +787,20 @@ function renderResumo() {
     </div></td></tr>`;
   }
 
-  function rowDrillPedidosMista(mesKey) {
-    const listaTodos = ((DATA.dados_pedidos_mista || {})[mesKey]) || [];
+  const MI_DRILL_LABEL = { MISTA: 'MI Venda Mista', PE: 'MI Pronta Entrega' };
+  const MI_DRILL_DATAKEY = { MISTA: 'dados_pedidos_mista', PE: 'dados_pedidos_pe' };
+
+  function rowDrillPedidosMi(canal, mesKey) {
+    const listaTodos = ((DATA[MI_DRILL_DATAKEY[canal]] || {})[mesKey]) || [];
 
     const head = `
       <div class="drill-clientes-head">
-        <div class="drill-clientes-title">Pedidos — MI Venda Mista · ${mesLong(mesKey)}</div>
+        <div class="drill-clientes-title">Pedidos — ${MI_DRILL_LABEL[canal]} · ${mesLong(mesKey)}</div>
         <div class="drill-modo-toggle">
           <span>ver por</span>
-          <select onchange="setMistaModo(this.value)">
-            <option value="pedido" ${mistaModo === 'pedido' ? 'selected' : ''}>Pedido</option>
-            <option value="etapa" ${mistaModo === 'etapa' ? 'selected' : ''}>Etapa (previstos)</option>
+          <select onchange="setModoPedidosMi(this.value)">
+            <option value="pedido" ${modoPedidosMi === 'pedido' ? 'selected' : ''}>Pedido</option>
+            <option value="etapa" ${modoPedidosMi === 'etapa' ? 'selected' : ''}>Etapa (previstos)</option>
           </select>
         </div>
       </div>`;
@@ -804,19 +812,19 @@ function renderResumo() {
       </div></td></tr>`;
     }
 
-    if (mistaModo === 'etapa') {
-      return rowDrillMistaPorEtapa(listaTodos, head);
+    if (modoPedidosMi === 'etapa') {
+      return rowDrillMiPorEtapa(listaTodos, head);
     }
 
     let lista = listaTodos;
-    if (sortPedidosMista) {
-      lista = [...lista].sort((a, b) => (b[sortPedidosMista] || 0) - (a[sortPedidosMista] || 0));
+    if (sortPedidosMi) {
+      lista = [...lista].sort((a, b) => (b[sortPedidosMi] || 0) - (a[sortPedidosMi] || 0));
     }
-    const th = (campo, label) => `<th class="th-sort${sortPedidosMista === campo ? ' ativo' : ''}" onclick="setSortPedidosMista('${campo}')">${label}</th>`;
+    const th = (campo, label) => `<th class="th-sort${sortPedidosMi === campo ? ' ativo' : ''}" onclick="setSortPedidosMi('${campo}')">${label}</th>`;
     const rows = lista.map(p => {
       const pedEsc = p.pedido.replace(/'/g, "\\'");
-      const aberto = pedidoMistaAberto === p.pedido;
-      const tr = `<tr class="dc-row-drill${aberto ? ' aberto' : ''}" onclick="togglePedidoMista('${pedEsc}')">
+      const aberto = pedidoMiAberto === p.pedido;
+      const tr = `<tr class="dc-row-drill${aberto ? ' aberto' : ''}" onclick="togglePedidoMi('${pedEsc}')">
         <td>${p.pedido}</td>
         <td>${p.cliente}</td>
         <td class="dc-real">${p.REALIZADO ? fBRL(p.REALIZADO) : '–'}</td>
@@ -824,7 +832,7 @@ function renderResumo() {
         <td class="dc-prev">${sp && p.PREVISTO ? fBRL(p.PREVISTO) : '–'}</td>
         <td>${sp && p.PREVISTO_PARES ? fPar(p.PREVISTO_PARES) : '–'}</td>
       </tr>`;
-      return tr + (aberto ? rowRefsMista(p) : '');
+      return tr + (aberto ? rowRefsMi(p) : '');
     }).join('');
     return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
       ${head}
@@ -836,7 +844,7 @@ function renderResumo() {
     </div></td></tr>`;
   }
 
-  function rowDrillMistaPorEtapa(listaTodos, head) {
+  function rowDrillMiPorEtapa(listaTodos, head) {
     const comPrevisto = listaTodos.filter(p => p.PREVISTO_PARES > 0);
     const porEtapa = {};
     comPrevisto.forEach(p => {
@@ -856,9 +864,9 @@ function renderResumo() {
     }
 
     const rows = etapas.map(et => {
-      const aberta = etapaMistaAberta === et.etapa;
+      const aberta = etapaMiAberta === et.etapa;
       const etEsc = et.etapa.replace(/'/g, "\\'");
-      const tr = `<tr class="dc-row-drill${aberta ? ' aberto' : ''}" onclick="toggleEtapaMista('${etEsc}')">
+      const tr = `<tr class="dc-row-drill${aberta ? ' aberto' : ''}" onclick="toggleEtapaMi('${etEsc}')">
         <td>${et.etapa}</td>
         <td>${fPar(et.pedidos.length)} ped.</td>
         <td class="dc-prev">${fBRL(et.previsto)}</td>
@@ -881,14 +889,14 @@ function renderResumo() {
     const ordenado = [...pedidos].sort((a, b) => b.PREVISTO - a.PREVISTO);
     const rows = ordenado.map(p => {
       const pedEsc = p.pedido.replace(/'/g, "\\'");
-      const aberto = pedidoMistaAberto === p.pedido;
-      const tr = `<tr class="dc-row-drill${aberto ? ' aberto' : ''}" onclick="togglePedidoMista('${pedEsc}')">
+      const aberto = pedidoMiAberto === p.pedido;
+      const tr = `<tr class="dc-row-drill${aberto ? ' aberto' : ''}" onclick="togglePedidoMi('${pedEsc}')">
         <td>${p.pedido}</td>
         <td>${p.cliente}</td>
         <td class="dc-prev">${fBRL(p.PREVISTO)}</td>
         <td>${fPar(p.PREVISTO_PARES)}</td>
       </tr>`;
-      return tr + (aberto ? rowRefsMista(p) : '');
+      return tr + (aberto ? rowRefsMi(p) : '');
     }).join('');
     return `<tr class="tr-pedidos"><td colspan="4"><div class="drill-pedidos">
       <div class="drill-pedidos-title">Pedidos · ${pedidos.length} pedido${pedidos.length > 1 ? 's' : ''}</div>
@@ -899,7 +907,7 @@ function renderResumo() {
     </div></td></tr>`;
   }
 
-  function rowRefsMista(p) {
+  function rowRefsMi(p) {
     const refs = p.refs || [];
     if (!refs.length) {
       return `<tr class="tr-pedidos"><td colspan="6"><div class="drill-pedidos">
@@ -940,7 +948,7 @@ function renderResumo() {
       <td class="td-t-q">${tQ ? fPar(tQ) : '–'}</td>
       <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
       <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
-    </tr>` + (drillAberto === canalDrill ? rowDrillPedidosMista(key) : '');
+    </tr>` + (drillAberto === canalDrill ? rowDrillPedidosMi(canalDrill, key) : '');
   }
 
   function rowSub(label, d) {
@@ -965,7 +973,7 @@ function renderResumo() {
   document.getElementById('resumo-tbody').innerHTML =
     rowGroup('Faturamento MI', miTotal) +
     rowSub('MI Programado', mprog) +
-    rowSub('MI Pronta Entrega', mpe) +
+    (mpe.rV || mpe.pV ? rowSubDrill('MI Pronta Entrega', mpe, 'PE') : rowSub('MI Pronta Entrega', mpe)) +
     (mmist.rV || mmist.pV ? rowSubDrill('MI Venda Mista', mmist, 'MISTA') : '') +
     rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV, fPar, 'ME') +
     rowGroup('Faturamento E-commerce', ecV) +
