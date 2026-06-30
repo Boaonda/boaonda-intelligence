@@ -135,6 +135,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .drill-clientes table{width:100%;border-collapse:collapse;font-size:10.5px}
 .drill-clientes th{text-align:right;padding:4px 10px;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
 .drill-clientes th:first-child{text-align:left}
+.drill-clientes th.th-left{text-align:left}
+.drill-clientes td.td-left{text-align:left;font-weight:600;color:var(--txt-s)}
 .drill-clientes th.th-sort{cursor:pointer;user-select:none}
 .drill-clientes th.th-sort:hover{color:var(--txt-s)}
 .drill-clientes th.th-sort.ativo{color:var(--coral)}
@@ -824,9 +826,12 @@ function renderResumo() {
     const rows = lista.map(p => {
       const pedEsc = p.pedido.replace(/'/g, "\\'");
       const aberto = pedidoMiAberto === p.pedido;
+      const planoTxt = p.plano ? p.plano + (p.qtd_planos > 1 ? ' (+' + (p.qtd_planos - 1) + ')' : '') : '–';
       const tr = `<tr class="dc-row-drill${aberto ? ' aberto' : ''}" onclick="togglePedidoMi('${pedEsc}')">
         <td>${p.pedido}</td>
-        <td>${p.cliente}</td>
+        <td class="td-left">${p.cliente}</td>
+        <td class="td-left">${planoTxt}</td>
+        <td class="td-left">${p.dt_plano || '–'}</td>
         <td class="dc-real">${p.REALIZADO ? fBRL(p.REALIZADO) : '–'}</td>
         <td>${p.REALIZADO_PARES ? fPar(p.REALIZADO_PARES) : '–'}</td>
         <td class="dc-prev">${sp && p.PREVISTO ? fBRL(p.PREVISTO) : '–'}</td>
@@ -838,7 +843,7 @@ function renderResumo() {
       ${head}
       <div class="drill-clientes-sub">${lista.length} pedido${lista.length > 1 ? 's' : ''}</div>
       <table>
-        <thead><tr><th>Pedido</th><th>Cliente</th>${th('REALIZADO', 'Realizado')}${th('REALIZADO_PARES', 'Qtd.')}${th('PREVISTO', 'Previsto')}${th('PREVISTO_PARES', 'Qtd.')}</tr></thead>
+        <thead><tr><th>Pedido</th><th class="th-left">Cliente</th><th class="th-left">Plano</th><th class="th-left">Dt. Plano</th>${th('REALIZADO', 'Realizado')}${th('REALIZADO_PARES', 'Qtd.')}${th('PREVISTO', 'Previsto')}${th('PREVISTO_PARES', 'Qtd.')}</tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div></td></tr>`;

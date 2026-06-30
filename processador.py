@@ -1079,7 +1079,8 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     # alternativo, e só para pedidos ainda em aberto (previsto).
     def _novo_pedido_mi():
         return {'cliente': '', 'etapa': '', 'refs': defaultdict(lambda: [0.0, 0.0, 0, 0]),
-                'rv': 0.0, 'pv': 0.0, 'rq': 0, 'pq': 0}
+                'rv': 0.0, 'pv': 0.0, 'rq': 0, 'pq': 0,
+                'planos': set(), 'dt_plano_max': None}
     dados_pedidos_mi = {'MISTA': defaultdict(lambda: defaultdict(_novo_pedido_mi)),
                          'PE': defaultdict(lambda: defaultdict(_novo_pedido_mi))}
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
@@ -1162,6 +1163,14 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 # uma vez faturado, o campo no ERP fica obsoleto/sem sentido.
                 if status == 'prev':
                     pm['etapa'] = corrigir_mojibake(g(row, IDX['etapa'])) or 'NÃO INFORMADO'
+                # Plano de produção — só quando a linha já está alocada a um
+                # plano (campo preenchido e diferente de "Não se aplica").
+                plano = g(row, IDX['plano']).strip()
+                if plano and plano not in ('Não se aplica', 'NÃ£o se aplica'):
+                    pm['planos'].add(plano)
+                    dt_p = parse_date(g(row, IDX['dt_plano']))
+                    if dt_p and (not pm['dt_plano_max'] or dt_p > pm['dt_plano_max']):
+                        pm['dt_plano_max'] = dt_p
                 rf = pm['refs'][ref]
                 rf[vi] += vlr; rf[qi] += qtd
                 if status == 'fat': pm['rv'] += vlr; pm['rq'] += qtd
@@ -1271,7 +1280,11 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 refs.append({'ref': ref, 'REALIZADO': round(rv, 2), 'PREVISTO': round(pv, 2),
                              'REALIZADO_PARES': int(rq), 'PREVISTO_PARES': int(pq)})
             refs.sort(key=lambda r: -(r['REALIZADO'] + r['PREVISTO']))
+            planos_sorted = sorted(d['planos'])
             pedidos.append({'pedido': pedido, 'cliente': d['cliente'], 'etapa': d['etapa'],
+                             'plano': planos_sorted[0] if planos_sorted else '',
+                             'qtd_planos': len(planos_sorted),
+                             'dt_plano': d['dt_plano_max'].strftime('%d/%m/%Y') if d['dt_plano_max'] else '',
                              'REALIZADO': round(d['rv'], 2), 'PREVISTO': round(d['pv'], 2),
                              'REALIZADO_PARES': int(d['rq']), 'PREVISTO_PARES': int(d['pq']),
                              'refs': refs})
