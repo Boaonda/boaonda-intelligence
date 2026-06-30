@@ -820,9 +820,9 @@ function renderResumo() {
 
     let lista = listaTodos;
     if (sortPedidosMi) {
-      lista = [...lista].sort((a, b) => (b[sortPedidosMi] || 0) - (a[sortPedidosMi] || 0));
+      lista = [...lista].sort((a, b) => compararPedidosMi(a, b, sortPedidosMi));
     }
-    const th = (campo, label) => `<th class="th-sort${sortPedidosMi === campo ? ' ativo' : ''}" onclick="setSortPedidosMi('${campo}')">${label}</th>`;
+    const th = (campo, label, classe) => `<th class="th-sort${classe ? ' ' + classe : ''}${sortPedidosMi === campo ? ' ativo' : ''}" onclick="setSortPedidosMi('${campo}')">${label}</th>`;
     const rows = lista.map(p => {
       const pedEsc = p.pedido.replace(/'/g, "\\'");
       const aberto = pedidoMiAberto === p.pedido;
@@ -843,10 +843,34 @@ function renderResumo() {
       ${head}
       <div class="drill-clientes-sub">${lista.length} pedido${lista.length > 1 ? 's' : ''}</div>
       <table>
-        <thead><tr><th>Pedido</th><th class="th-left">Cliente</th><th class="th-left">Plano</th><th class="th-left">Dt. Plano</th>${th('REALIZADO', 'Realizado')}${th('REALIZADO_PARES', 'Qtd.')}${th('PREVISTO', 'Previsto')}${th('PREVISTO_PARES', 'Qtd.')}</tr></thead>
+        <thead><tr><th>Pedido</th><th class="th-left">Cliente</th>${th('plano', 'Plano', 'th-left')}${th('dt_plano', 'Dt. Plano', 'th-left')}${th('REALIZADO', 'Realizado')}${th('REALIZADO_PARES', 'Qtd.')}${th('PREVISTO', 'Previsto')}${th('PREVISTO_PARES', 'Qtd.')}</tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div></td></tr>`;
+  }
+
+  function compararPedidosMi(a, b, campo) {
+    if (campo === 'plano') {
+      if (!a.plano && !b.plano) return 0;
+      if (!a.plano) return 1;
+      if (!b.plano) return -1;
+      return b.plano.localeCompare(a.plano, 'pt-BR', { numeric: true });
+    }
+    if (campo === 'dt_plano') {
+      const da = parseDataBR(a.dt_plano), db = parseDataBR(b.dt_plano);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return db - da;
+    }
+    return (b[campo] || 0) - (a[campo] || 0);
+  }
+
+  function parseDataBR(s) {
+    if (!s) return null;
+    const [d, m, y] = s.split('/').map(Number);
+    if (!d || !m || !y) return null;
+    return new Date(y, m - 1, d);
   }
 
   function rowDrillMiPorEtapa(listaTodos, head) {
