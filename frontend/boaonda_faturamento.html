@@ -142,6 +142,37 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rt tr.tr-conta-cfop-fora td{background:#161a24;color:#6b6a68}
 .rt tr.tr-conta-cfop-fora td.td-r-p,.rt tr.tr-conta-cfop-fora td.td-t-p{font-size:9px;font-style:italic;color:#5f5e5b}
 .rt tr.tr-clientes td{background:var(--card2);padding:0;border-bottom:1px solid rgba(255,255,255,.06)}
+/* ── Retroativo ─────────────────────────────────────────────── */
+.retro-kpi-bar{display:flex;gap:16px;flex-wrap:wrap;padding:12px 0 18px}
+.retro-kpi{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:12px 20px;display:flex;flex-direction:column;gap:4px;min-width:150px}
+.retro-kpi::before{content:'';display:block;height:2px;background:linear-gradient(90deg,var(--bo-coral),transparent);margin:-12px -20px 10px;border-radius:10px 10px 0 0}
+.retro-kpi-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--txt-m)}
+.retro-kpi-val{font-size:22px;font-weight:700;color:var(--bo-coral)}
+.retro-mes-card{background:var(--bg-1);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.retro-mes-card:hover{border-color:rgba(237,104,66,.35)}
+.retro-mes-card.retro-mes-open{border-color:rgba(237,104,66,.5)}
+.retro-mes-head{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;gap:16px}
+.retro-mes-label{font-weight:700;font-size:12px;letter-spacing:.04em;flex:0 0 auto}
+.retro-mes-kpis{font-size:11px;color:var(--txt-m);flex:1}
+.retro-toggle{font-size:11px;color:var(--bo-coral);opacity:.8;flex:0 0 auto}
+.retro-grupos{padding:0 14px 14px}
+.retro-grupo{background:var(--bg-2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;overflow:hidden;cursor:pointer}
+.retro-grupo:hover{border-color:rgba(73,148,199,.3)}
+.retro-grupo.retro-grupo-open{border-color:rgba(73,148,199,.5)}
+.retro-grupo-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:12px}
+.retro-grupo-label{font-size:11px;font-weight:600;color:var(--txt-s);display:flex;align-items:center;gap:6px}
+.retro-grupo-kpis{font-size:10px;color:var(--txt-m)}
+.retro-usd{font-size:9px;color:var(--txt-m);opacity:.7}
+.retro-ped-wrap{padding:0 10px 10px;overflow-x:auto}
+.retro-ped-table{font-size:11px}
+.retro-ped-table thead th{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--txt-m);padding:6px 10px;text-align:right;border-bottom:1px solid var(--border)}
+.retro-ped-table thead th.th-left{text-align:left}
+.retro-ped-table tbody tr.tr-retro-ped td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer}
+.retro-ped-table tbody tr.tr-retro-ped:hover td{background:rgba(73,148,199,.06)}
+.retro-ped-table tbody tr.tr-retro-ped-open td{background:rgba(73,148,199,.10);border-bottom:none}
+.retro-ped-table tbody tr.tr-retro-ref td{padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.03);background:rgba(0,0,0,.15)}
+.retro-ped-table td.td-left{text-align:left}
+/* ── Fim Retroativo ─────────────────────────────────────────── */
 .drill-clientes{padding:10px 16px 14px 38px}
 .drill-clientes-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:8px}
 .drill-clientes-sub{font-size:9px;font-weight:600;color:var(--txt-m);margin-bottom:6px}
@@ -347,6 +378,13 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     <div class="chart-inner">
       <canvas id="fat-chart"></canvas>
     </div>
+  </div>
+
+  <!-- Retroativo -->
+  <div class="stitle" id="retro-section" style="display:none">Pendências — faturamento retroativo</div>
+  <div id="retro-wrap" style="display:none">
+    <div class="retro-kpis" id="retro-kpis"></div>
+    <div id="retro-meses"></div>
   </div>
 
   <!-- CFOP -->
@@ -657,6 +695,7 @@ function render() {
 
   renderSemData();
   renderResumo();
+  renderRetroativo();
   renderCfop();
   renderConta();
 }
@@ -1107,6 +1146,139 @@ function renderSemData() {
     <thead><tr><th>Referência</th><th>Canal</th><th>Espécie</th><th style="text-align:right">Pares</th><th style="text-align:right">Valor</th></tr></thead>
     <tbody>${rows}</tbody></table>`
     + (fil.length > 60 ? `<div style="font-size:10px;color:var(--txt-m);padding:8px 10px">... e mais ${fil.length - 60} itens</div>` : '');
+}
+
+// ─── Retroativo ───────────────────────────────────────────────────
+let retroMesAberto   = null;
+let retroGrupoAberto = null;
+let retroPedAberto   = null;
+
+function toggleRetroMes(mes) {
+  if (retroMesAberto === mes) { retroMesAberto = null; retroGrupoAberto = null; retroPedAberto = null; }
+  else { retroMesAberto = mes; retroGrupoAberto = null; retroPedAberto = null; }
+  renderRetroativo();
+}
+function toggleRetroGrupo(chave) {
+  retroGrupoAberto = retroGrupoAberto === chave ? null : chave;
+  retroPedAberto   = null;
+  renderRetroativo();
+}
+function toggleRetroPed(pedido) {
+  retroPedAberto = retroPedAberto === pedido ? null : pedido;
+  renderRetroativo();
+}
+
+function renderRetroativo() {
+  if (!DATA) return;
+  const dr = DATA.dados_retroativos || {};
+  const meses = Object.keys(dr);
+  const hasData = meses.length > 0;
+  document.getElementById('retro-section').style.display = hasData ? '' : 'none';
+  document.getElementById('retro-wrap').style.display    = hasData ? '' : 'none';
+  if (!hasData) return;
+
+  // ── KPI totais globais ─────────────────────────────────────────
+  let gtV = 0, gtPed = 0, gtMes = meses.length;
+  meses.forEach(mes => {
+    Object.values(dr[mes]).forEach(g => {
+      const rv = g.moeda === 'USD' ? (g.PREVISTO||0)*CAMBIO : (g.PREVISTO||0);
+      gtV   += rv;
+      gtPed += (g.pedidos||[]).length;
+    });
+  });
+  document.getElementById('retro-kpis').innerHTML = `
+    <div class="retro-kpi-bar">
+      <div class="retro-kpi"><span class="retro-kpi-label">Total pendente</span><span class="retro-kpi-val">${fBRL(gtV)}</span></div>
+      <div class="retro-kpi"><span class="retro-kpi-label">Pedidos</span><span class="retro-kpi-val">${fPar(gtPed)}</span></div>
+      <div class="retro-kpi"><span class="retro-kpi-label">Meses em atraso</span><span class="retro-kpi-val">${gtMes}</span></div>
+    </div>`;
+
+  // ── Lista de meses ─────────────────────────────────────────────
+  const mesesHtml = meses.map(mes => {
+    let mesV = 0, mesPed = 0;
+    Object.values(dr[mes]).forEach(g => {
+      mesV   += g.moeda === 'USD' ? (g.PREVISTO||0)*CAMBIO : (g.PREVISTO||0);
+      mesPed += (g.pedidos||[]).length;
+    });
+    const isOpen = retroMesAberto === mes;
+    const safeMes = mes.replace(/'/g, "\\'");
+
+    let bodyHtml = '';
+    if (isOpen) {
+      const grupos = Object.entries(dr[mes]);
+      bodyHtml = '<div class="retro-grupos">' + grupos.map(([chave, gd]) => {
+        const gV = gd.moeda === 'USD' ? (gd.PREVISTO||0)*CAMBIO : (gd.PREVISTO||0);
+        const gPed = (gd.pedidos||[]).length;
+        const safeChave = chave.replace(/'/g, "\\'");
+        const isGOpen = retroGrupoAberto === chave;
+
+        let tabela = '';
+        if (isGOpen) {
+          const rows = (gd.pedidos||[]).map(p => {
+            const safePed = p.pedido.replace(/'/g, "\\'");
+            const isPOpen = retroPedAberto === p.pedido;
+            const pV = gd.moeda === 'USD' ? (p.PREVISTO||0)*CAMBIO : (p.PREVISTO||0);
+            const planoTxt = p.plano ? p.plano + (p.qtd_planos > 1 ? ` (+${p.qtd_planos - 1})` : '') : '–';
+            let refsHtml = '';
+            if (isPOpen) {
+              if (!p.refs || p.refs.length === 0) {
+                refsHtml = '<tr class="tr-retro-ref"><td colspan="4" style="padding:8px 16px 8px 36px;color:var(--txt-m);font-style:italic">Sem detalhamento por referência disponível — reprocesse com versão atual do processador.</td></tr>';
+              } else {
+                refsHtml = p.refs.map(r => {
+                  const rV = gd.moeda === 'USD' ? (r.PREVISTO||0)*CAMBIO : (r.PREVISTO||0);
+                  return `<tr class="tr-retro-ref">
+                    <td style="padding-left:36px;color:var(--txt-s);font-style:italic">${r.ref}</td>
+                    <td></td>
+                    <td style="text-align:right;color:var(--bo-coral)">${fBRL(rV)}</td>
+                    <td style="text-align:right;color:var(--txt-s)">${gd.unidade==='kg' ? fKg1(r.PREVISTO_PARES||0) : fPar(r.PREVISTO_PARES||0)}</td>
+                  </tr>`;
+                }).join('');
+              }
+            }
+            return `<tr class="tr-retro-ped${isPOpen ? ' tr-retro-ped-open' : ''}" onclick="toggleRetroPed('${safePed}')">
+              <td class="td-left">${p.pedido} <span class="retro-toggle">${isPOpen ? '▾' : '▸'}</span></td>
+              <td class="td-left" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.cliente}</td>
+              <td class="td-left" style="font-size:10px;color:var(--txt-m)">${p.etapa||'–'}</td>
+              <td class="td-left" style="font-size:10px;color:var(--txt-s)">${planoTxt}</td>
+              <td style="text-align:right;color:var(--bo-coral);font-weight:600">${fBRL(pV)}</td>
+              <td style="text-align:right">${gd.unidade==='kg' ? fKg1(p.PREVISTO_PARES||0) : fPar(p.PREVISTO_PARES||0)}</td>
+            </tr>${refsHtml}`;
+          }).join('');
+
+          tabela = `<div class="retro-ped-wrap"><table class="rt retro-ped-table">
+            <thead><tr>
+              <th class="th-left">Pedido</th>
+              <th class="th-left">Cliente</th>
+              <th class="th-left">Etapa</th>
+              <th class="th-left">Plano</th>
+              <th>Previsto (R$)</th>
+              <th>${gd.unidade === 'kg' ? 'Kg' : 'Pares'}</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>`;
+        }
+
+        return `<div class="retro-grupo${isGOpen ? ' retro-grupo-open' : ''}" onclick="event.stopPropagation();toggleRetroGrupo('${safeChave}')">
+          <div class="retro-grupo-head">
+            <span class="retro-grupo-label">${gd.label} <span class="retro-toggle">${isGOpen ? '▾' : '▸'}</span></span>
+            <span class="retro-grupo-kpis">${fBRL(gV)}${gd.moeda==='USD' ? ' <span class="retro-usd">(USD '+fBRL(gd.PREVISTO||0)+')</span>' : ''} · ${fPar(gPed)} ped.</span>
+          </div>
+          ${tabela}
+        </div>`;
+      }).join('') + '</div>';
+    }
+
+    return `<div class="retro-mes-card${isOpen ? ' retro-mes-open' : ''}" onclick="toggleRetroMes('${safeMes}')">
+      <div class="retro-mes-head">
+        <span class="retro-mes-label">${mesLong(mes).toUpperCase()}</span>
+        <span class="retro-mes-kpis">${fBRL(mesV)} · ${fPar(mesPed)} pedidos</span>
+        <span class="retro-toggle">${isOpen ? '▾' : '▸'}</span>
+      </div>
+      ${bodyHtml}
+    </div>`;
+  }).join('');
+
+  document.getElementById('retro-meses').innerHTML = mesesHtml;
 }
 
 // ─── CFOP ─────────────────────────────────────────────────────────

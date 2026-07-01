@@ -1050,10 +1050,20 @@ def classifica_faturamento(cod, abr, marca=''):
         if cod == '31': return 'MI', 'MISTA'
     return None, None
 
+RETRO_CANAL_LABELS = {
+    'MI_PROG':  ('MI Programado',    'BRL', 'pares'),
+    'MI_PE':    ('MI Pronta Entrega','BRL', 'pares'),
+    'MI_MISTA': ('MI Venda Mista',   'BRL', 'pares'),
+    'ME':       ('Mercado Externo',  'USD', 'pares'),
+    'EC':       ('E-Commerce',       'BRL', 'pares'),
+    'EVA':      ('Composto EVA',     'BRL', 'kg'),
+}
+
 def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     """Gera dados_faturamento.json — faturamento realizado e previsto por
     canal/espécie e mês de referência, com suporte a taxa de câmbio ME."""
     print("\n  Processando faturamento...")
+    mes_atual_fat = datetime.now().strftime('%Y%m')
 
     # Acumuladores: [fat_vlr, prev_vlr, fat_pares, prev_pares]
     # ME usa USD em índice 0/1; MI/EC usam BRL
@@ -1096,6 +1106,12 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 'planos': set(), 'dt_plano_max': None}
     dados_pedidos_mi = {'MISTA': defaultdict(lambda: defaultdict(_novo_pedido_mi)),
                          'PE': defaultdict(lambda: defaultdict(_novo_pedido_mi))}
+    # dados_retro[mes_ref][canal_tipo][pedido] — previsto de meses anteriores ao atual,
+    # para o painel de pendências retroativas (todos os canais, detalhe por pedido e ref).
+    def _novo_pedido_retro():
+        return {'cliente': '', 'etapa': '', 'refs': defaultdict(lambda: [0.0, 0.0, 0.0, 0.0]),
+                'pv': 0.0, 'pq': 0.0, 'planos': set(), 'dt_plano_max': None}
+    dados_retro = defaultdict(lambda: defaultdict(lambda: defaultdict(_novo_pedido_retro)))
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
     total_fat = total_prev = sem_data_count = 0
 
@@ -1202,6 +1218,27 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             dc = dados_cfop[mes_ref][cfop_code]
             dc[vi_c] += vlr
             dc[qi_c] += qtd
+        # Retroativo: previsto de meses anteriores — painel de acompanhamento de pendências.
+        # Exclui conserto/reparo (não são faturamentos de produto).
+        if status == 'prev' and mes_ref < mes_atual_fat and not eh_conserto_reparo:
+            chave_retro = f'MI_{tipo}' if canal == 'MI' else canal
+            pedido_r  = g(row, IDX['pedido']).strip() or '(sem pedido)'
+            cliente_r = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
+            ref_r     = g(row, IDX['ref']).strip() or '(sem referência)'
+            dr = dados_retro[mes_ref][chave_retro][pedido_r]
+            dr['cliente'] = cliente_r
+            dr['etapa']   = corrigir_mojibake(g(row, IDX['etapa'])) or 'NÃO INFORMADO'
+            plano_r = g(row, IDX['plano']).strip()
+            if plano_r and plano_r not in ('Não se aplica', 'NÃ£o se aplica'):
+                dr['planos'].add(plano_r)
+                dt_p_r = parse_date(g(row, IDX['dt_plano']))
+                if dt_p_r and (not dr['dt_plano_max'] or dt_p_r > dr['dt_plano_max']):
+                    dr['dt_plano_max'] = dt_p_r
+            dr['refs'][ref_r][1] += vlr
+            dr['refs'][ref_r][3] += qtd
+            dr['pv'] += vlr
+            dr['pq'] += qtd
+
         # Acumular por conta contábil (aninhado por CFOP para drilldown).
         # Linhas sem conta preenchida entram no balde especial para que o
         # total da aba Conta Contábil bata com o total da aba Grupo.
@@ -1292,6 +1329,49 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
 
     dados_conta_out = {k: build_conta_mes(v) for k, v in sorted(dados_conta.items())}
 
+    def build_retro_mes(grupos_map):
+        out = {}
+        for chave, pedidos_map in sorted(grupos_map.items()):
+            label, moeda, unidade = RETRO_CANAL_LABELS.get(chave, (chave, 'BRL', 'pares'))
+            pedidos = []
+            total_pv = 0.0; total_pq = 0.0
+            for pedido, d in pedidos_map.items():
+                if not d['pv'] and not d['pq']:
+                    continue
+                refs = []
+                for ref, acc in sorted(d['refs'].items()):
+                    pv_r, pq_r = acc[1], acc[3]
+                    if not pv_r and not pq_r:
+                        continue
+                    refs.append({'ref': ref, 'PREVISTO': round(pv_r, 2),
+                                 'PREVISTO_PARES': round(pq_r, 1) if unidade == 'kg' else int(pq_r)})
+                refs.sort(key=lambda r: -r['PREVISTO'])
+                planos_sorted = sorted(d['planos'])
+                pedidos.append({
+                    'pedido': pedido, 'cliente': d['cliente'], 'etapa': d['etapa'],
+                    'plano': planos_sorted[0] if planos_sorted else '',
+                    'qtd_planos': len(planos_sorted),
+                    'dt_plano': d['dt_plano_max'].strftime('%d/%m/%Y') if d['dt_plano_max'] else '',
+                    'PREVISTO': round(d['pv'], 2),
+                    'PREVISTO_PARES': round(d['pq'], 1) if unidade == 'kg' else int(d['pq']),
+                    'refs': refs,
+                })
+                total_pv += d['pv']; total_pq += d['pq']
+            if not pedidos:
+                continue
+            pedidos.sort(key=lambda p: -p['PREVISTO'])
+            out[chave] = {'label': label, 'moeda': moeda, 'unidade': unidade,
+                          'PREVISTO': round(total_pv, 2),
+                          'PREVISTO_PARES': round(total_pq, 1) if unidade == 'kg' else int(total_pq),
+                          'pedidos': pedidos}
+        return out
+
+    dados_retro_out = {}
+    for _kr, _vr in sorted(dados_retro.items(), reverse=True):
+        _built = build_retro_mes(_vr)
+        if _built:
+            dados_retro_out[_kr] = _built
+
     def build_clientes_mes(mc, mes_ref):
         out = {}
         for canal in ('ME', 'EVA'):
@@ -1357,6 +1437,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
               'dados_clientes':dados_clientes_out,
               'dados_pedidos_mista':dados_pedidos_mista_out,
               'dados_pedidos_pe':dados_pedidos_pe_out,
+              'dados_retroativos':dados_retro_out,
               'sem_data':sem_data_out}
     with open(os.path.join(output_dir,'dados_faturamento.json'),'w',encoding='utf-8') as f_:
         json.dump(result, f_, ensure_ascii=False, default=str)
