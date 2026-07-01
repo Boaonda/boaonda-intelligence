@@ -137,6 +137,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rt tr.tr-conta-cfop td{background:#161a24;font-size:11px;color:var(--txt-s);border-top:1px solid rgba(73,148,199,.15)}
 .rt tr.tr-conta-cfop:last-of-type td{border-bottom:2px solid rgba(73,148,199,.25)}
 .td-cfop-sub{padding-left:28px!important;color:var(--txt-s)!important;font-style:italic}
+.rt tr.tr-sem-conta td{background:rgba(237,104,66,.05)}
+.rt tr.tr-sem-conta td.td-grupo{color:var(--txt-m)}
+.rt tr.tr-conta-cfop-fora td{background:#161a24;color:#6b6a68}
+.rt tr.tr-conta-cfop-fora td.td-r-p,.rt tr.tr-conta-cfop-fora td.td-t-p{font-size:9px;font-style:italic;color:#5f5e5b}
 .rt tr.tr-clientes td{background:var(--card2);padding:0;border-bottom:1px solid rgba(255,255,255,.06)}
 .drill-clientes{padding:10px 16px 14px 38px}
 .drill-clientes-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:8px}
@@ -1339,9 +1343,13 @@ function renderConta() {
       const pctR = rV ? pct(rV, totR) : '–';
       const pctT = tV ? pct(tV, totT) : '–';
       const isOpen = contaAberta === code;
+      const isSemConta = !!d.SEM_CONTA;
       const safeCode = code.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      const result = [`<tr class="tr-conta${isOpen ? ' tr-conta-open' : ''}" onclick="toggleConta('${safeCode}')" style="cursor:pointer">
-        <td class="td-grupo">${code} <span class="conta-toggle">${isOpen ? '▾' : '▸'}</span></td>
+      const labelConta = isSemConta
+        ? `<em style="color:var(--txt-m)">(sem conta contábil)</em> <span class="badge-fora-geral">campo vazio no ERP</span>`
+        : code;
+      const result = [`<tr class="tr-conta${isOpen ? ' tr-conta-open' : ''}${isSemConta ? ' tr-sem-conta' : ''}" onclick="toggleConta('${safeCode}')" style="cursor:pointer">
+        <td class="td-grupo">${labelConta} <span class="conta-toggle">${isOpen ? '▾' : '▸'}</span></td>
         <td class="td-sep"></td>
         <td class="td-r-q">${rQ ? fmtQ(rQ) : '–'}</td>
         <td class="td-r-v">${rV ? fBRL(rV) : '–'}</td>
@@ -1363,6 +1371,7 @@ function renderConta() {
             return vb - va;
           })
           .forEach(([cfop, cd]) => {
+            const foraGeral = !!cd.FORA_DO_GERAL;
             const isKg2 = cd.REALIZADO_KG !== undefined || cd.PREVISTO_KG !== undefined;
             const fmtQ2 = isKg2 ? fKg1 : fPar;
             const crV = (cd.REALIZADO||0) + (cd.REALIZADO_USD||0)*CAMBIO;
@@ -1370,19 +1379,23 @@ function renderConta() {
             const crQ = qtyRaw(cd, 'REALIZADO');
             const cpQ = sp ? qtyRaw(cd, 'PREVISTO') : 0;
             const ctV = crV + cpV, ctQ = crQ + cpQ;
-            result.push(`<tr class="tr-conta-cfop">
-              <td class="td-grupo td-cfop-sub">${cfopLabel(cfop)}</td>
+            const cfopRowCls = foraGeral ? ' tr-conta-cfop-fora' : '';
+            const cfopLabel2 = cfopLabel(cfop) + (foraGeral ? ' <span class="badge-fora-geral">não soma</span>' : '');
+            const pctR2 = foraGeral ? 'não soma' : (crV ? pct(crV, rV) : '–');
+            const pctT2 = foraGeral ? 'não soma' : (ctV ? pct(ctV, tV) : '–');
+            result.push(`<tr class="tr-conta-cfop${cfopRowCls}"${foraGeral ? ' title="Conserto/reparo — não compõe o total da conta"' : ''}>
+              <td class="td-grupo td-cfop-sub">${cfopLabel2}</td>
               <td class="td-sep"></td>
               <td class="td-r-q">${crQ ? fmtQ2(crQ) : '–'}</td>
               <td class="td-r-v">${crV ? fBRL(crV) : '–'}</td>
-              <td class="td-r-p">${crV ? pct(crV, rV) : '–'}</td>
+              <td class="td-r-p">${pctR2}</td>
               <td class="td-sep"></td>
               <td class="td-p-q">${sp ? (cpQ ? fmtQ2(cpQ) : '–') : dash}</td>
               <td class="td-p-v">${sp ? (cpV ? fBRL(cpV) : '–') : dash}</td>
               <td class="td-sep"></td>
               <td class="td-t-q">${ctQ ? fmtQ2(ctQ) : '–'}</td>
               <td class="td-t-v">${ctV ? fBRL(ctV) : '–'}</td>
-              <td class="td-t-p">${ctV ? pct(ctV, tV) : '–'}</td>
+              <td class="td-t-p">${pctT2}</td>
             </tr>`);
           });
       }

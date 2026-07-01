@@ -1202,13 +1202,14 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             dc = dados_cfop[mes_ref][cfop_code]
             dc[vi_c] += vlr
             dc[qi_c] += qtd
-        # Acumular por conta contábil (aninhado por CFOP para drilldown)
-        conta_code = g(row, IDX['conta_contabil']).strip()
-        if conta_code:
-            cfop_sub = cfop_code or '(sem CFOP)'
-            dc2 = dados_conta[mes_ref][conta_code][cfop_sub]
-            dc2[vi_c] += vlr
-            dc2[qi_c] += qtd
+        # Acumular por conta contábil (aninhado por CFOP para drilldown).
+        # Linhas sem conta preenchida entram no balde especial para que o
+        # total da aba Conta Contábil bata com o total da aba Grupo.
+        conta_code = g(row, IDX['conta_contabil']).strip() or '(sem conta contábil)'
+        cfop_sub = cfop_code or '(sem CFOP)'
+        dc2 = dados_conta[mes_ref][conta_code][cfop_sub]
+        dc2[vi_c] += vlr
+        dc2[qi_c] += qtd
 
     print(f"    Faturado: {total_fat:,} pares | Previsto: {total_prev:,} pares | Sem data: {sem_data_count}")
 
@@ -1256,6 +1257,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         out = {}
         for conta_code, cfop_map in sorted(contas_map.items()):
             cfops_out = {}
+            # total exclui conserto/reparo (mesma lógica do resumo por grupo)
             total = [0.0, 0.0, 0.0, 0.0, 0, 0, 0.0, 0.0]
             for cfop_sub, acc in sorted(cfop_map.items()):
                 fb, pb, fu, pu, fq, pq, fkg, pkg = acc
@@ -1267,9 +1269,12 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 if fkg or pkg:
                     entry['REALIZADO_KG'] = round(fkg, 1)
                     entry['PREVISTO_KG'] = round(pkg, 1)
+                if cfop_sub in CFOPS_FORA_DO_GERAL:
+                    entry['FORA_DO_GERAL'] = True
+                else:
+                    for i, v in enumerate(acc):
+                        total[i] += v
                 cfops_out[cfop_sub] = entry
-                for i, v in enumerate(acc):
-                    total[i] += v
             if not cfops_out:
                 continue
             fb, pb, fu, pu, fq, pq, fkg, pkg = total
@@ -1280,6 +1285,8 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             if fkg or pkg:
                 conta_entry['REALIZADO_KG'] = round(fkg, 1)
                 conta_entry['PREVISTO_KG'] = round(pkg, 1)
+            if conta_code == '(sem conta contábil)':
+                conta_entry['SEM_CONTA'] = True
             out[conta_code] = conta_entry
         return out
 
