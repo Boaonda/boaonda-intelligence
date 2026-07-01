@@ -71,6 +71,7 @@ IDX = {
     'marca':20,'linha':23,'vlr':26,'cod_esp':27,'abr_grp':29,
     'holding':16,'nomeholder':17,'plano':35,'dt_plano':77,
     'pos_item':40,'etapa':39,'local':72,'tipomontagem':85,'cfop':71,
+    'conta_contabil':81,
 }
 
 # Query usada quando MYSQL_HOST está configurado (ver db_mysql.py) — substitui
@@ -97,6 +98,7 @@ SELECT
     LocalEstoque    AS local,
     CorPalmilha     AS tipomontagem,
     cfop            AS cfop,
+    {col_conta}     AS conta_contabil,
     marca           AS marca,
     {col_valor}     AS vlr
 FROM mould.v_entradapedidos_extended v
@@ -254,7 +256,14 @@ def carregar_linhas_3ys(arquivo_3ys=None):
             print("    AVISO: coluna 'valor líquido' não encontrada na view "
                   "— vendas em R$ ficarão zeradas")
             col_valor_sql = '0'
-        db_rows = db_mysql.consultar(QUERY_3YS.format(col_valor=col_valor_sql))
+        col_conta = db_mysql.achar_coluna_conta_contabil()
+        if col_conta:
+            col_conta_sql = f'v.`{col_conta}`'
+        else:
+            print("    AVISO: coluna 'conta contábil' não encontrada na view "
+                  "— faturamento por conta contábil ficará vazio")
+            col_conta_sql = "''"
+        db_rows = db_mysql.consultar(QUERY_3YS.format(col_valor=col_valor_sql, col_conta=col_conta_sql))
         print(f"    {len(db_rows):,} linhas carregadas do MySQL")
         if len(db_rows) < MIN_LINHAS_3YS_MYSQL:
             raise RuntimeError(
@@ -1061,6 +1070,10 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     # pares (índices 4/5) = MI/ME/EC; kg (índices 6/7) = Composto EVA —
     # unidades distintas, nunca somadas entre si.
     dados_cfop = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0, 0, 0, 0.0, 0.0]))
+    # dados_conta[mes_ref][conta_contabil][cfop] = mesma estrutura de índices que dados_cfop
+    # O nível intermediário (conta) acumula os valores por CFOP para permitir
+    # o drilldown "conta → CFOPs que a compõem" no frontend.
+    dados_conta = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0, 0, 0, 0.0, 0.0])))
     # dados_clientes[mes_ref][canal][cliente] = [fat_vlr, prev_vlr, fat_qtd, prev_qtd]
     # canal ME (USD/pares) e EVA (BRL/kg) — drilldown por cliente no resumo
     # mensal por grupo. MI/EC não têm volume de clientes que justifique o
@@ -1183,15 +1196,19 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         # quantidade vai para pares (MI/ME/EC) ou kg (EVA), nunca somadas.
         # Conserto/reparo entra aqui mesmo estando fora do resumo por
         # grupo, para permanecer visível na aba de CFOP.
+        vi_c = (2 if canal == 'ME' else 0) + (0 if status == 'fat' else 1)
+        qi_c = (6 if status == 'fat' else 7) if canal == 'EVA' else (4 if status == 'fat' else 5)
         if cfop_code:
             dc = dados_cfop[mes_ref][cfop_code]
-            vi_c = (2 if canal == 'ME' else 0) + (0 if status == 'fat' else 1)
             dc[vi_c] += vlr
-            if canal == 'EVA':
-                qi_c = 6 if status == 'fat' else 7
-            else:
-                qi_c = 4 if status == 'fat' else 5
             dc[qi_c] += qtd
+        # Acumular por conta contábil (aninhado por CFOP para drilldown)
+        conta_code = g(row, IDX['conta_contabil']).strip()
+        if conta_code:
+            cfop_sub = cfop_code or '(sem CFOP)'
+            dc2 = dados_conta[mes_ref][conta_code][cfop_sub]
+            dc2[vi_c] += vlr
+            dc2[qi_c] += qtd
 
     print(f"    Faturado: {total_fat:,} pares | Previsto: {total_prev:,} pares | Sem data: {sem_data_count}")
 
@@ -1234,6 +1251,39 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         return out
 
     dados_cfop_out = {k: build_cfop_mes(v) for k, v in sorted(dados_cfop.items())}
+
+    def build_conta_mes(contas_map):
+        out = {}
+        for conta_code, cfop_map in sorted(contas_map.items()):
+            cfops_out = {}
+            total = [0.0, 0.0, 0.0, 0.0, 0, 0, 0.0, 0.0]
+            for cfop_sub, acc in sorted(cfop_map.items()):
+                fb, pb, fu, pu, fq, pq, fkg, pkg = acc
+                if not any([fb, pb, fu, pu, fq, pq, fkg, pkg]):
+                    continue
+                entry = {'REALIZADO': round(fb, 2), 'PREVISTO': round(pb, 2),
+                         'REALIZADO_USD': round(fu, 2), 'PREVISTO_USD': round(pu, 2),
+                         'REALIZADO_PARES': int(fq), 'PREVISTO_PARES': int(pq)}
+                if fkg or pkg:
+                    entry['REALIZADO_KG'] = round(fkg, 1)
+                    entry['PREVISTO_KG'] = round(pkg, 1)
+                cfops_out[cfop_sub] = entry
+                for i, v in enumerate(acc):
+                    total[i] += v
+            if not cfops_out:
+                continue
+            fb, pb, fu, pu, fq, pq, fkg, pkg = total
+            conta_entry = {'REALIZADO': round(fb, 2), 'PREVISTO': round(pb, 2),
+                           'REALIZADO_USD': round(fu, 2), 'PREVISTO_USD': round(pu, 2),
+                           'REALIZADO_PARES': int(fq), 'PREVISTO_PARES': int(pq),
+                           'cfops': cfops_out}
+            if fkg or pkg:
+                conta_entry['REALIZADO_KG'] = round(fkg, 1)
+                conta_entry['PREVISTO_KG'] = round(pkg, 1)
+            out[conta_code] = conta_entry
+        return out
+
+    dados_conta_out = {k: build_conta_mes(v) for k, v in sorted(dados_conta.items())}
 
     def build_clientes_mes(mc, mes_ref):
         out = {}
@@ -1296,7 +1346,8 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
 
     result = {'gerado_em':datetime.now().strftime('%d/%m/%Y %H:%M'),
               'taxa_cambio_me':taxa_cambio_me, 'dados':dados_out,
-              'dados_cfop':dados_cfop_out, 'dados_clientes':dados_clientes_out,
+              'dados_cfop':dados_cfop_out, 'dados_conta':dados_conta_out,
+              'dados_clientes':dados_clientes_out,
               'dados_pedidos_mista':dados_pedidos_mista_out,
               'dados_pedidos_pe':dados_pedidos_pe_out,
               'sem_data':sem_data_out}

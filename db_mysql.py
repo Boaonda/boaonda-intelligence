@@ -32,6 +32,22 @@ def consultar(sql, params=None):
         conn.close()
 
 
+def achar_coluna_conta_contabil(tabela='mould.v_entradapedidos_extended'):
+    """Localiza a coluna de conta contábil na view (tolera variações de nome).
+    Retorna o nome exato da coluna, ou None se não encontrada."""
+    candidatos = []
+    for row in consultar(f"SHOW COLUMNS FROM {tabela}"):
+        nome = row.get('Field', '')
+        baixo = nome.lower()
+        if 'contab' in baixo or (('conta' in baixo) and ('_' in baixo or baixo == 'conta')):
+            candidatos.append(nome)
+    # Preferir nomes que contenham 'contab'
+    for c in candidatos:
+        if 'contab' in c.lower():
+            return c
+    return candidatos[0] if candidatos else None
+
+
 def achar_coluna_valor_liquido(tabela='mould.v_entradapedidos_extended'):
     """Localiza a coluna "valor líquido" na view, tolerando o nome mojibake
     (ex.: `valorl<U+FFFD>quido`) observado no MySQL interno — basta o nome

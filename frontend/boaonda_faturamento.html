@@ -128,6 +128,15 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rt tr.tr-fora-geral td.td-r-v,.rt tr.tr-fora-geral td.td-p-v,.rt tr.tr-fora-geral td.td-t-v{color:#8a8884}
 .rt tr.tr-fora-geral td.td-r-p,.rt tr.tr-fora-geral td.td-t-p{font-size:9px;font-style:italic;color:#5f5e5b}
 .badge-fora-geral{display:inline-block;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a8884;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+/* Conta Contábil drilldown */
+.rt tr.tr-conta td{cursor:pointer}
+.rt tr.tr-conta:hover td{background:rgba(73,148,199,.06)}
+.rt tr.tr-conta-open td{background:rgba(73,148,199,.10);border-bottom:none}
+.rt tr.tr-conta-open td.td-grupo{color:var(--bo-azul);font-weight:600}
+.conta-toggle{font-size:10px;color:var(--bo-azul);margin-left:4px;opacity:.8}
+.rt tr.tr-conta-cfop td{background:#161a24;font-size:11px;color:var(--txt-s);border-top:1px solid rgba(73,148,199,.15)}
+.rt tr.tr-conta-cfop:last-of-type td{border-bottom:2px solid rgba(73,148,199,.25)}
+.td-cfop-sub{padding-left:28px!important;color:var(--txt-s)!important;font-style:italic}
 .rt tr.tr-clientes td{background:var(--card2);padding:0;border-bottom:1px solid rgba(255,255,255,.06)}
 .drill-clientes{padding:10px 16px 14px 38px}
 .drill-clientes-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:8px}
@@ -375,6 +384,45 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     </div>
   </div>
 
+  <!-- Conta Contábil -->
+  <div class="stitle" id="conta-section" style="display:none">Resumo mensal — faturamento por Conta Contábil</div>
+  <div class="resumo-wrap" id="conta-wrap" style="display:none">
+    <div class="resumo-head">
+      <div class="resumo-titulo">Faturamento por Conta Contábil</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:9px;color:var(--txt-m);font-weight:600;text-transform:uppercase;letter-spacing:.1em">Mês</span>
+        <select class="resumo-mes-sel" id="conta-mes"></select>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="rt">
+        <thead>
+          <tr>
+            <th class="th-grupo" rowspan="2">Conta Contábil</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-real" colspan="3" id="conta-th-real">REALIZADO</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-prev" colspan="2" id="conta-th-prev">PREVISTO</th>
+            <th class="th-sep" rowspan="2"></th>
+            <th class="th-grp th-grp-tot" colspan="3" id="conta-th-tot">TOTAL GERAL</th>
+          </tr>
+          <tr>
+            <th class="th-real th-sortable" id="conta-sort-rQ" onclick="setContaSort('rQ')" style="cursor:pointer;user-select:none">Qtd. pares <span id="conta-sort-rQ-icon"></span></th>
+            <th class="th-real th-sortable" id="conta-sort-rV" onclick="setContaSort('rV')" style="cursor:pointer;user-select:none">Valor Fat. <span id="conta-sort-rV-icon">▼</span></th>
+            <th class="th-real">%</th>
+            <th class="th-prev">Qtd. pares</th>
+            <th class="th-prev">Valor Fat.</th>
+            <th class="th-tot">Qtd. pares</th>
+            <th class="th-tot">Valor Fat.</th>
+            <th class="th-tot">%</th>
+          </tr>
+        </thead>
+        <tbody id="conta-tbody"></tbody>
+        <tfoot><tr class="tr-total" id="conta-tfoot"></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
   <!-- Sem data -->
   <div class="semdata-card" id="semdata-card" style="display:none">
     <div class="semdata-head">
@@ -606,6 +654,7 @@ function render() {
   renderSemData();
   renderResumo();
   renderCfop();
+  renderConta();
 }
 
 // ─── Resumo mensal ────────────────────────────────────────────────
@@ -1208,6 +1257,164 @@ function renderCfop() {
     <td class="td-t-p">100%</td>`;
 }
 
+// ─── Conta Contábil ───────────────────────────────────────────────
+let contaAberta = null;
+let contaSort = { col: 'rV', dir: -1 };
+
+function setContaSort(col) {
+  if (contaSort.col === col) contaSort.dir *= -1;
+  else { contaSort.col = col; contaSort.dir = -1; }
+  renderConta();
+}
+
+function toggleConta(code) {
+  contaAberta = contaAberta === code ? null : code;
+  renderConta();
+}
+
+function popularSeletorConta() {
+  const dc  = DATA.dados_conta || {};
+  const MA  = mesAtual();
+  const keys = Object.keys(dc).sort().reverse();
+  const lista = keys.includes(MA) ? keys : [MA, ...keys];
+  const sel = document.getElementById('conta-mes');
+  sel.innerHTML = '';
+  lista.forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = mesLong(k);
+    if (k === MA) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function renderConta() {
+  if (!DATA) return;
+  const dc = DATA.dados_conta || {};
+  const hasData = Object.keys(dc).length > 0;
+  document.getElementById('conta-section').style.display = hasData ? '' : 'none';
+  document.getElementById('conta-wrap').style.display    = hasData ? '' : 'none';
+  if (!hasData) return;
+
+  const key    = document.getElementById('conta-mes').value || mesAtual();
+  const MA     = mesAtual();
+  const sp     = key >= MA;
+  const contas = dc[key] || {};
+
+  const gerado = DATA.gerado_em || '';
+  let dataReal = '–';
+  if (gerado) { const p = gerado.split(' ')[0].split('/'); dataReal = p[0]+'/'+p[1]+'/'+p[2]?.slice(-2); }
+  document.getElementById('conta-th-real').textContent = 'REALIZADO' + (dataReal !== '–' ? ' — ' + dataReal : '');
+  document.getElementById('conta-th-prev').textContent = sp ? 'PREVISTO — ' + fimMes(key) : 'PREVISTO';
+  document.getElementById('conta-th-tot').textContent  = 'TOTAL GERAL — ' + mesLong(key).toUpperCase();
+
+  ['rQ','rV'].forEach(col => {
+    const el = document.getElementById('conta-sort-' + col + '-icon');
+    if (el) el.textContent = contaSort.col === col ? (contaSort.dir < 0 ? '▼' : '▲') : '';
+  });
+
+  const qtyRaw = (d, k) => d[k + '_KG'] !== undefined ? (d[k + '_KG']||0) : (d[k + '_PARES']||0);
+
+  let totR = 0, totT = 0;
+  Object.values(contas).forEach(d => {
+    const rv = (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
+    const pv = sp ? (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO : 0;
+    totR += rv; totT += rv + pv;
+  });
+
+  const rows = Object.entries(contas)
+    .sort(([, da], [, db]) => {
+      const va = contaSort.col === 'rQ' ? qtyRaw(da, 'REALIZADO') : (da.REALIZADO||0) + (da.REALIZADO_USD||0)*CAMBIO;
+      const vb = contaSort.col === 'rQ' ? qtyRaw(db, 'REALIZADO') : (db.REALIZADO||0) + (db.REALIZADO_USD||0)*CAMBIO;
+      return (va - vb) * contaSort.dir;
+    })
+    .flatMap(([code, d]) => {
+      const isKg = d.REALIZADO_KG !== undefined || d.PREVISTO_KG !== undefined;
+      const fmtQ = isKg ? fKg1 : fPar;
+      const rV = (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
+      const pV = sp ? (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO : 0;
+      const rQ = qtyRaw(d, 'REALIZADO');
+      const pQ = sp ? qtyRaw(d, 'PREVISTO') : 0;
+      const tV = rV + pV, tQ = rQ + pQ;
+      const dash = sp ? '' : '—';
+      const pctR = rV ? pct(rV, totR) : '–';
+      const pctT = tV ? pct(tV, totT) : '–';
+      const isOpen = contaAberta === code;
+      const safeCode = code.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const result = [`<tr class="tr-conta${isOpen ? ' tr-conta-open' : ''}" onclick="toggleConta('${safeCode}')" style="cursor:pointer">
+        <td class="td-grupo">${code} <span class="conta-toggle">${isOpen ? '▾' : '▸'}</span></td>
+        <td class="td-sep"></td>
+        <td class="td-r-q">${rQ ? fmtQ(rQ) : '–'}</td>
+        <td class="td-r-v">${rV ? fBRL(rV) : '–'}</td>
+        <td class="td-r-p">${pctR}</td>
+        <td class="td-sep"></td>
+        <td class="td-p-q">${sp ? (pQ ? fmtQ(pQ) : '–') : dash}</td>
+        <td class="td-p-v">${sp ? (pV ? fBRL(pV) : '–') : dash}</td>
+        <td class="td-sep"></td>
+        <td class="td-t-q">${tQ ? fmtQ(tQ) : '–'}</td>
+        <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
+        <td class="td-t-p">${pctT}</td>
+      </tr>`];
+
+      if (isOpen && d.cfops) {
+        Object.entries(d.cfops)
+          .sort(([, ca], [, cb]) => {
+            const va = (ca.REALIZADO||0) + (ca.REALIZADO_USD||0)*CAMBIO;
+            const vb = (cb.REALIZADO||0) + (cb.REALIZADO_USD||0)*CAMBIO;
+            return vb - va;
+          })
+          .forEach(([cfop, cd]) => {
+            const isKg2 = cd.REALIZADO_KG !== undefined || cd.PREVISTO_KG !== undefined;
+            const fmtQ2 = isKg2 ? fKg1 : fPar;
+            const crV = (cd.REALIZADO||0) + (cd.REALIZADO_USD||0)*CAMBIO;
+            const cpV = sp ? (cd.PREVISTO||0) + (cd.PREVISTO_USD||0)*CAMBIO : 0;
+            const crQ = qtyRaw(cd, 'REALIZADO');
+            const cpQ = sp ? qtyRaw(cd, 'PREVISTO') : 0;
+            const ctV = crV + cpV, ctQ = crQ + cpQ;
+            result.push(`<tr class="tr-conta-cfop">
+              <td class="td-grupo td-cfop-sub">${cfopLabel(cfop)}</td>
+              <td class="td-sep"></td>
+              <td class="td-r-q">${crQ ? fmtQ2(crQ) : '–'}</td>
+              <td class="td-r-v">${crV ? fBRL(crV) : '–'}</td>
+              <td class="td-r-p">${crV ? pct(crV, rV) : '–'}</td>
+              <td class="td-sep"></td>
+              <td class="td-p-q">${sp ? (cpQ ? fmtQ2(cpQ) : '–') : dash}</td>
+              <td class="td-p-v">${sp ? (cpV ? fBRL(cpV) : '–') : dash}</td>
+              <td class="td-sep"></td>
+              <td class="td-t-q">${ctQ ? fmtQ2(ctQ) : '–'}</td>
+              <td class="td-t-v">${ctV ? fBRL(ctV) : '–'}</td>
+              <td class="td-t-p">${ctV ? pct(ctV, tV) : '–'}</td>
+            </tr>`);
+          });
+      }
+      return result;
+    }).join('');
+
+  document.getElementById('conta-tbody').innerHTML = rows ||
+    '<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--txt-m)">Sem dados para este mês</td></tr>';
+
+  let gtRV=0, gtRQ=0, gtPV=0, gtPQ=0;
+  Object.values(contas).forEach(d => {
+    gtRV += (d.REALIZADO||0) + (d.REALIZADO_USD||0)*CAMBIO;
+    gtRQ += d.REALIZADO_PARES||0;
+    if (sp) { gtPV += (d.PREVISTO||0) + (d.PREVISTO_USD||0)*CAMBIO; gtPQ += d.PREVISTO_PARES||0; }
+  });
+  const tQ2 = gtRQ+gtPQ, tV2 = gtRV+gtPV;
+  const dash2 = sp ? '' : '—';
+  document.getElementById('conta-tfoot').innerHTML = `
+    <td class="td-grupo">Total Geral</td>
+    <td class="td-sep"></td>
+    <td class="td-r-q">${fPar(gtRQ)}</td>
+    <td class="td-r-v">${fBRL(gtRV)}</td>
+    <td class="td-r-p">100%</td>
+    <td class="td-sep"></td>
+    <td class="td-p-q">${sp ? fPar(gtPQ) : dash2}</td>
+    <td class="td-p-v">${sp ? fBRL(gtPV) : dash2}</td>
+    <td class="td-sep"></td>
+    <td class="td-t-q">${fPar(tQ2)}</td>
+    <td class="td-t-v">${fBRL(tV2)}</td>
+    <td class="td-t-p">100%</td>`;
+}
+
 // ── Carregar dados ───────────────────────────────────────────────
 fetch('dados_faturamento.json?_=' + Date.now())
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
@@ -1218,6 +1425,7 @@ fetch('dados_faturamento.json?_=' + Date.now())
     document.getElementById('hdr-data').textContent = d.gerado_em || '–';
     popularSeletorMes();
     popularSeletorCfop();
+    popularSeletorConta();
     render();
   })
   .catch(() => {
@@ -1234,6 +1442,7 @@ document.getElementById('cambio-inp').addEventListener('input', e => {
 });
 document.getElementById('resumo-mes').addEventListener('change', () => { if (DATA) renderResumo(); });
 document.getElementById('cfop-mes').addEventListener('change', () => { if (DATA) renderCfop(); });
+document.getElementById('conta-mes').addEventListener('change', () => { if (DATA) renderConta(); });
 </script>
 </body>
 </html>
