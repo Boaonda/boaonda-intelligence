@@ -107,7 +107,7 @@ tr:hover td{background:var(--card2);color:var(--txt)}
   <div>
     <div class="h-badge">Vendas Calçado</div>
     <div class="h-title">Vendas Calçado</div>
-    <div class="h-sub">Base: 3YS · Jan/2025–Jun/2026 · Gráfico de evolução respeita canal · KPIs e tabela respeitam todos os filtros</div>
+    <div class="h-sub" id="h-sub">Base: 3YS · Gráfico de evolução respeita canal · KPIs e tabela respeitam todos os filtros</div>
   </div>
   <div class="h-right">
     <div class="h-controls">
@@ -261,7 +261,7 @@ const totalLabelsPlugin={
 };
 
 // ── DADOS ──────────────────────────────────────────────────────────
-const MESES_ALL=['202501','202502','202503','202504','202505','202506','202507','202508','202509','202510','202511','202512','202601','202602','202603','202604','202605','202606'];
+let MESES_ALL=[];  // preenchido dinamicamente após fetch — nunca mais precisará de atualização manual
 let DADOS={}, REFS_MI=[], REFS_ME=[], REFS_EC=[];
 let DADOS_VALOR={}, REFS_MI_VALOR=[], REFS_ME_VALOR=[], REFS_EC_VALOR=[];
 
@@ -283,6 +283,14 @@ fetch('dados_vendas.json?_='+Date.now())
         ME: {ME: soma(v.ME)},
         EC: {EC: soma(v.ECOM)}
       };
+    }
+    // Derivar lista de meses a partir dos dados — nunca mais desatualiza
+    MESES_ALL = Object.keys(mensal).filter(m => /^\d{6}$/.test(m)).sort();
+    estado.meses = new Set(MESES_ALL.length ? [MESES_ALL[MESES_ALL.length-1]] : []);
+    // Atualizar subtítulo com intervalo real de dados
+    if (MESES_ALL.length) {
+      const sub = document.getElementById('h-sub');
+      if (sub) sub.textContent = `Base: 3YS · ${mesLabel(MESES_ALL[0])}–${mesLabel(MESES_ALL[MESES_ALL.length-1])} · Gráfico de evolução respeita canal · KPIs e tabela respeitam todos os filtros`;
     }
     REFS_MI = d.refs_top20?.MI || [];
     REFS_ME = d.refs_top20?.ME || [];
@@ -314,7 +322,7 @@ const TIPOS_ALL=['PROG','PE','MISTA'];
 const estado = {
   canal: new Set(['MI','ME','EC']),  // todos
   tipo:  new Set(TIPOS_ALL),          // todos
-  meses: new Set([MESES_ALL[MESES_ALL.length-1]]),  // mês atual (mais recente)
+  meses: new Set(),  // preenchido após fetch
   unidade: 'pares',                   // 'pares' ou 'valor'
 };
 
