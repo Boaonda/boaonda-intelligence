@@ -217,6 +217,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 
 /* Sem data */
 .semdata-card{background:var(--card);border:1px solid rgba(237,104,66,.25);border-radius:12px;padding:20px;margin-bottom:28px}
+.cfop-legenda{margin:8px 0 24px;padding:10px 16px;background:var(--bg-2);border:1px solid var(--border);border-left:3px solid var(--txt-m);border-radius:0 8px 8px 0;font-size:10px;color:var(--txt-m);line-height:1.7}
+.cfop-legenda strong{color:var(--txt-s);font-weight:600}
+.cfop-legenda .cfop-cod{font-family:monospace;background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;font-size:9.5px}
 .semdata-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
 .semdata-title{font-size:12px;font-weight:800;color:var(--coral)}
 .semdata-sub{font-size:10px;color:var(--txt-m);margin-top:3px}
@@ -479,6 +482,15 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
       <div class="semdata-kpis" id="semdata-kpis"></div>
     </div>
     <div id="semdata-body"></div>
+  </div>
+
+  <div class="cfop-legenda">
+    <strong>CFOPs excluídas do valor total de faturamento:</strong>
+    as CFOPs <span class="cfop-cod">5910</span> (remessa de bonificação/doação),
+    <span class="cfop-cod">5916</span> e <span class="cfop-cod">6916</span> (conserto/reparo) e
+    <span class="cfop-cod">7949</span> (amostras grátis de exportação)
+    são exibidas nos resumos por CFOP e Conta Contábil com o marcador <strong>"não soma"</strong>,
+    mas não compõem os totais de faturamento, o resumo por grupo nem as pendências retroativas.
   </div>
 
 </div>

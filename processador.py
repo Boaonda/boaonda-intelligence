@@ -1029,9 +1029,10 @@ ANOMESFATURA_COL = 19  # coluna anomesfatura no CSV 3YS (yyyymm da emissão NF)
 # CFOPs excluídos do faturamento geral — continuam visíveis nas abas de
 # CFOP e Conta Contábil (badge "não soma"), mas NÃO entram no resumo por
 # grupo, nos totais, nem nas pendências retroativas.
+#   5910         — remessa de bonificação / doação
 #   5916 / 6916 — conserto/reparo (saída para terceiros, mesmo e intere.)
 #   7949         — amostras grátis de exportação (ME)
-CFOPS_FORA_DO_GERAL = {'5916', '6916', '7949'}
+CFOPS_FORA_DO_GERAL = {'5910', '5916', '6916', '7949'}
 
 def classifica_faturamento(cod, abr, marca=''):
     """Retorna (canal, tipo) para a área de Faturamento.
