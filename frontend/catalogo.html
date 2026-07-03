@@ -616,7 +616,7 @@ function lbRender() {
     </div>
     ${tipoTabsHtml}
     ${tabsHtml}
-    ${corsVisiveis.length>1?`<div><div class="lb-sec-label">Cores disponíveis</div><div class="lb-cors">${corsHtml}</div></div>`:''}
+    ${corsHtml?`<div><div class="lb-sec-label">Cores disponíveis</div><div class="lb-cors">${corsHtml}</div></div>`:''}
     <div class="lb-disp">
       <div><div class="lb-disp-v">${fN(livre)} pares disponíveis</div>
       <div class="lb-disp-s">${r.modelo} · ${cp.nome}</div></div>
