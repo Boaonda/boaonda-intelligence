@@ -148,6 +148,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .retro-kpi::before{content:'';display:block;height:2px;background:linear-gradient(90deg,var(--bo-coral),transparent);margin:-12px -20px 10px;border-radius:10px 10px 0 0}
 .retro-kpi-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--txt-m)}
 .retro-kpi-val{font-size:22px;font-weight:700;color:var(--bo-coral)}
+.retro-kpi-sub{font-size:10px;color:var(--txt-m);margin-top:1px}
+.retro-kpi.canal::before{background:linear-gradient(90deg,var(--bo-azul),transparent)}
+.retro-kpi-val.canal{color:var(--bo-azul)}
+.retro-kpi-sep{width:1px;background:var(--border);margin:0 4px;align-self:stretch}
 .retro-mes-card{background:var(--bg-1);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;cursor:pointer;transition:border-color .15s}
 .retro-mes-card:hover{border-color:rgba(237,104,66,.35)}
 .retro-mes-card.retro-mes-open{border-color:rgba(237,104,66,.5)}
@@ -1177,20 +1181,34 @@ function renderRetroativo() {
   document.getElementById('retro-wrap').style.display    = hasData ? '' : 'none';
   if (!hasData) return;
 
-  // ── KPI totais globais ─────────────────────────────────────────
+  // ── KPI totais globais + por canal ────────────────────────────
   let gtV = 0, gtPed = 0, gtMes = meses.length;
+  const CANAIS_RETRO_ORD = ['ME','MI_MISTA','MI_PE','EVA','EC'];
+  const porCanal = {};
   meses.forEach(mes => {
-    Object.values(dr[mes]).forEach(g => {
-      const rv = g.moeda === 'USD' ? (g.PREVISTO||0)*CAMBIO : (g.PREVISTO||0);
+    Object.entries(dr[mes]).forEach(([chave, gd]) => {
+      const rv = gd.moeda === 'USD' ? (gd.PREVISTO||0)*CAMBIO : (gd.PREVISTO||0);
       gtV   += rv;
-      gtPed += (g.pedidos||[]).length;
+      gtPed += (gd.pedidos||[]).length;
+      if (!porCanal[chave]) porCanal[chave] = {label: gd.label, moeda: gd.moeda, unidade: gd.unidade, pv: 0, pq: 0};
+      porCanal[chave].pv += gd.PREVISTO || 0;
+      porCanal[chave].pq += gd.PREVISTO_PARES || 0;
     });
   });
+  const canalKpisHtml = CANAIS_RETRO_ORD
+    .filter(k => porCanal[k] && porCanal[k].pv > 0)
+    .map(k => {
+      const c = porCanal[k];
+      const valStr = c.moeda === 'USD' ? fUSD(c.pv) : fBRL(c.pv);
+      const qtdStr = c.unidade === 'kg' ? fKg1(c.pq) : fPar(c.pq) + ' pares';
+      return `<div class="retro-kpi canal"><span class="retro-kpi-label">${c.label}</span><span class="retro-kpi-val canal">${valStr}</span><span class="retro-kpi-sub">${qtdStr}</span></div>`;
+    }).join('');
   document.getElementById('retro-kpis').innerHTML = `
     <div class="retro-kpi-bar">
       <div class="retro-kpi"><span class="retro-kpi-label">Total pendente</span><span class="retro-kpi-val">${fBRL(gtV)}</span></div>
       <div class="retro-kpi"><span class="retro-kpi-label">Pedidos</span><span class="retro-kpi-val">${fPar(gtPed)}</span></div>
       <div class="retro-kpi"><span class="retro-kpi-label">Meses em atraso</span><span class="retro-kpi-val">${gtMes}</span></div>
+      ${canalKpisHtml ? '<div class="retro-kpi-sep"></div>' + canalKpisHtml : ''}
     </div>`;
 
   // ── Lista de meses ─────────────────────────────────────────────
