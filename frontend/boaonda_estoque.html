@@ -142,6 +142,8 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .btn-export:hover{background:var(--azul);color:#fff}
 .kpi.fl{border-top-color:var(--amber)}
 .kpi-v.fl{color:var(--amber)}
+.kpi.ga{border-top-color:var(--azul)}
+.kpi-v.ga{color:var(--azul)}
 /* Detalhe de grade dentro da cor (nível 3) */
 .cor-grades{padding:6px 18px 14px 36px;background:rgba(0,0,0,.12);border-bottom:1px solid rgba(255,255,255,.04)}
 .cor-grade-row{margin-bottom:10px}
@@ -182,6 +184,7 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
     <button class="fbtn active" id="fbtn-TODOS" onclick="setFiltro('TODOS')">Todos</button>
     <button class="fbtn" id="fbtn-ATIVOS" onclick="setFiltro('ATIVOS')">Ativos</button>
     <button class="fbtn" id="fbtn-FL" onclick="setFiltro('FL')">FL</button>
+    <button class="fbtn" id="fbtn-GRADE_ABERTA" onclick="setFiltro('GRADE_ABERTA')">Grade Aberta</button>
     <span class="filtro-sep"></span>
     <button class="fbtn toggle" id="fbtn-saldo" onclick="toggleSaldo()">Ocultar zerados</button>
   </div>
@@ -227,6 +230,11 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
     <div class="kpi-l">Itens FL</div>
     <div class="kpi-v fl" id="k-fl-livre">0</div>
     <div class="kpi-s" id="k-fl-sub">Pares livres — modelos fora de linha</div>
+  </div>
+  <div class="kpi ga">
+    <div class="kpi-l">Grade Aberta</div>
+    <div class="kpi-v ga" id="k-ga-livre">0</div>
+    <div class="kpi-s" id="k-ga-sub">Pares livres — sem grade fechada</div>
   </div>
 </div>
 
@@ -299,6 +307,7 @@ function statusPctCor(pL){ return pL<30?'var(--red)':pL<60?'var(--amber)':'var(-
 // majoritariamente ativa aparece no filtro FL com seu próprio volume,
 // e a mesma linha continua aparecendo no filtro Ativos com o resto).
 function combEhFl(combKey){ return combKey.startsWith('[FL]') || combKey.startsWith('[PL]'); }
+function combEhGradeAberta(combData){ return (combData.grades||[]).some(g=>g.tipo==='aberta'); }
 
 function somaCombs(combs, campo){ return Object.values(combs).reduce((s,c)=>s+(c[campo]||0),0); }
 
@@ -318,8 +327,10 @@ function aplicarFiltro(all, modo){
       }
       const combsF = {};
       todasCombs.forEach(k=>{
+        const cv = ln.combinacoes[k];
         const fl = combEhFl(k);
-        if((modo==='FL' && fl) || (modo==='ATIVOS' && !fl)) combsF[k]=ln.combinacoes[k];
+        const ga = combEhGradeAberta(cv);
+        if((modo==='FL' && fl) || (modo==='ATIVOS' && !fl) || (modo==='GRADE_ABERTA' && ga)) combsF[k]=cv;
       });
       if(Object.keys(combsF).length){
         linhasF[linhaDescr] = {...ln, combinacoes:combsF, qtd_combinacoes:Object.keys(combsF).length,
@@ -340,7 +351,7 @@ function aplicarFiltro(all, modo){
 
 function setFiltro(modo){
   filtroAtivo = modo;
-  ['TODOS','ATIVOS','FL'].forEach(m=>document.getElementById('fbtn-'+m).classList.toggle('active', m===modo));
+  ['TODOS','ATIVOS','FL','GRADE_ABERTA'].forEach(m=>document.getElementById('fbtn-'+m).classList.toggle('active', m===modo));
   DATA = aplicarFiltro(DATA_ALL, modo);
   nivel=1; modeloAtivo=null; refAtiva=null; linhaAtiva=null; corAberta=null;
   renderDrill();
@@ -353,7 +364,7 @@ function toggleSaldo(){
 }
 
 // ── Exportar Excel — respeita o filtro Todos/Ativos/FL ativo ─────
-const FILTRO_LABEL = {TODOS:'Todos', ATIVOS:'Ativos', FL:'FL'};
+const FILTRO_LABEL = {TODOS:'Todos', ATIVOS:'Ativos', FL:'FL', GRADE_ABERTA:'Grade Aberta'};
 
 function exportarExcel(){
   if(typeof XLSX === 'undefined'){ alert('Biblioteca de exportação não carregou. Recarregue a página e tente novamente.'); return; }
@@ -474,6 +485,19 @@ fetch('dados_estoque.json?_=' + Date.now())
     });
     document.getElementById('k-fl-livre').textContent = f(flLivre);
     document.getElementById('k-fl-sub').textContent = `${flCombs} cor${flCombs!==1?'es':''} fora de linha`;
+    // Box "Grade Aberta" — soma de todas as combinações com pelo menos uma grade aberta
+    let gaLivre=0, gaCombs=0;
+    Object.values(DATA_ALL).forEach(ref=>{
+      Object.values(ref.linhas||{}).forEach(ln=>{
+        Object.values(ln.combinacoes||{}).forEach(cv=>{
+          if(combEhGradeAberta(cv)){
+            gaLivre += cv.livre; gaCombs++;
+          }
+        });
+      });
+    });
+    document.getElementById('k-ga-livre').textContent = f(gaLivre);
+    document.getElementById('k-ga-sub').textContent = `${gaCombs} cor${gaCombs!==1?'es':''} sem grade fechada`;
     setFiltro('TODOS');
   })
   .catch(() => renderDrill());
