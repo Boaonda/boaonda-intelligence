@@ -515,17 +515,32 @@ function lbRender() {
   const r = REFS[lbRef]; if(!r) return;
   const linhas = Object.keys(r.linhasMap);
 
-  // Cores visíveis conforme filtro de linha
-  let corsVisiveis = lbLinha==='__todas__'
-    ? Object.keys(r.cores)
-    : (r.linhasMap[lbLinha]||[]);
-
-  // Filtro Ativos / FL
-  const temFL    = corsVisiveis.some(ck => ck.toUpperCase().includes('[FL]'));
-  const temAtivo = corsVisiveis.some(ck => !ck.toUpperCase().includes('[FL]'));
+  // Detecta se o modelo tem FL e Ativos (para decidir se mostra o filtro de tipo)
+  const todasCors = Object.keys(r.cores);
+  const temFL    = todasCors.some(ck => ck.toUpperCase().includes('[FL]'));
+  const temAtivo = todasCors.some(ck => !ck.toUpperCase().includes('[FL]'));
   const mostrarTipoFilter = temFL && temAtivo;
-  if (lbTipo === 'fl')     corsVisiveis = corsVisiveis.filter(ck =>  ck.toUpperCase().includes('[FL]'));
-  if (lbTipo === 'ativos') corsVisiveis = corsVisiveis.filter(ck => !ck.toUpperCase().includes('[FL]'));
+
+  // Aplica filtro de tipo — filtra linhas que contêm cores do tipo selecionado
+  function ehTipo(ck) {
+    if (lbTipo === 'fl')     return  ck.toUpperCase().includes('[FL]');
+    if (lbTipo === 'ativos') return !ck.toUpperCase().includes('[FL]');
+    return true;
+  }
+
+  // Linhas visíveis conforme tipo selecionado
+  const linhasVisiveis = linhas.filter(l =>
+    (r.linhasMap[l]||[]).some(ck => ehTipo(ck))
+  );
+
+  // Cores visíveis conforme linha E tipo
+  let corsVisiveis = (lbLinha === '__todas__' || !linhasVisiveis.includes(lbLinha))
+    ? todasCors.filter(ehTipo)
+    : (r.linhasMap[lbLinha]||[]).filter(ehTipo);
+
+  // Se a linha selecionada ficou sem cores visíveis, volta para Todas
+  if (lbLinha !== '__todas__' && !linhasVisiveis.includes(lbLinha))
+    lbLinha = '__todas__';
 
   // Se a cor atual não está nas visíveis, troca para a primeira disponível
   if (corsVisiveis.length && !corsVisiveis.includes(lbCor))
@@ -546,14 +561,14 @@ function lbRender() {
       </div>
     </div>` : '';
 
-  // Tabs de linha
-  const tabsHtml = linhas.length > 1 ? `
+  // Tabs de linha (filtradas pelo tipo ativo)
+  const tabsHtml = linhasVisiveis.length > 1 ? `
     <div>
       <div class="lb-sec-label">Linha</div>
       <div class="lb-linha-tabs">
         <button class="lb-linha-tab ${lbLinha==='__todas__'?'on':''}"
           onclick="lbSetLinha('__todas__')">Todas</button>
-        ${linhas.map(l=>`<button class="lb-linha-tab ${lbLinha===l?'on':''}"
+        ${linhasVisiveis.map(l=>`<button class="lb-linha-tab ${lbLinha===l?'on':''}"
           onclick="lbSetLinha('${esc(l)}')">${nomeLinha(l)}</button>`).join('')}
       </div>
     </div>` : '';
