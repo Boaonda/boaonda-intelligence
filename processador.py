@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 
 META_SEMANAL = 30000
-LOCAIS_ESTOQUE = {'156','157','158','159','160','234','30','VI'}
+LOCAIS_ESTOQUE = {'156','157','158','159','160','234','30','VI','199'}
 GRUPOS_OK = ['MERCADO INTERNO','ISENTO','ECOMMERCE','E-COMMERCE','EXPORTA','MOULD']
 
 # Mapeamento de grades de pronta entrega → numeração e proporção de pares.

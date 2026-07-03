@@ -171,7 +171,7 @@ tr.expandable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
   </div>
   <div class="h-right">
     <div class="h-controls">
-      <div class="fi"><span class="fl">Locais</span><span class="fv">30 · 156 · 157 · 158 · 159 · 160 · 234 · VI</span></div>
+      <div class="fi"><span class="fl">Locais</span><span class="fv">30 · 156 · 157 · 158 · 159 · 160 · 199 · 234 · VI</span></div>
     </div>
     <div class="h-meta">Atualizado: <strong id="hdr-data">10/Jun/2026</strong></div>
   </div>
@@ -307,7 +307,7 @@ function statusPctCor(pL){ return pL<30?'var(--red)':pL<60?'var(--amber)':'var(-
 // majoritariamente ativa aparece no filtro FL com seu próprio volume,
 // e a mesma linha continua aparecendo no filtro Ativos com o resto).
 function combEhFl(combKey){ return combKey.startsWith('[FL]') || combKey.startsWith('[PL]'); }
-function combEhGradeAberta(combData){ return (combData.grades||[]).some(g=>g.tipo==='aberta'); }
+function linhaEhGradeAberta(linhaDescr){ return linhaDescr.toUpperCase().includes('GRADE ABERTA'); }
 
 function somaCombs(combs, campo){ return Object.values(combs).reduce((s,c)=>s+(c[campo]||0),0); }
 
@@ -325,12 +325,17 @@ function aplicarFiltro(all, modo){
         if(modo==='ATIVOS') linhasF[linhaDescr]=ln;  // sem mapeamento → tratado como ativo
         return;
       }
+      // Grade Aberta: filtro no nível da linha (local 199 / descrição "GRADE ABERTA")
+      if(modo==='GRADE_ABERTA'){
+        if(linhaEhGradeAberta(linhaDescr))
+          linhasF[linhaDescr]={...ln, qtd_combinacoes:todasCombs.length};
+        return;
+      }
       const combsF = {};
       todasCombs.forEach(k=>{
         const cv = ln.combinacoes[k];
         const fl = combEhFl(k);
-        const ga = combEhGradeAberta(cv);
-        if((modo==='FL' && fl) || (modo==='ATIVOS' && !fl) || (modo==='GRADE_ABERTA' && ga)) combsF[k]=cv;
+        if((modo==='FL' && fl) || (modo==='ATIVOS' && !fl)) combsF[k]=cv;
       });
       if(Object.keys(combsF).length){
         linhasF[linhaDescr] = {...ln, combinacoes:combsF, qtd_combinacoes:Object.keys(combsF).length,
@@ -485,19 +490,17 @@ fetch('dados_estoque.json?_=' + Date.now())
     });
     document.getElementById('k-fl-livre').textContent = f(flLivre);
     document.getElementById('k-fl-sub').textContent = `${flCombs} cor${flCombs!==1?'es':''} fora de linha`;
-    // Box "Grade Aberta" — soma de todas as combinações com pelo menos uma grade aberta
-    let gaLivre=0, gaCombs=0;
+    // Box "Grade Aberta" — soma das linhas do local 199 (descrição contém "GRADE ABERTA")
+    let gaLivre=0, gaRefs=0;
     Object.values(DATA_ALL).forEach(ref=>{
-      Object.values(ref.linhas||{}).forEach(ln=>{
-        Object.values(ln.combinacoes||{}).forEach(cv=>{
-          if(combEhGradeAberta(cv)){
-            gaLivre += cv.livre; gaCombs++;
-          }
-        });
+      let refTem = false;
+      Object.entries(ref.linhas||{}).forEach(([linhaDescr,ln])=>{
+        if(linhaEhGradeAberta(linhaDescr)){ gaLivre += ln.livre; refTem = true; }
       });
+      if(refTem) gaRefs++;
     });
     document.getElementById('k-ga-livre').textContent = f(gaLivre);
-    document.getElementById('k-ga-sub').textContent = `${gaCombs} cor${gaCombs!==1?'es':''} sem grade fechada`;
+    document.getElementById('k-ga-sub').textContent = `${gaRefs} referência${gaRefs!==1?'s':''} com grade aberta`;
     setFiltro('TODOS');
   })
   .catch(() => renderDrill());
