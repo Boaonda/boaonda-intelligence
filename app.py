@@ -29,8 +29,11 @@ DATA_FILES = (
     'dados_carteira.json',
     'boaonda_dados_completos.json', 'config_producao.json',
     'dados_capacidade.json', 'dados_ocupacao_semanal.json',
-    'dados_faturamento.json',
+    'dados_faturamento.json', 'dados_fotos.json',
 )
+
+# Arquivos JSON servidos publicamente (sem autenticação) para o catálogo público.
+DATA_FILES_PUBLICOS = {'dados_estoque.json', 'dados_fotos.json'}
 
 # Primeira execução com volume vazio: semeia com os JSONs versionados no repo
 if DATA_DIR != FRONTEND_DIR:
@@ -118,9 +121,14 @@ input:focus{border-color:#ed6842}
 
 @app.before_request
 def require_login():
-    """Bloqueia todas as rotas exceto /login e /logout."""
-    public = {'login', 'logout'}
-    if request.endpoint not in public and not session.get('logged_in'):
+    """Bloqueia todas as rotas exceto /login, /logout e o catálogo público."""
+    public_endpoints = {'login', 'logout', 'catalogo'}
+    if request.endpoint in public_endpoints:
+        return None
+    # JSONs necessários para o catálogo público não exigem autenticação
+    if request.path.lstrip('/') in DATA_FILES_PUBLICOS:
+        return None
+    if not session.get('logged_in'):
         return redirect(url_for('login'))
 
 
@@ -150,6 +158,12 @@ def logout():
 @app.route('/')
 def index():
     return send_from_directory(FRONTEND_DIR, 'index.html')
+
+
+@app.route('/catalogo')
+def catalogo():
+    """Catálogo público de produtos — sem autenticação."""
+    return send_from_directory(FRONTEND_DIR, 'catalogo.html')
 
 
 @app.route('/<path:filename>')

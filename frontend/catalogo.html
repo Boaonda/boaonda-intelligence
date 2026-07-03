@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Catálogo de Produtos — BOAONDA Calçados</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--verde:#6c9c37;--verde-dark:#26361e;
+  --azul:#4994c7;--cinza:#71706f;
+  --bg:#f8f5f1;--card:#fff;--border:#e2ddd8;
+  --txt:#26361e;--txt-s:#5a5855;--txt-m:#9b9895;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+
+/* ── Header ── */
+.header{background:var(--verde-dark);padding:0 24px;display:flex;align-items:center;
+        justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.header-brand{display:flex;align-items:baseline;gap:8px}
+.header-brand .mark{font-size:20px;font-weight:800;letter-spacing:2px;color:var(--coral)}
+.header-brand .sub{font-size:11px;font-weight:400;color:rgba(255,255,255,.45);letter-spacing:1px}
+.header-badge{font-size:10px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.08em;
+              text-transform:uppercase}
+
+/* ── Barra de filtros ── */
+.filter-bar{background:var(--card);border-bottom:1px solid var(--border);
+            padding:14px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+            position:sticky;top:56px;z-index:90}
+.search-wrap{position:relative;flex:1;min-width:200px;max-width:340px}
+.search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);
+                  color:var(--txt-m);pointer-events:none}
+.search-input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border);
+              border-radius:8px;font-family:inherit;font-size:13px;background:var(--bg);
+              color:var(--txt);outline:none;transition:.2s}
+.search-input:focus{border-color:var(--coral);background:#fff}
+.filter-select{padding:8px 12px;border:1px solid var(--border);border-radius:8px;
+               font-family:inherit;font-size:12px;background:var(--bg);color:var(--txt);
+               outline:none;cursor:pointer;appearance:none;
+               background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239b9895' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+               background-repeat:no-repeat;background-position:right 10px center;
+               padding-right:28px}
+.filter-select:focus{border-color:var(--coral)}
+.filter-count{margin-left:auto;font-size:11px;color:var(--txt-m);white-space:nowrap}
+
+/* ── Grid ── */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;
+      padding:24px;max-width:1440px;margin:0 auto}
+@media(max-width:1200px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr);gap:14px;padding:14px}}
+@media(max-width:500px){.grid{grid-template-columns:1fr;padding:12px}}
+
+/* ── Card ── */
+.cat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;
+          overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .15s}
+.cat-card:hover{box-shadow:0 8px 28px rgba(38,54,30,.12);transform:translateY(-2px)}
+.cat-img-wrap{position:relative;aspect-ratio:1;background:#f3f0eb;overflow:hidden}
+.cat-img{width:100%;height:100%;object-fit:cover;transition:opacity .3s}
+.cat-img.loading{opacity:0}
+.cat-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+                  background:linear-gradient(135deg,#f3f0eb,#e8e4de)}
+.cat-placeholder .pl-txt{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--coral);opacity:.5}
+
+.cat-badge-novo{position:absolute;top:10px;left:10px;background:var(--coral);color:#fff;
+                font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 8px;
+                border-radius:20px;text-transform:uppercase}
+
+.cat-info{padding:14px 14px 16px}
+.cat-modelo{font-size:13px;font-weight:700;color:var(--verde-dark);margin-bottom:3px}
+.cat-tipo{font-size:10px;font-weight:600;color:var(--txt-m);text-transform:uppercase;
+          letter-spacing:.06em;margin-bottom:10px}
+.cat-cors{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.cor-dot{width:16px;height:16px;border-radius:50%;border:2px solid transparent;
+          cursor:pointer;transition:.15s;flex-shrink:0}
+.cor-dot:hover,.cor-dot.ativa{border-color:var(--coral);transform:scale(1.2)}
+.cor-dot-mais{width:16px;height:16px;border-radius:50%;background:var(--bg);
+              border:1.5px dashed var(--border);display:flex;align-items:center;
+              justify-content:center;font-size:8px;color:var(--txt-m)}
+.cat-livre{font-size:11px;font-weight:600;color:var(--verde)}
+.cat-livre span{color:var(--txt-m);font-weight:400}
+
+/* ── Estado vazio ── */
+.empty-state{grid-column:1/-1;padding:60px 20px;text-align:center;color:var(--txt-m)}
+.empty-state svg{margin-bottom:12px;opacity:.3}
+.empty-state p{font-size:13px}
+
+/* ── Lightbox ── */
+.lb-overlay{position:fixed;inset:0;background:rgba(20,20,20,.7);backdrop-filter:blur(4px);
+            z-index:999;display:flex;align-items:center;justify-content:center;padding:16px}
+.lb-box{background:var(--card);border-radius:18px;width:100%;max-width:900px;
+        max-height:90vh;overflow:auto;display:flex;position:relative}
+@media(max-width:700px){.lb-box{flex-direction:column}}
+.lb-close{position:absolute;top:14px;right:14px;z-index:2;background:rgba(0,0,0,.08);
+          border:none;border-radius:50%;width:34px;height:34px;font-size:18px;
+          cursor:pointer;color:var(--txt);display:flex;align-items:center;justify-content:center;
+          line-height:1;transition:.15s}
+.lb-close:hover{background:rgba(0,0,0,.15)}
+
+/* Galeria de imagens */
+.lb-gallery{flex:0 0 52%;background:#f3f0eb;border-radius:18px 0 0 18px;
+            display:flex;flex-direction:column}
+@media(max-width:700px){.lb-gallery{border-radius:18px 18px 0 0;flex:none}}
+.lb-main-img{position:relative;flex:1;min-height:300px;aspect-ratio:1;
+             display:flex;align-items:center;justify-content:center;overflow:hidden}
+.lb-main-img img{width:100%;height:100%;object-fit:cover;transition:opacity .25s}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.85);
+        border:none;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer;
+        color:var(--txt);display:flex;align-items:center;justify-content:center;transition:.15s}
+.lb-nav:hover{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.lb-nav.prev{left:10px}
+.lb-nav.next{right:10px}
+.lb-thumbs{display:flex;gap:6px;padding:10px 12px;overflow-x:auto}
+.lb-thumb{flex:0 0 56px;height:56px;border-radius:8px;overflow:hidden;cursor:pointer;
+          border:2px solid transparent;transition:.15s;opacity:.6}
+.lb-thumb:hover{opacity:.9}
+.lb-thumb.ativa{border-color:var(--coral);opacity:1}
+.lb-thumb img{width:100%;height:100%;object-fit:cover}
+.lb-ang-label{text-align:center;font-size:10px;color:var(--txt-m);padding-bottom:4px}
+
+/* Painel de informações */
+.lb-info{flex:1;padding:28px 24px 24px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.lb-modelo-nome{font-size:20px;font-weight:800;color:var(--verde-dark);line-height:1.2}
+.lb-cor-atual{font-size:12px;color:var(--coral);font-weight:600;margin-top:4px}
+
+.lb-cors-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+               color:var(--txt-m);margin-bottom:6px}
+.lb-cors{display:flex;flex-wrap:wrap;gap:6px}
+.lb-cor-btn{display:flex;align-items:center;gap:6px;padding:5px 10px;
+            border:1.5px solid var(--border);border-radius:20px;cursor:pointer;
+            font-size:11px;font-weight:600;color:var(--txt-s);background:transparent;
+            font-family:inherit;transition:.15s}
+.lb-cor-btn:hover{border-color:var(--coral)}
+.lb-cor-btn.ativa{border-color:var(--coral);color:var(--coral);background:rgba(237,104,66,.07)}
+.lb-cor-btn .cor-circle{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+
+.lb-disponivel{display:flex;align-items:center;gap:6px;
+               background:rgba(108,156,55,.08);border:1px solid rgba(108,156,55,.2);
+               border-radius:8px;padding:10px 14px}
+.lb-disponivel svg{color:var(--verde);flex-shrink:0}
+.lb-disponivel-txt{font-size:12px;color:var(--verde);font-weight:600}
+.lb-disponivel-sub{font-size:10px;color:var(--cinza)}
+
+.lb-grades-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+                 color:var(--txt-m);margin-bottom:6px}
+.lb-grades-list{display:flex;flex-wrap:wrap;gap:6px}
+.grade-pill{padding:4px 10px;border-radius:20px;border:1px solid var(--border);
+            font-size:11px;font-weight:600;color:var(--txt-s);
+            display:flex;align-items:center;gap:5px}
+.grade-pill .gp-code{color:var(--azul)}
+.grade-pill .gp-live{color:var(--verde)}
+.grade-pill-aberta{border-color:rgba(73,148,199,.25);background:rgba(73,148,199,.06)}
+
+.lb-wpp{display:flex;align-items:center;justify-content:center;gap:8px;
+        background:#25D366;color:#fff;border-radius:10px;padding:12px;
+        font-size:13px;font-weight:700;text-decoration:none;margin-top:auto;transition:.15s}
+.lb-wpp:hover{background:#1ebe5a}
+.lb-wpp svg{flex-shrink:0}
+
+/* ── Footer ── */
+.footer{text-align:center;padding:32px 16px;font-size:11px;color:var(--txt-m);
+        border-top:1px solid var(--border);margin-top:16px}
+.footer strong{color:var(--coral)}
+
+/* ── Loading ── */
+.loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
+              height:60vh;gap:14px;color:var(--txt-m)}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--coral);
+         border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <span class="mark">BOAONDA</span>
+    <span class="sub">Calçados</span>
+  </div>
+  <span class="header-badge">Catálogo de Produtos</span>
+</header>
+
+<div class="filter-bar">
+  <div class="search-wrap">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="search-input" id="busca" type="text" placeholder="Buscar modelo, ex: NELLIE, CLOG…" autocomplete="off"/>
+  </div>
+  <select class="filter-select" id="filtro-tipo" title="Tipo de calçado">
+    <option value="">Todos os tipos</option>
+  </select>
+  <select class="filter-select" id="filtro-material" title="Material da sola">
+    <option value="">Todos os materiais</option>
+  </select>
+  <span class="filter-count" id="filter-count"></span>
+</div>
+
+<div class="grid" id="grid">
+  <div class="loading-wrap" style="grid-column:1/-1">
+    <div class="spinner"></div>
+    <span>Carregando catálogo…</span>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lb-overlay" id="lb" style="display:none" onclick="fecharLb(event)">
+  <div class="lb-box">
+    <button class="lb-close" onclick="fecharLbBtn()">×</button>
+    <div class="lb-gallery">
+      <div class="lb-main-img" id="lb-main">
+        <img id="lb-img-main" src="" alt=""/>
+        <button class="lb-nav prev" onclick="lbNavegar(-1)">‹</button>
+        <button class="lb-nav next" onclick="lbNavegar(1)">›</button>
+      </div>
+      <div class="lb-ang-label" id="lb-ang-label"></div>
+      <div class="lb-thumbs" id="lb-thumbs"></div>
+    </div>
+    <div class="lb-info" id="lb-info"></div>
+  </div>
+</div>
+
+<footer class="footer">
+  <p>Disponibilidade em pares livres atualizada em <span id="footer-data">–</span></p>
+  <p style="margin-top:4px">© <strong>BOAONDA</strong> Calçados — Sapiranga/RS · <em>Vai com tudo, vai de boa!</em></p>
+</footer>
+
+<script>
+// ── Configuração ───────────────────────────────────────────────────
+// Substitua pelo número completo com DDI+DDD (sem + ou espaços)
+const WPP_NUMERO = '5551999999999';
+
+const ANGULOS     = ['principal','lateral','topo','solado'];
+const ANG_LABELS  = {principal:'Principal',lateral:'Lateral',topo:'Topo',solado:'Solado'};
+const MATERIAIS_K = ['TR','PVC','EVA','RUB','MD','INJET','BORRACHA'];
+
+const PLACEHOLDER_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Crect width='400' height='400' fill='%23e8e4de'/%3E%3Ctext x='200' y='190' text-anchor='middle' font-family='Montserrat,sans-serif' font-size='28' font-weight='700' letter-spacing='3' fill='%23ed6842' opacity='.5'%3EBOAONDA%3C/text%3E%3Ctext x='200' y='220' text-anchor='middle' font-family='sans-serif' font-size='12' fill='%239b9895'%3ESem foto disponível%3C/text%3E%3C/svg%3E`;
+
+// Estado
+let ESTOQUE  = null;
+let FOTOS    = null;
+let REFS     = {};    // {refKey: {cors, modelo, tipo, material, livre}}
+let FILTRADO = [];
+let lbRef = null, lbCor = null, lbAngIdx = 0;
+
+// ── Carregamento ───────────────────────────────────────────────────
+async function init() {
+  try {
+    const [resE, resF] = await Promise.allSettled([
+      fetch('dados_estoque.json'),
+      fetch('dados_fotos.json'),
+    ]);
+    ESTOQUE = resE.status === 'fulfilled' && resE.value.ok
+      ? await resE.value.json() : null;
+    FOTOS   = resF.status === 'fulfilled' && resF.value.ok
+      ? await resF.value.json() : {refs: {}};
+  } catch(e) {
+    document.getElementById('grid').innerHTML =
+      `<div class="empty-state" style="grid-column:1/-1"><p>Erro ao carregar dados. Tente novamente.</p></div>`;
+    return;
+  }
+  if (!ESTOQUE) {
+    document.getElementById('grid').innerHTML =
+      `<div class="empty-state" style="grid-column:1/-1"><p>Dados de estoque indisponíveis no momento.</p></div>`;
+    return;
+  }
+  if (ESTOQUE.gerado_em)
+    document.getElementById('footer-data').textContent = ESTOQUE.gerado_em;
+
+  prepararRefs();
+  populaFiltros();
+  renderGrid();
+  document.getElementById('busca').addEventListener('input', () => renderGrid());
+  document.getElementById('filtro-tipo').addEventListener('change', () => renderGrid());
+  document.getElementById('filtro-material').addEventListener('change', () => renderGrid());
+}
+
+// ── Preparação de dados ────────────────────────────────────────────
+function prepararRefs() {
+  REFS = {};
+  Object.entries(ESTOQUE.refs || {}).forEach(([refKey, refRaw]) => {
+    const linhasKeys = Object.keys(refRaw.linhas || {});
+    const modelo = refKey.replace(/^\d+\s+/, '').trim();
+    const tipo   = linhasKeys.length ? linhasKeys[0].split(' ')[0].toUpperCase() : '';
+    const mat    = detectarMaterial(linhasKeys);
+    const cors   = consolidarCors(refRaw);
+    const livre  = Object.values(cors).reduce((a,c)=>a+(c.livre||0), 0);
+    if (livre <= 0) return; // oculta refs sem disponibilidade
+    REFS[refKey] = {modelo, tipo, material: mat, cors, livre, raw: refRaw};
+  });
+}
+
+function consolidarCors(refRaw) {
+  const cors = {};
+  Object.values(refRaw.linhas || {}).forEach(lnData => {
+    Object.entries(lnData.combinacoes || {}).forEach(([combKey, combData]) => {
+      if (!cors[combKey]) cors[combKey] = {livre:0, grades:[]};
+      cors[combKey].livre += (combData.livre || 0);
+      if (!cors[combKey].grades.length && (combData.grades || []).length)
+        cors[combKey].grades = combData.grades;
+    });
+  });
+  return cors;
+}
+
+function detectarMaterial(linhasKeys) {
+  for (const l of linhasKeys) {
+    const words = l.toUpperCase().split(/\s+/);
+    for (const m of MATERIAIS_K) if (words.includes(m)) return m;
+  }
+  return '';
+}
+
+// ── Foto helpers ───────────────────────────────────────────────────
+function fotoRef(refKey, combKey) {
+  const fotos = (FOTOS?.refs?.[refKey] || {})[combKey] || {};
+  for (const a of ANGULOS) if (fotos[a]) return fotos[a];
+  // fallback: primeira cor da ref que tem foto
+  const corsRef = FOTOS?.refs?.[refKey] || {};
+  for (const ck of Object.keys(corsRef)) {
+    for (const a of ANGULOS) if (corsRef[ck]?.[a]) return corsRef[ck][a];
+  }
+  return PLACEHOLDER_SVG;
+}
+
+function fotoAngulo(refKey, combKey, anguloIdx) {
+  const fotos = (FOTOS?.refs?.[refKey] || {})[combKey] || {};
+  const ang = ANGULOS[anguloIdx];
+  if (fotos[ang]) return {src: fotos[ang], label: ANG_LABELS[ang]};
+  // fallback: qualquer ângulo disponível
+  for (const a of ANGULOS) {
+    if (fotos[a]) return {src: fotos[a], label: ANG_LABELS[a]};
+  }
+  return {src: PLACEHOLDER_SVG, label: 'Sem foto'};
+}
+
+function angDisponiveisRef(refKey, combKey) {
+  const fotos = (FOTOS?.refs?.[refKey] || {})[combKey] || {};
+  return ANGULOS.filter(a => fotos[a]);
+}
+
+// ── Cor helpers ────────────────────────────────────────────────────
+function parseCor(combKey) {
+  // '001 (PRETO/PRETO)' → {code:'001', nome:'PRETO/PRETO'}
+  const m = combKey.match(/^(\w+)\s*\((.+)\)/);
+  if (m) return {code: m[1], nome: m[2].trim()};
+  const m2 = combKey.match(/^(\w+)/);
+  return {code: m2?.[1] || combKey, nome: combKey};
+}
+
+function corParaCSS(corNome) {
+  const mapa = {
+    'PRETO':'#222','PRETO/PRETO':'#222','BRANCO':'#f5f5f5','BRANCO/BRANCO':'#f5f5f5',
+    'MARROM':'#7b4f2e','CARAMELO':'#c48d3c','NUDE':'#e8c9a0','VERMELHO':'#c0392b',
+    'ROSA':'#e17fa0','AZUL':'#2980b9','VERDE':'#27ae60','AMARELO':'#f1c40f',
+    'LARANJA':'#e67e22','CINZA':'#95a5a6','BEGE':'#d4b896','VINHO':'#7d1f2e',
+  };
+  const k = corNome.toUpperCase();
+  if (mapa[k]) return mapa[k];
+  for (const [p,c] of Object.entries(mapa)) if (k.startsWith(p)) return c;
+  return '#c4bfba';
+}
+
+// ── Filtros ────────────────────────────────────────────────────────
+function populaFiltros() {
+  const tipos = new Set(), mats = new Set();
+  Object.values(REFS).forEach(r => {
+    if (r.tipo) tipos.add(r.tipo);
+    if (r.material) mats.add(r.material);
+  });
+  const selT = document.getElementById('filtro-tipo');
+  const selM = document.getElementById('filtro-material');
+  [...tipos].sort().forEach(t => selT.append(new Option(t, t)));
+  [...mats].sort().forEach(m => selM.append(new Option(m, m)));
+}
+
+function filtrar() {
+  const busca = document.getElementById('busca').value.trim().toUpperCase();
+  const tipo  = document.getElementById('filtro-tipo').value;
+  const mat   = document.getElementById('filtro-material').value;
+  FILTRADO = Object.entries(REFS).filter(([refKey, r]) => {
+    if (tipo && r.tipo !== tipo) return false;
+    if (mat  && r.material !== mat) return false;
+    if (busca) {
+      const haystack = (refKey + ' ' + r.modelo).toUpperCase();
+      if (!haystack.includes(busca)) return false;
+    }
+    return true;
+  });
+  FILTRADO.sort(([,a],[,b]) => b.livre - a.livre);
+}
+
+// ── Render Grid ────────────────────────────────────────────────────
+function renderGrid() {
+  filtrar();
+  const grid = document.getElementById('grid');
+  document.getElementById('filter-count').textContent =
+    `${FILTRADO.length} referência${FILTRADO.length !== 1 ? 's' : ''}`;
+
+  if (!FILTRADO.length) {
+    grid.innerHTML = `<div class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <p>Nenhum produto encontrado com os filtros selecionados.</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = FILTRADO.map(([refKey, r]) => cardHtml(refKey, r)).join('');
+
+  // Lazy-load das imagens
+  grid.querySelectorAll('.cat-img[data-src]').forEach(img => {
+    const io = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting) return;
+      img.src = img.dataset.src;
+      img.classList.remove('loading');
+      io.disconnect();
+    }, {rootMargin:'200px'});
+    io.observe(img);
+  });
+}
+
+function cardHtml(refKey, r) {
+  const corKeys = Object.keys(r.cors);
+  const primCor = corKeys[0] || '';
+  const fotoSrc = fotoRef(refKey, primCor);
+  const DOTS_MAX = 8;
+  const dotsDsp  = corKeys.slice(0, DOTS_MAX);
+  const maisN    = corKeys.length - DOTS_MAX;
+
+  const dots = dotsDsp.map((ck, i) => {
+    const c = parseCor(ck);
+    const css = corParaCSS(c.nome);
+    return `<span class="cor-dot ${i===0?'ativa':''}" style="background:${css}"
+      title="${c.nome}" onclick="event.stopPropagation();trocarCorCard(this,'${escapar(refKey)}','${escapar(ck)}')"></span>`;
+  }).join('');
+  const maisDot = maisN > 0
+    ? `<span class="cor-dot-mais" title="${maisN} cores a mais">+${maisN}</span>`
+    : '';
+
+  return `<div class="cat-card" id="card-${refKey.replace(/\s/g,'-')}"
+      onclick="abrirLb('${escapar(refKey)}','${escapar(primCor)}')">
+    <div class="cat-img-wrap">
+      <img class="cat-img loading" id="cimg-${escapar(refKey)}"
+           data-src="${escapar(fotoSrc)}" alt="${r.modelo}"
+           onerror="this.src='${PLACEHOLDER_SVG}'"/>
+    </div>
+    <div class="cat-info">
+      <div class="cat-modelo">${r.modelo}</div>
+      <div class="cat-tipo">${r.tipo}${r.material ? ' · ' + r.material : ''}</div>
+      <div class="cat-cors">${dots}${maisDot}</div>
+      <div class="cat-livre">${fNum(r.livre)} pares <span>disponíveis</span></div>
+    </div>
+  </div>`;
+}
+
+function trocarCorCard(dotEl, refKey, combKey) {
+  const card = dotEl.closest('.cat-card');
+  card.querySelectorAll('.cor-dot').forEach(d => d.classList.remove('ativa'));
+  dotEl.classList.add('ativa');
+  const img = card.querySelector('.cat-img');
+  const src = fotoRef(refKey, combKey);
+  img.style.opacity = '.4';
+  setTimeout(() => {
+    img.src = src;
+    img.style.opacity = '1';
+  }, 150);
+}
+
+// ── Lightbox ───────────────────────────────────────────────────────
+function abrirLb(refKey, combKey) {
+  lbRef = refKey;
+  lbCor = combKey || Object.keys(REFS[refKey]?.cors || {})[0] || '';
+  lbAngIdx = 0;
+  renderLb();
+  document.getElementById('lb').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function fecharLb(e) {
+  if (e.target === document.getElementById('lb')) fecharLbBtn();
+}
+function fecharLbBtn() {
+  document.getElementById('lb').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function lbNavegar(d) {
+  const angs = angDisponiveisRef(lbRef, lbCor);
+  if (!angs.length) return;
+  // navega pelos ângulos disponíveis
+  const all = ANGULOS.filter(a => angs.includes(a));
+  let cur = all.indexOf(ANGULOS[lbAngIdx]);
+  cur = (cur + d + all.length) % all.length;
+  lbAngIdx = ANGULOS.indexOf(all[cur]);
+  renderLbImagem();
+}
+
+function renderLbImagem() {
+  const {src, label} = fotoAngulo(lbRef, lbCor, lbAngIdx);
+  const main = document.getElementById('lb-img-main');
+  main.style.opacity = '.3';
+  main.src = src;
+  main.onload = () => { main.style.opacity = '1'; };
+  document.getElementById('lb-ang-label').textContent = label;
+  document.querySelectorAll('.lb-thumb').forEach((th, i) => {
+    th.classList.toggle('ativa', i === lbAngIdx);
+  });
+}
+
+function renderLb() {
+  const r = REFS[lbRef];
+  if (!r) return;
+  const fotos = (FOTOS?.refs?.[lbRef] || {})[lbCor] || {};
+  const cors  = r.cors;
+  const corKeys = Object.keys(cors);
+
+  // Thumbs
+  const thumbsHtml = ANGULOS.map((a, i) => {
+    const src = fotos[a] || PLACEHOLDER_SVG;
+    return `<div class="lb-thumb ${i===lbAngIdx?'ativa':''}" onclick="lbSetAng(${i})">
+      <img src="${src}" alt="${ANG_LABELS[a]}" onerror="this.src='${PLACEHOLDER_SVG}'"/>
+    </div>`;
+  }).join('');
+
+  // Botões de cor
+  const corsHtml = corKeys.map(ck => {
+    const cp  = parseCor(ck);
+    const css = corParaCSS(cp.nome);
+    const at  = ck === lbCor ? 'ativa' : '';
+    return `<button class="lb-cor-btn ${at}" onclick="lbTrocarCor('${escapar(lbRef)}','${escapar(ck)}')">
+      <span class="cor-circle" style="background:${css}"></span>${cp.nome}
+    </button>`;
+  }).join('');
+
+  // Grade pills
+  const grades = cors[lbCor]?.grades || [];
+  let gradesHtml = '';
+  if (grades.length) {
+    gradesHtml = grades.map(g => {
+      if (g.tipo === 'fechada') {
+        return `<span class="grade-pill">
+          <span class="gp-code">${g.code || '?'}</span>
+          <span class="gp-live">${fNum(g.livre || 0)} livres</span>
+        </span>`;
+      }
+      return `<span class="grade-pill grade-pill-aberta">Grade Aberta — ${fNum(g.livre || 0)} livres</span>`;
+    }).join('');
+  }
+
+  // Livre desta cor
+  const livre = cors[lbCor]?.livre || 0;
+  const totalRef = r.livre;
+
+  // WhatsApp
+  const cp = parseCor(lbCor);
+  const msg = encodeURIComponent(
+    `Olá! Tenho interesse no modelo ${r.modelo} · cor ${cp.nome}. Disponibilidade: ${fNum(livre)} pares. Podem me auxiliar?`
+  );
+  const wppUrl = `https://wa.me/${WPP_NUMERO}?text=${msg}`;
+
+  // Monta info panel
+  document.getElementById('lb-info').innerHTML = `
+    <div>
+      <div class="lb-modelo-nome">${r.modelo}</div>
+      <div class="lb-cor-atual">${cp.nome}</div>
+    </div>
+    ${corKeys.length > 1 ? `<div>
+      <div class="lb-cors-label">Cores disponíveis</div>
+      <div class="lb-cors">${corsHtml}</div>
+    </div>` : ''}
+    <div class="lb-disponivel">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <div>
+        <div class="lb-disponivel-txt">${fNum(livre)} pares disponíveis nesta cor</div>
+        ${totalRef !== livre ? `<div class="lb-disponivel-sub">Total do modelo: ${fNum(totalRef)} pares</div>` : ''}
+      </div>
+    </div>
+    ${gradesHtml ? `<div>
+      <div class="lb-grades-label">Grades disponíveis</div>
+      <div class="lb-grades-list">${gradesHtml}</div>
+    </div>` : ''}
+    <a class="lb-wpp" href="${wppUrl}" target="_blank" rel="noopener">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.994 0C5.369 0 0 5.369 0 11.994c0 2.104.55 4.076 1.512 5.785L0 24l6.404-1.49A11.96 11.96 0 0 0 11.994 24C18.62 24 24 18.632 24 11.994 24 5.369 18.62 0 11.994 0zm0 21.818a9.823 9.823 0 0 1-5.012-1.374l-.36-.213-3.73.868.884-3.636-.235-.372A9.823 9.823 0 0 1 2.18 11.994c0-5.415 4.402-9.818 9.815-9.818 5.414 0 9.817 4.403 9.817 9.818 0 5.413-4.403 9.824-9.818 9.824z"/></svg>
+      Pedir via WhatsApp
+    </a>`;
+
+  // Thumbs
+  document.getElementById('lb-thumbs').innerHTML = thumbsHtml;
+
+  // Imagem principal
+  const {src, label} = fotoAngulo(lbRef, lbCor, lbAngIdx);
+  document.getElementById('lb-img-main').src = src;
+  document.getElementById('lb-img-main').onerror = function(){ this.src = PLACEHOLDER_SVG; };
+  document.getElementById('lb-ang-label').textContent = label;
+}
+
+function lbSetAng(i) {
+  lbAngIdx = i;
+  renderLbImagem();
+  document.querySelectorAll('.lb-thumb').forEach((th, j) => th.classList.toggle('ativa', j===i));
+}
+
+function lbTrocarCor(refKey, combKey) {
+  lbCor = combKey;
+  lbAngIdx = 0;
+  renderLb();
+}
+
+// ── Utils ──────────────────────────────────────────────────────────
+function fNum(n){ return Math.round(n).toLocaleString('pt-BR'); }
+function escapar(s){ return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+// Fechar lightbox com ESC
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') fecharLbBtn();
+  if (e.key === 'ArrowLeft')  lbNavegar(-1);
+  if (e.key === 'ArrowRight') lbNavegar(1);
+});
+
+init();
+</script>
+</body>
+</html>
