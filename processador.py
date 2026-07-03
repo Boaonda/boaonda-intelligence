@@ -949,6 +949,8 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
                 cv = ln['combinacoes'][comb]
                 cv['fisico'] += fisico; cv['reservas'] += reservas; cv['livre'] += livre
                 cv['grades'][gkey]['livre'] += livre; cv['grades'][gkey]['fisico'] += fisico
+                if local == '199':
+                    cv['ga'] = True  # Grade Aberta — local 199
 
     total_f = sum(d['fisico'] for d in estoque.values())
     total_r = sum(d['reservas'] for d in estoque.values())
@@ -991,7 +993,8 @@ def processar_estoque(arquivo_esqt, output_dir='.'):
                     'locais':sorted(list(ln['locais'])),'qtd_combinacoes':len(ln['combinacoes']),
                     'combinacoes':{
                         k: {'fisico':int(v['fisico']),'reservas':int(v['reservas']),'livre':int(v['livre']),
-                            'grades': grades_list(v['grades'])}
+                            'grades': grades_list(v['grades']),
+                            **({'ga':True} if v.get('ga') else {})}
                         for k,v in sorted(ln['combinacoes'].items(), key=lambda x:-x[1]['livre'])}
                 }
                 for descr, ln in linhas_sorted

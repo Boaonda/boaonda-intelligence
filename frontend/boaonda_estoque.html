@@ -307,7 +307,7 @@ function statusPctCor(pL){ return pL<30?'var(--red)':pL<60?'var(--amber)':'var(-
 // majoritariamente ativa aparece no filtro FL com seu próprio volume,
 // e a mesma linha continua aparecendo no filtro Ativos com o resto).
 function combEhFl(combKey){ return combKey.startsWith('[FL]') || combKey.startsWith('[PL]'); }
-function linhaEhGradeAberta(linhaDescr){ return linhaDescr.toUpperCase().includes('GRADE ABERTA'); }
+function combEhGradeAberta(combData){ return combData.ga === true; }
 
 function somaCombs(combs, campo){ return Object.values(combs).reduce((s,c)=>s+(c[campo]||0),0); }
 
@@ -325,17 +325,12 @@ function aplicarFiltro(all, modo){
         if(modo==='ATIVOS') linhasF[linhaDescr]=ln;  // sem mapeamento → tratado como ativo
         return;
       }
-      // Grade Aberta: filtro no nível da linha (local 199 / descrição "GRADE ABERTA")
-      if(modo==='GRADE_ABERTA'){
-        if(linhaEhGradeAberta(linhaDescr))
-          linhasF[linhaDescr]={...ln, qtd_combinacoes:todasCombs.length};
-        return;
-      }
       const combsF = {};
       todasCombs.forEach(k=>{
         const cv = ln.combinacoes[k];
         const fl = combEhFl(k);
-        if((modo==='FL' && fl) || (modo==='ATIVOS' && !fl)) combsF[k]=cv;
+        const ga = combEhGradeAberta(cv);
+        if((modo==='FL' && fl) || (modo==='ATIVOS' && !fl) || (modo==='GRADE_ABERTA' && ga)) combsF[k]=cv;
       });
       if(Object.keys(combsF).length){
         linhasF[linhaDescr] = {...ln, combinacoes:combsF, qtd_combinacoes:Object.keys(combsF).length,
@@ -490,12 +485,14 @@ fetch('dados_estoque.json?_=' + Date.now())
     });
     document.getElementById('k-fl-livre').textContent = f(flLivre);
     document.getElementById('k-fl-sub').textContent = `${flCombs} cor${flCombs!==1?'es':''} fora de linha`;
-    // Box "Grade Aberta" — soma das linhas do local 199 (descrição contém "GRADE ABERTA")
+    // Box "Grade Aberta" — soma das combinações do local 199 (flag ga:true)
     let gaLivre=0, gaRefs=0;
     Object.values(DATA_ALL).forEach(ref=>{
       let refTem = false;
-      Object.entries(ref.linhas||{}).forEach(([linhaDescr,ln])=>{
-        if(linhaEhGradeAberta(linhaDescr)){ gaLivre += ln.livre; refTem = true; }
+      Object.values(ref.linhas||{}).forEach(ln=>{
+        Object.values(ln.combinacoes||{}).forEach(cv=>{
+          if(combEhGradeAberta(cv)){ gaLivre += cv.livre; refTem = true; }
+        });
       });
       if(refTem) gaRefs++;
     });
