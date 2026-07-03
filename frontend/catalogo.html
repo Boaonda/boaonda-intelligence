@@ -633,8 +633,8 @@ function corCSS(nome) {
 }
 
 function nomeLinha(descr) {
-  // 'SANDALIA FEM TR (185)' → 'SANDALIA FEM TR'
-  return descr.replace(/\s*\(\d+\)\s*$/, '').trim();
+  const m = descr.match(/\((\d+)\)\s*$/);
+  return m ? m[1] : descr;
 }
 
 // ── Utils ──────────────────────────────────────────────────────────
