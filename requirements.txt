@@ -4,3 +4,4 @@ openpyxl
 gunicorn
 pymysql
 anthropic
+requests

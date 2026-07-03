@@ -231,6 +231,8 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
   </form>
 
   <a class="back" href="/">← Voltar ao portal</a>
+  &nbsp;·&nbsp;
+  <a class="back" href="/admin/fotos">Atualizar fotos do catálogo →</a>
 </div>
 </body>
 </html>'''
@@ -443,6 +445,90 @@ p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
 </div>
 </body>
 </html>'''
+
+
+_FOTOS_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Boaonda Intelligence — Atualizar fotos do catálogo</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--coral:#ed6842;--verde:#6c9c37;--verde-dark:#26361e;--bg:#f8f5f1;--card:#fff;--line:#e2ddd8;--txt-s:#71706f;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
+body{background:var(--bg);color:var(--verde-dark);min-height:100vh;padding:32px}
+.wrap{max-width:560px;margin:0 auto}
+.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px;margin-bottom:4px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
+h1{font-size:16px;font-weight:700;margin:24px 0 8px}
+p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:16px}
+.btn{background:var(--coral);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:13px;font-weight:700;cursor:pointer}
+.btn:hover{background:#dd7051}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.msg{border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:16px}
+.msg.ok{background:rgba(108,156,55,.1);color:var(--verde);border:1px solid rgba(108,156,55,.25)}
+.msg.err{background:rgba(239,68,68,.08);color:#c0392b;border:1px solid rgba(239,68,68,.25)}
+.stat{font-size:12px;color:var(--txt-s);margin-top:8px}
+.stat strong{color:var(--verde-dark)}
+.back{display:inline-block;margin-top:8px;font-size:12px;color:var(--txt-s);text-decoration:none}
+.back:hover{color:var(--coral)}
+.warn{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2);border-radius:8px;
+      padding:10px 14px;font-size:11px;color:var(--coral);margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">BOAONDA <span>· Intelligence</span></div>
+  <h1>Atualizar fotos do catálogo</h1>
+  <p class="sub">Busca as imagens de produto no Inside Boaonda e gera o arquivo de fotos usado pelo catálogo público. Pode levar 2–3 minutos.</p>
+
+  {% if message %}
+  <div class="msg {{ 'ok' if ok else 'err' }}">{{ message|safe }}</div>
+  {% endif %}
+
+  <div class="warn">⏳ O processo pode demorar 2 a 3 minutos. Não feche a página enquanto estiver carregando.</div>
+
+  <form class="card" method="post"
+    onsubmit="document.getElementById('btn').textContent='Buscando fotos… aguarde';document.getElementById('btn').disabled=true">
+    <button class="btn" id="btn" type="submit">Buscar fotos e atualizar catálogo</button>
+  </form>
+
+  <a class="back" href="/upload">← Voltar para Atualizar dados</a>
+  &nbsp;·&nbsp;
+  <a class="back" href="/catalogo" target="_blank">Ver catálogo público ↗</a>
+</div>
+</body>
+</html>'''
+
+
+@app.route('/admin/fotos', methods=['GET', 'POST'])
+def admin_fotos():
+    message, ok = None, True
+    if request.method == 'POST':
+        try:
+            import gerar_dados_fotos
+            stats = gerar_dados_fotos.gerar(
+                estoque_path=str(DATA_DIR / 'dados_estoque.json'),
+                fotos_out=str(DATA_DIR / 'dados_fotos.json'),
+            )
+            # Copia de volta para FRONTEND_DIR para persistir no repo
+            if DATA_DIR != FRONTEND_DIR:
+                shutil.copy(DATA_DIR / 'dados_fotos.json',
+                            FRONTEND_DIR / 'dados_fotos.json')
+            message = (
+                f"Fotos atualizadas com sucesso!<br>"
+                f"Total: {stats['total']} cores · "
+                f"Completas: {stats['completas']} · "
+                f"Parciais: {stats['parciais']} · "
+                f"Sem foto: {stats['sem_foto']} · "
+                f"Cobertura: {stats['cobertura_pct']}%"
+            )
+        except Exception as ex:
+            traceback.print_exc()
+            message = f'Erro ao buscar fotos: {ex}'
+            ok = False
+    return render_template_string(_FOTOS_HTML, message=message, ok=ok)
 
 
 @app.route('/admin/recarregar', methods=['GET', 'POST'])

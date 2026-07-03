@@ -160,6 +160,68 @@ def fotos_por_prefixo(session, prefixo: str) -> dict:
     return fotos
 
 
+# ─── Função chamável pelo Flask ───────────────────────────────────────────────
+def gerar(usuario=None, senha=None, estoque_path=None, fotos_out=None):
+    """Gera dados_fotos.json e retorna dict com estatísticas.
+    Chamada pelo app.py via /admin/fotos (sem usar argparse).
+    """
+    ep = Path(estoque_path) if estoque_path else ESTOQUE_PATH
+    fo = Path(fotos_out)    if fotos_out    else FOTOS_OUT
+
+    with open(ep, encoding="utf-8") as f:
+        estoque = json.load(f)
+
+    refs    = estoque.get("refs", {})
+    session = criar_session(usuario, senha)
+    resultado: dict = {}
+    stats = {"total": 0, "completas": 0, "parciais": 0, "sem_foto": 0}
+
+    for ref_key, ref_data in refs.items():
+        ref_num  = extrair_ref_num(ref_key)
+        cors_map: dict[str, dict] = {}
+
+        for linha_descr, ln_data in ref_data.get("linhas", {}).items():
+            linha_code = extrair_linha_code(linha_descr)
+            if not linha_code:
+                continue
+            for comb_key in ln_data.get("combinacoes", {}):
+                if comb_key in cors_map:
+                    continue
+                cor_code = extrair_cor_code(comb_key)
+                cor_nome = extrair_cor_nome(comb_key)
+                prefixo  = f"{ref_num}_{linha_code}_{cor_code}"
+                stats["total"] += 1
+
+                fotos = fotos_por_prefixo(session, prefixo)
+                n     = len(fotos)
+                entry = {a: fotos.get(a) for a in ANGULOS}
+                entry["cor_nome"]    = cor_nome
+                entry["placeholder"] = PLACEHOLDER_URL
+                cors_map[comb_key]   = entry
+
+                if n == len(ANGULOS):
+                    stats["completas"] += 1
+                elif n > 0:
+                    stats["parciais"] += 1
+                else:
+                    stats["sem_foto"] += 1
+
+        resultado[ref_key] = cors_map
+
+    saida = {
+        "gerado_em": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "inside_base": INSIDE_BASE,
+        "refs": resultado,
+    }
+    with open(fo, "w", encoding="utf-8") as f:
+        json.dump(saida, f, ensure_ascii=False, indent=2)
+
+    stats["cobertura_pct"] = round(
+        (stats["completas"] + stats["parciais"]) / max(stats["total"], 1) * 100
+    )
+    return stats
+
+
 # ─── Main ──────────────────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
