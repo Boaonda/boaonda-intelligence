@@ -153,6 +153,16 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 .lb-linha-tab:hover{border-color:var(--txt-m)}
 .lb-linha-tab.on{border-color:var(--azul);color:var(--azul);background:rgba(73,148,199,.07)}
 
+/* tabs de tipo (Todos / Ativos / FL) */
+.lb-tipo-tabs{display:flex;gap:5px}
+.lb-tipo-tab{padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);
+             font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
+             background:transparent;color:var(--txt-m);transition:.15s}
+.lb-tipo-tab:hover{border-color:var(--txt-m)}
+.lb-tipo-tab.on-todos{border-color:var(--cinza);color:var(--txt-s);background:rgba(113,112,111,.08)}
+.lb-tipo-tab.on-ativos{border-color:var(--verde);color:var(--verde);background:rgba(108,156,55,.08)}
+.lb-tipo-tab.on-fl{border-color:var(--azul);color:var(--azul);background:rgba(73,148,199,.08)}
+
 .lb-sec-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
               color:var(--txt-m);margin-bottom:5px}
 .lb-cors{display:flex;flex-wrap:wrap;gap:5px}
@@ -280,7 +290,7 @@ let ESTOQUE = null, FOTOS = null;
 let REFS    = {};       // {refKey → {modelo, tipo, material, livre, cores, linhas}}
 let filtroRef = '';
 let filtroFL  = false;
-let lbRef = null, lbCor = null, lbLinha = '__todas__', lbAng = 0;
+let lbRef = null, lbCor = null, lbLinha = '__todas__', lbTipo = 'todos', lbAng = 0;
 
 // ── Init ───────────────────────────────────────────────────────────
 async function init() {
@@ -482,7 +492,7 @@ function swapCardFoto(dotEl, rk, ck) {
 
 // ── Lightbox ───────────────────────────────────────────────────────
 function lbAbrir(rk, ck) {
-  lbRef = rk; lbCor = ck; lbLinha = '__todas__'; lbAng = 0;
+  lbRef = rk; lbCor = ck; lbLinha = '__todas__'; lbTipo = 'todos'; lbAng = 0;
   lbRender();
   document.getElementById('lb').style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -506,9 +516,16 @@ function lbRender() {
   const linhas = Object.keys(r.linhasMap);
 
   // Cores visíveis conforme filtro de linha
-  const corsVisiveis = lbLinha==='__todas__'
+  let corsVisiveis = lbLinha==='__todas__'
     ? Object.keys(r.cores)
     : (r.linhasMap[lbLinha]||[]);
+
+  // Filtro Ativos / FL
+  const temFL    = corsVisiveis.some(ck => ck.toUpperCase().includes('[FL]'));
+  const temAtivo = corsVisiveis.some(ck => !ck.toUpperCase().includes('[FL]'));
+  const mostrarTipoFilter = temFL && temAtivo;
+  if (lbTipo === 'fl')     corsVisiveis = corsVisiveis.filter(ck =>  ck.toUpperCase().includes('[FL]'));
+  if (lbTipo === 'ativos') corsVisiveis = corsVisiveis.filter(ck => !ck.toUpperCase().includes('[FL]'));
 
   // Se a cor atual não está nas visíveis, troca para a primeira disponível
   if (corsVisiveis.length && !corsVisiveis.includes(lbCor))
@@ -517,6 +534,17 @@ function lbRender() {
   const cp   = parseCor(lbCor);
   const livre = r.cores[lbCor]?.livre || 0;
   const grades = r.cores[lbCor]?.grades || [];
+
+  // Tabs Todos / Ativos / FL
+  const tipoTabsHtml = mostrarTipoFilter ? `
+    <div>
+      <div class="lb-sec-label">Mostrar</div>
+      <div class="lb-tipo-tabs">
+        <button class="lb-tipo-tab ${lbTipo==='todos'?'on-todos':''}" onclick="lbSetTipo('todos')">Todos</button>
+        <button class="lb-tipo-tab ${lbTipo==='ativos'?'on-ativos':''}" onclick="lbSetTipo('ativos')">Ativos</button>
+        <button class="lb-tipo-tab ${lbTipo==='fl'?'on-fl':''}" onclick="lbSetTipo('fl')">FL</button>
+      </div>
+    </div>` : '';
 
   // Tabs de linha
   const tabsHtml = linhas.length > 1 ? `
@@ -571,6 +599,7 @@ function lbRender() {
       <div class="lb-modelo">${r.modelo}</div>
       <div class="lb-cor-label">${cp.nome}</div>
     </div>
+    ${tipoTabsHtml}
     ${tabsHtml}
     ${corsVisiveis.length>1?`<div><div class="lb-sec-label">Cores disponíveis</div><div class="lb-cors">${corsHtml}</div></div>`:''}
     <div class="lb-disp">
@@ -609,6 +638,7 @@ function lbRenderImg() {
 function lbSetAng(i) { lbAng=i; lbRenderImg(); }
 function lbSetCor(ck) { lbCor=ck; lbAng=0; lbRender(); }
 function lbSetLinha(l) { lbLinha=l; lbRender(); }
+function lbSetTipo(t) { lbTipo=t; lbRender(); }
 
 // ── Foto helpers ───────────────────────────────────────────────────
 function fotoRef(rk, ck) {
