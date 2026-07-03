@@ -221,12 +221,36 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
          border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ── Painel Modelos (mobile bottom-sheet) ── */
+.modelos-overlay{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.4)}
+.modelos-overlay.aberto{display:block}
+.modelos-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--card);
+               border-radius:20px 20px 0 0;max-height:72vh;display:flex;flex-direction:column;
+               box-shadow:0 -4px 24px rgba(0,0,0,.15)}
+.modelos-handle{width:40px;height:4px;background:var(--border);border-radius:2px;
+                margin:10px auto 0;flex-shrink:0}
+.modelos-header{display:flex;align-items:center;justify-content:space-between;
+                padding:12px 16px 10px;border-bottom:1px solid var(--border2);flex-shrink:0}
+.modelos-title{font-size:13px;font-weight:700;color:var(--txt)}
+.modelos-fechar{background:none;border:none;font-size:20px;cursor:pointer;color:var(--txt-m);
+                padding:2px 6px;line-height:1}
+.modelos-lista{overflow-y:auto;flex:1;padding:6px 0 20px}
+.modelos-lista::-webkit-scrollbar{width:3px}
+.modelos-lista::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* botão Modelos — só mobile */
+.modelos-mob-btn{display:none;align-items:center;gap:5px;padding:8px 12px;
+                 border:1px solid var(--border);border-radius:7px;font-family:inherit;
+                 font-size:12px;font-weight:600;color:var(--txt-s);background:var(--bg);
+                 cursor:pointer;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.modelos-mob-btn.ativo{border-color:var(--coral);color:var(--coral)}
+
 /* ════════════════════════════════
    MOBILE  ≤ 750px
    ════════════════════════════════ */
 @media(max-width:750px){
 
-  /* Filter bar: mostra só busca + botão Filtros */
+  /* Filter bar: mostra só busca + botões mobile */
   .filtros-extras{
     display:none;width:100%;padding-top:8px;
     border-top:1px solid var(--border2);flex-direction:column;gap:8px
@@ -234,30 +258,11 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
   .filtros-extras.aberto{display:flex}
   .filtros-extras .fsel,.filtros-extras .ftoggle{width:100%;text-align:left}
   .filtros-mob-btn{display:flex}
+  .modelos-mob-btn{display:flex}
   .fcount{font-size:10px}
 
-  /* Sidebar: strip horizontal com scroll */
-  .page-body{flex-direction:column}
-  .sidebar{
-    width:100%;height:auto;position:static;
-    border-right:none;border-bottom:1px solid var(--border);
-    flex-direction:row;overflow-x:auto;overflow-y:hidden;
-    display:flex;padding:0;gap:0;
-  }
-  .sidebar::-webkit-scrollbar{height:0}
-  .sb-title{display:none}
-  .sb-todos{
-    border-bottom:none;border-right:1px solid var(--border2);margin-bottom:0;
-    padding:10px 14px;flex-shrink:0;font-size:11px;white-space:nowrap
-  }
-  .sb-item{
-    flex-direction:column;align-items:center;gap:2px;
-    border-left:none;border-bottom:3px solid transparent;
-    padding:8px 12px;flex-shrink:0;white-space:nowrap
-  }
-  .sb-item.ativo{background:rgba(237,104,66,.06);border-bottom-color:var(--coral)}
-  .sb-pares{font-size:9px}
-  .sb-nome{font-size:11px}
+  /* Sidebar: oculta no mobile — abre via bottom-sheet */
+  .sidebar{display:none}
 
   /* Grid: 2 colunas */
   .content{padding:12px}
@@ -321,6 +326,11 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
     <input class="search-input" id="f-busca" type="text" placeholder="Buscar modelo…" autocomplete="off"/>
   </div>
 
+  <!-- Botão Modelos (só aparece no mobile) -->
+  <button class="modelos-mob-btn" id="modelos-mob-btn" onclick="toggleModelosMob()">
+    ☰ <span id="modelos-btn-label">Modelos</span>
+  </button>
+
   <!-- Botão de filtros (só aparece no mobile) -->
   <button class="filtros-mob-btn" id="filtros-mob-btn" onclick="toggleFiltrosMob()">
     Filtros <span class="filtros-badge" id="filtros-badge"></span>
@@ -350,6 +360,21 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
       </div>
     </div>
   </main>
+</div>
+
+<!-- Painel Modelos (mobile bottom-sheet) -->
+<div class="modelos-overlay" id="modelos-overlay" onclick="fecharModelosMobBg(event)">
+  <div class="modelos-sheet">
+    <div class="modelos-handle"></div>
+    <div class="modelos-header">
+      <span class="modelos-title">Referências</span>
+      <button class="modelos-fechar" onclick="fecharModelosMob()">×</button>
+    </div>
+    <div class="modelos-lista">
+      <div class="sb-todos" onclick="filtrarRef('')">← Todos</div>
+      <div id="modelos-list"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Lightbox -->
@@ -448,15 +473,38 @@ function detectarMat(keys) {
 // ── Sidebar ─────────────────────────────────────────────────────────
 function renderSidebar() {
   const sorted = Object.entries(REFS).sort(([,a],[,b])=>b.livre-a.livre);
-  document.getElementById('sb-list').innerHTML = sorted.map(([rk,r]) =>
+  const html = sorted.map(([rk,r]) =>
     `<div class="sb-item ${filtroRef===rk?'ativo':''}" onclick="filtrarRef('${esc(rk)}')">
       <span class="sb-nome">${r.modelo}</span>
       <span class="sb-pares">${fN(r.livre)}</span>
     </div>`
   ).join('');
+  document.getElementById('sb-list').innerHTML = html;
+  const ml = document.getElementById('modelos-list');
+  if (ml) ml.innerHTML = html;
 }
 
-function filtrarRef(rk) { filtroRef=rk; renderSidebar(); renderGrid(); }
+function filtrarRef(rk) {
+  filtroRef = rk;
+  renderSidebar();
+  renderGrid();
+  fecharModelosMob();
+  // Atualiza label do botão mobile
+  const lbl = document.getElementById('modelos-btn-label');
+  const btn = document.getElementById('modelos-mob-btn');
+  if (lbl) lbl.textContent = rk ? (REFS[rk]?.modelo || 'Modelos') : 'Modelos';
+  if (btn) btn.classList.toggle('ativo', !!rk);
+}
+
+function toggleModelosMob() {
+  document.getElementById('modelos-overlay').classList.toggle('aberto');
+}
+function fecharModelosMob() {
+  document.getElementById('modelos-overlay').classList.remove('aberto');
+}
+function fecharModelosMobBg(e) {
+  if (e.target.id === 'modelos-overlay') fecharModelosMob();
+}
 
 // ── Filtros ────────────────────────────────────────────────────────
 function popularFiltros() {
