@@ -133,6 +133,11 @@ VENDA_CANAL_POR_GRUPO = {
 #   32 = Ecommerce
 VENDA_TIPO_POR_COD = {'1':'PROG','10':'EQUIPARADA','22':'PE','31':'MISTA','32':'ECOM'}
 
+# Espécies de orçamento de Mercado Externo — nunca serão faturadas (pedidos
+# não aprovados). Excluídas do faturamento previsto, CFOP, conta contábil e
+# pendências retroativas.
+ESPECIES_ORCAMENTO_ME = {'27', '33'}
+
 # ─── HELPERS ───────────────────────────────────────────────────────────
 def achar_3ys(diretorio='.'):
     """Detecta arquivo 3YS automaticamente — qualquer variação de nome."""
@@ -1127,6 +1132,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
 
         abr = g(row, IDX['abr_grp']).upper()
         cod = g(row, IDX['cod_esp'])
+        if cod in ESPECIES_ORCAMENTO_ME: continue   # orçamento ME — jamais faturado
         marca = g(row, IDX['marca'])
         canal, tipo = classifica_faturamento(cod, abr, marca)
         if not canal: continue
