@@ -1371,7 +1371,7 @@ function renderCfop() {
   document.getElementById('cfop-th-prev').textContent = sp ? 'PREVISTO — ' + fimMes(key) : 'PREVISTO';
   document.getElementById('cfop-th-tot').textContent  = 'TOTAL GERAL — ' + mesLong(key).toUpperCase();
 
-  // Totais para % — exclui CFOPs de conserto/reparo (FORA_DO_GERAL):
+  // Totais para % — exclui CFOPs fora do geral (conserto/reparo, amostras):
   // ficam visíveis na tabela, mas não compõem o faturamento geral.
   let totR = 0, totT = 0;
   Object.values(cfops).forEach(d => {
