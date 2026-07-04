@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
@@ -110,6 +110,8 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
           justify-content:center;font-size:8px;color:var(--txt-m)}
 .cat-livre{font-size:11px;font-weight:600;color:var(--verde)}
 .cat-livre span{color:var(--txt-m);font-weight:400}
+.cat-preco{font-size:11px;font-weight:700;color:var(--azul);margin-top:2px}
+.cat-preco span{color:var(--txt-m);font-weight:400}
 .cat-fl-badge{display:inline-block;font-size:8px;font-weight:700;background:rgba(73,148,199,.12);
               color:var(--azul);border-radius:4px;padding:2px 5px;margin-left:5px}
 
@@ -254,8 +256,9 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 .lb-cor-btn.on{border-color:var(--coral);color:var(--coral);background:rgba(237,104,66,.07)}
 .lb-cor-btn .cc{width:12px;height:12px;border-radius:50%;flex-shrink:0}
 
-.lb-disp{display:flex;align-items:center;gap:6px;background:rgba(108,156,55,.08);
-         border:1px solid rgba(108,156,55,.2);border-radius:7px;padding:9px 12px}
+.lb-disp{display:flex;align-items:center;justify-content:space-between;gap:10px;
+         background:rgba(108,156,55,.08);border:1px solid rgba(108,156,55,.2);
+         border-radius:7px;padding:9px 12px}
 .lb-disp-v{font-size:12px;color:var(--verde);font-weight:700}
 .lb-disp-s{font-size:10px;color:var(--cinza)}
 
@@ -512,6 +515,58 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
   .grid{grid-template-columns:1fr}
 }
 
+/* ── Painel de Detalhe do Produto ── */
+.det-panel{max-width:1060px}
+.det-back{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;
+  border:1.5px solid var(--border);border-radius:8px;font-family:inherit;
+  font-size:12px;font-weight:700;color:var(--txt-s);background:var(--bg);
+  cursor:pointer;margin-bottom:22px;transition:.15s}
+.det-back:hover{border-color:var(--coral);color:var(--coral)}
+
+.det-layout{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
+
+.det-gal{}
+.det-main-wrap{position:relative;background:#f0ede8;border-radius:14px;
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.det-main-img{width:100%;height:100%;object-fit:contain;padding:16px;cursor:zoom-in;transition:opacity .2s}
+.det-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.85);
+  border:none;border-radius:50%;width:42px;height:42px;font-size:22px;cursor:pointer;
+  color:var(--txt);display:flex;align-items:center;justify-content:center;transition:.15s;
+  touch-action:manipulation;z-index:2}
+.det-nav:hover{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.det-nav.prev{left:8px}
+.det-nav.next{right:8px}
+.det-thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:4px}
+.det-thumbs::-webkit-scrollbar{height:3px}
+.det-thumbs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.det-thumb{flex:0 0 64px;height:64px;border-radius:8px;overflow:hidden;cursor:pointer;
+  border:2px solid transparent;transition:.15s;opacity:.55;background:#e8e4de;
+  display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+.det-thumb:hover{opacity:.85}
+.det-thumb.on{border-color:var(--coral);opacity:1}
+.det-thumb img{width:100%;height:100%;object-fit:contain;padding:4px}
+
+.det-info{display:flex;flex-direction:column;gap:16px}
+.det-titulo{font-size:22px;font-weight:800;color:var(--verde-dark);line-height:1.2}
+.det-sub{font-size:11px;color:var(--txt-m);margin-top:3px}
+.det-cor-label{font-size:12px;color:var(--coral);font-weight:600;margin-top:2px}
+
+.det-acoes{display:flex;flex-direction:column;gap:8px;padding-top:4px}
+.det-btn-carr{display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--coral);color:#fff;border-radius:9px;padding:13px;
+  font-size:13px;font-weight:700;border:none;font-family:inherit;cursor:pointer;transition:.15s;width:100%}
+.det-btn-carr:hover{background:var(--coral2)}
+.det-btn-wpp{display:flex;align-items:center;justify-content:center;gap:8px;
+  background:#25D366;color:#fff;border-radius:9px;padding:13px;
+  font-size:13px;font-weight:700;text-decoration:none;transition:.15s}
+.det-btn-wpp:hover{background:#1ebe5a}
+
+@media(max-width:750px){
+  .det-layout{grid-template-columns:1fr;gap:18px}
+  .det-titulo{font-size:18px}
+  .det-main-wrap{max-height:72vw}
+}
+
 /* ════════════════════════════════
    LIGHTBOX MOBILE  ≤ 680px
    ════════════════════════════════ */
@@ -595,6 +650,8 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
         <div class="spinner"></div><span>Carregando catálogo…</span>
       </div>
     </div>
+    <!-- Painel de detalhe do produto -->
+    <div id="det-panel" class="det-panel" style="display:none"></div>
     <!-- Home panel — exibido quando nenhum produto está selecionado -->
     <div id="home-panel" class="home-panel" style="display:none">
       <div class="home-banner" id="home-banner">
@@ -691,6 +748,10 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
       <span id="cart-total-label">Total</span>
       <strong id="cart-total-val">—</strong>
     </div>
+    <div class="cart-total-row" id="cart-invest-row" style="display:none">
+      <span>Investimento estimado</span>
+      <strong id="cart-invest-val" style="color:var(--azul)">—</strong>
+    </div>
     <button class="cart-btn-pdf" id="cart-btn-pdf" onclick="abrirModalId()" disabled>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       Exportar PDF
@@ -768,6 +829,7 @@ let ESTOQUE = null, FOTOS = null, REFS = {};
 let filtroRef = '', filtroFL = false;
 let HOME = null, mostrandoHome = false;
 let lbRef = null, lbCor = null, lbLinha = '__todas__', lbTipo = 'todos', lbAng = 0;
+let detRef = null, detCor = null, detLinha = '__todas__', detTipo = 'todos', detAng = 0;
 let filtrosMobAberto = false;
 
 // ── Carrinho ────────────────────────────────────────────────────────
@@ -812,6 +874,7 @@ function adicionarAoCarrinho(refKey, corKey, grade, qtdCaixas) {
       qtd_caixas: qtdCx,
       qtd_pares: qtdCx * grade.tot,
       foto_url: fotoRef(refKey, corKey),
+      preco_par: REFS[refKey]?.preco_par || 0,
     });
   }
   salvarCarrinho();
@@ -897,7 +960,8 @@ function prepararRefs() {
     const livre = Object.values(cores).reduce((s,c)=>s+c.livre, 0);
     if (livre <= 0) return;
     Object.keys(linhasMap).forEach(l => { if (!linhasMap[l].length) delete linhasMap[l]; });
-    REFS[refKey] = {modelo, tipo, material:mat, livre, cores, linhasMap};
+    const preco_par = (raw.vlr_livre && raw.livre) ? raw.vlr_livre / raw.livre : 0;
+    REFS[refKey] = {modelo, tipo, material:mat, livre, cores, linhasMap, preco_par};
   });
 }
 
@@ -927,6 +991,7 @@ function filtrarRef(rk) {
   mostrandoHome = showHome;
   document.getElementById('home-panel').style.display = showHome ? 'block' : 'none';
   document.getElementById('grid').style.display = showHome ? 'none' : '';
+  document.getElementById('det-panel').style.display = 'none';
   const btnH = document.getElementById('btn-home-fbar');
   if (btnH) btnH.classList.toggle('vis', !showHome && HOME != null);
   if (!showHome) renderGrid();
@@ -1135,7 +1200,7 @@ function cardHtml(rk, r) {
   }).join('');
   const mais = cks.length>DMAX ? `<span class="cor-mais">+${cks.length-DMAX}</span>` : '';
   const flBadge = cks.some(ck=>ck.toUpperCase().includes('[FL]')) ? `<span class="cat-fl-badge">FL</span>` : '';
-  return `<div class="cat-card" onclick="lbAbrir('${esc(rk)}','${esc(primCk)}')">
+  return `<div class="cat-card" onclick="abrirDetalhe('${esc(rk)}','${esc(primCk)}')">
     <div class="cat-img-wrap">
       <img class="cat-img loading" data-src="${esc(fotoSrc)}" alt="${r.modelo}" onerror="this.src='${PH}'"/>
     </div>
@@ -1144,6 +1209,7 @@ function cardHtml(rk, r) {
       <div class="cat-tipo">${r.tipo}${r.material?' · '+r.material:''}</div>
       <div class="cat-cors">${dots}${mais}</div>
       <div class="cat-livre">${fN(r.livre)} pares <span>disponíveis</span></div>
+      ${r.preco_par ? `<div class="cat-preco">${fBRL(r.preco_par)}<span>/par</span></div>` : ''}
     </div>
     <button class="btn-carrinho" onclick="abrirSeletor(event,'${esc(rk)}','${esc(primCk)}')">+ Adicionar ao carrinho</button>
   </div>`;
@@ -1247,6 +1313,7 @@ function lbRender() {
     <div class="lb-disp">
       <div><div class="lb-disp-v">${fN(livre)} pares disponíveis</div>
       <div class="lb-disp-s">${r.modelo} · ${cp.nome}</div></div>
+      ${r.preco_par?`<div style="text-align:right"><div style="font-size:15px;font-weight:800;color:var(--azul)">${fBRL(r.preco_par)}</div><div class="lb-disp-s">por par</div></div>`:''}
     </div>
     ${gradesHtml?`<div><div class="lb-sec-label">Grades</div><div class="lb-grades">${gradesHtml}</div></div>`:''}`;
 
@@ -1284,6 +1351,188 @@ function lbSetCor(ck){lbCor=ck;lbAng=0;lbRender();}
 function lbSetLinha(l){lbLinha=l;lbRender();}
 function lbSetTipo(t){lbTipo=t;lbRender();}
 
+// ── Painel de Detalhe do Produto ────────────────────────────────────
+function abrirDetalhe(rk, ck) {
+  detRef = rk; detCor = ck; detLinha = '__todas__'; detTipo = 'todos'; detAng = 0;
+  filtroRef = rk;
+  renderSidebar();
+  document.getElementById('grid').style.display = 'none';
+  document.getElementById('home-panel').style.display = 'none';
+  document.getElementById('det-panel').style.display = 'block';
+  mostrandoHome = false;
+  const btnH = document.getElementById('btn-home-fbar');
+  if (btnH) btnH.classList.add('vis');
+  const lbl = document.getElementById('modelos-btn-label');
+  const btn = document.getElementById('modelos-mob-btn');
+  if (lbl) lbl.textContent = REFS[rk]?.modelo || 'Modelos';
+  if (btn) btn.classList.add('ativo');
+  fecharModelosMob();
+  detRender();
+  window.scrollTo(0, 0);
+}
+
+function fecharDetalhe() {
+  document.getElementById('det-panel').style.display = 'none';
+  document.getElementById('grid').style.display = '';
+  const btnH = document.getElementById('btn-home-fbar');
+  if (btnH) btnH.classList.toggle('vis', HOME != null);
+  renderGrid();
+  window.scrollTo(0, 0);
+}
+
+function detRender() {
+  const r = REFS[detRef]; if (!r) return;
+  const linhas = Object.keys(r.linhasMap);
+  const todasCors = Object.keys(r.cores);
+  const temFL = todasCors.some(ck => ck.toUpperCase().includes('[FL]'));
+  const temAtivo = todasCors.some(ck => !ck.toUpperCase().includes('[FL]'));
+  const mostrarTipoFilter = temFL && temAtivo;
+
+  function ehTipo(ck) {
+    if (detTipo === 'fl')     return  ck.toUpperCase().includes('[FL]');
+    if (detTipo === 'ativos') return !ck.toUpperCase().includes('[FL]');
+    return true;
+  }
+
+  const linhasVisiveis = linhas.filter(l => (r.linhasMap[l] || []).some(ck => ehTipo(ck)));
+  let corsVisiveis = (detLinha === '__todas__' || !linhasVisiveis.includes(detLinha))
+    ? todasCors.filter(ehTipo)
+    : (r.linhasMap[detLinha] || []).filter(ehTipo);
+  if (detLinha !== '__todas__' && !linhasVisiveis.includes(detLinha)) detLinha = '__todas__';
+  if (corsVisiveis.length && !corsVisiveis.includes(detCor)) detCor = corsVisiveis[0];
+
+  const cp = parseCor(detCor);
+  const livre = r.cores[detCor]?.livre || 0;
+  const grades = r.cores[detCor]?.grades || [];
+
+  const fo = (FOTOS?.refs?.[detRef] || {})[detCor] || {};
+  const galAngulos = ANGULOS.filter(a => fo[a]);
+  if (!galAngulos.length) galAngulos.push(ANGULOS[0]);
+  if (detAng >= galAngulos.length) detAng = 0;
+  const imgSrc = fo[galAngulos[detAng]] || fotoRef(detRef, detCor);
+
+  const thumbsHtml = galAngulos.length > 1 ? galAngulos.map((a, i) =>
+    `<div class="det-thumb ${i === detAng ? 'on' : ''}" onclick="detSetAng(${i})">` +
+    `<img src="${fo[a] || PH}" onerror="this.src='${PH}'" alt="${ANG_LABELS[a]}"/></div>`
+  ).join('') : '';
+
+  const navHtml = galAngulos.length > 1
+    ? `<button class="det-nav prev" onclick="detNav(-1)">&#8249;</button>` +
+      `<button class="det-nav next" onclick="detNav(1)">&#8250;</button>`
+    : '';
+
+  const tipoTabsHtml = mostrarTipoFilter
+    ? `<div><div class="lb-sec-label">Mostrar</div><div class="lb-tipo-tabs">` +
+      `<button class="lb-tipo-tab ${detTipo==='todos'?'on-todos':''}" onclick="detSetTipo('todos')">Todos</button>` +
+      `<button class="lb-tipo-tab ${detTipo==='ativos'?'on-ativos':''}" onclick="detSetTipo('ativos')">Ativos</button>` +
+      `<button class="lb-tipo-tab ${detTipo==='fl'?'on-fl':''}" onclick="detSetTipo('fl')">FL</button>` +
+      `</div></div>` : '';
+
+  const todasBtn = linhasVisiveis.length > 1
+    ? `<button class="lb-linha-tab ${detLinha==='__todas__'?'on':''}" onclick="detSetLinha('__todas__')">Todas</button>` : '';
+  const tabsHtml = linhasVisiveis.length > 0
+    ? `<div><div class="lb-sec-label">Linha</div><div class="lb-linha-tabs">` +
+      todasBtn +
+      linhasVisiveis.map(l =>
+        `<button class="lb-linha-tab ${detLinha===l?'on':''}" onclick="detSetLinha('${esc(l)}')">${nomeLinha(l)}</button>`
+      ).join('') +
+      `</div></div>` : '';
+
+  const corsHtml = corsVisiveis.map(ck => {
+    const c = parseCor(ck), css = corCSS(c.nome);
+    return `<button class="lb-cor-btn ${ck===detCor?'on':''}" onclick="detSetCor('${esc(ck)}')">` +
+           `<span class="cc" style="background:${css}"></span>${c.nome}</button>`;
+  }).join('');
+
+  const gradesHtml = grades.map(g => {
+    if (g.tipo === 'aberta') return `<div class="grade-aberta">Grade Aberta &#8212; ${fN(g.livre||0)} pares livres</div>`;
+    const sizes = g.sizes||[], pattern = g.pattern||[];
+    const tot = g.tot || sizes.reduce((s,_,i)=>s+(pattern[i]||0),0);
+    const szCells = sizes.map((sz,i) =>
+      `<div class="grade-sz"><div class="grade-sz-num">${sz}</div><div class="grade-sz-qty">${pattern[i]??'?'}</div></div>`
+    ).join('');
+    return `<div class="grade-card"><div class="grade-card-head">` +
+      `<span class="grade-card-code">Grade ${g.code||'?'}</span>` +
+      `<span class="grade-card-livre">${fN(g.livre||0)} pares livres</span>` +
+      `<span class="grade-card-comp">${g.completas||0} grades &#183; ${tot} pares/grade</span>` +
+      `</div><div class="grade-sizes">${szCells}</div></div>`;
+  }).join('');
+
+  const wppMsg = encodeURIComponent('Ol\xE1! Tenho interesse no modelo '+r.modelo+' \xB7 cor '+cp.nome+'. Disponibilidade: '+fN(livre)+' pares. Podem me auxiliar?');
+  const svgCart = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>';
+  const svgWpp = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.994 0C5.369 0 0 5.369 0 11.994c0 2.104.55 4.076 1.512 5.785L0 24l6.404-1.49A11.96 11.96 0 0 0 11.994 24C18.62 24 24 18.632 24 11.994 24 5.369 18.62 0 11.994 0zm0 21.818a9.823 9.823 0 0 1-5.012-1.374l-.36-.213-3.73.868.884-3.636-.235-.372A9.823 9.823 0 0 1 2.18 11.994c0-5.415 4.402-9.818 9.815-9.818 5.414 0 9.817 4.403 9.817 9.818 0 5.413-4.403 9.824-9.818 9.824z"/></svg>';
+
+  document.getElementById('det-panel').innerHTML =
+    `<button class="det-back" onclick="fecharDetalhe()">&#8592; Voltar ao cat&#225;logo</button>` +
+    `<div class="det-layout">` +
+      `<div class="det-gal">` +
+        `<div class="det-main-wrap" id="det-main-wrap">` +
+          `<img class="det-main-img" id="det-main-img" src="${imgSrc}" alt="${r.modelo}" onerror="this.src='${PH}'" onclick="abrirZoom(this.src)"/>` +
+          navHtml +
+        `</div>` +
+        (thumbsHtml ? `<div class="det-thumbs">${thumbsHtml}</div>` : '') +
+      `</div>` +
+      `<div class="det-info">` +
+        `<div><div class="det-titulo">${r.modelo}</div>` +
+        `<div class="det-sub">${r.tipo}${r.material?' &#183; '+r.material:''}</div>` +
+        `<div class="det-cor-label">${cp.nome}</div></div>` +
+        tipoTabsHtml + tabsHtml +
+        (corsHtml ? `<div><div class="lb-sec-label">Cores dispon&#237;veis</div><div class="lb-cors">${corsHtml}</div></div>` : '') +
+        `<div class="lb-disp">` +
+          `<div><div class="lb-disp-v">${fN(livre)} pares dispon&#237;veis</div>` +
+          `<div class="lb-disp-s">${r.modelo} &#183; ${cp.nome}</div></div>` +
+          (r.preco_par ? `<div style="text-align:right"><div style="font-size:15px;font-weight:800;color:var(--azul)">${fBRL(r.preco_par)}</div><div class="lb-disp-s">por par</div></div>` : '') +
+        `</div>` +
+        (gradesHtml ? `<div><div class="lb-sec-label">Grades</div><div class="lb-grades">${gradesHtml}</div></div>` : '') +
+        `<div class="det-acoes">` +
+          `<button class="det-btn-carr" onclick="abrirSeletor(event,'${esc(detRef)}','${esc(detCor)}')">${svgCart} Adicionar ao carrinho</button>` +
+          `<a class="det-btn-wpp" href="https://wa.me/${WPP_NUMERO}?text=${wppMsg}" target="_blank" rel="noopener">${svgWpp} Pedir via WhatsApp</a>` +
+        `</div>` +
+      `</div>` +
+    `</div>`;
+
+  detIniciarSwipe();
+}
+
+function detRenderImg() {
+  const fo = (FOTOS?.refs?.[detRef] || {})[detCor] || {};
+  const galAngulos = ANGULOS.filter(a => fo[a]);
+  if (!galAngulos.length) return;
+  if (detAng >= galAngulos.length) detAng = 0;
+  const img = document.getElementById('det-main-img');
+  if (img) {
+    img.style.opacity = '.3';
+    img.src = fo[galAngulos[detAng]] || PH;
+    img.onload = () => { img.style.opacity = '1'; };
+    img.onerror = () => { img.src = PH; };
+  }
+  document.querySelectorAll('.det-thumb').forEach((t, i) => t.classList.toggle('on', i === detAng));
+}
+
+function detNav(d) {
+  const fo = (FOTOS?.refs?.[detRef] || {})[detCor] || {};
+  const n = ANGULOS.filter(a => fo[a]).length;
+  if (n < 2) return;
+  detAng = (detAng + d + n) % n;
+  detRenderImg();
+}
+
+function detSetAng(i) { detAng = i; detRenderImg(); }
+function detSetCor(ck) { detCor = ck; detAng = 0; detRender(); }
+function detSetLinha(l) { detLinha = l; detRender(); }
+function detSetTipo(t) { detTipo = t; detRender(); }
+
+function detIniciarSwipe() {
+  const el = document.getElementById('det-main-wrap');
+  if (!el) return;
+  let tx = 0;
+  el.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive: true});
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 45) detNav(dx > 0 ? -1 : 1);
+  }, {passive: true});
+}
+
 // ── Drawer Carrinho (Passo 3) ──────────────────────────────────────
 function toggleDrawer() {
   document.getElementById('cart-drawer').classList.contains('aberto') ? fecharDrawer() : abrirDrawer();
@@ -1311,6 +1560,11 @@ function renderDrawer() {
   const btn = document.getElementById('cart-btn-pdf');
   if (lbl) lbl.textContent = itens.length ? `${itens.length} item${itens.length !== 1 ? 'ns' : ''}` : 'Total';
   if (val) val.textContent = itens.length ? `${fN(totalPares)} pares · ${totalCx} cx` : '—';
+  const totalInvest = itens.reduce((s, i) => s + (i.preco_par || 0) * i.qtd_pares, 0);
+  const investRow = document.getElementById('cart-invest-row');
+  const investVal = document.getElementById('cart-invest-val');
+  if (investRow) investRow.style.display = (itens.length && totalInvest > 0) ? '' : 'none';
+  if (investVal) investVal.textContent = totalInvest > 0 ? fBRL(totalInvest) : '—';
   if (btn) btn.disabled = !itens.length;
 
   const el = document.getElementById('cart-items'); if (!el) return;
@@ -1330,7 +1584,7 @@ function renderDrawer() {
         <div class="cart-item-row">
           <input class="cart-item-qtd" type="number" min="1" max="${item.grade_cx_disponiveis}"
             value="${item.qtd_caixas}" onchange="atualizarQuantidade(${idx},this.value)"/>
-          <span class="cart-item-pares">${fN(item.qtd_pares)} pares</span>
+          <span class="cart-item-pares">${fN(item.qtd_pares)} pares${item.preco_par ? ' · ' + fBRL(item.qtd_pares * item.preco_par) : ''}</span>
           <button class="cart-item-del" onclick="removerItem(${idx})" title="Remover">🗑</button>
         </div>
       </div>
@@ -1481,6 +1735,7 @@ function nomeLinha(descr) { const m=descr.match(/\((\d+)\)\s*$/); return m?m[1]:
 
 // ── Utils ──────────────────────────────────────────────────────────
 function fN(n){ return Math.round(n).toLocaleString('pt-BR'); }
+function fBRL(n){ return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function mostrarErro(msg){ document.getElementById('grid').innerHTML=`<div class="empty"><p>${msg}</p></div>`; }
 
@@ -1712,13 +1967,22 @@ async function gerarPDF() {
     }
 
     // Totais
-    if (y+14 > BOTTOM) { doc.addPage(); pg++; y = drawHeader(); drawFooter(pg); }
     const totP = carrinho.itens.reduce((s,i)=>s+i.qtd_pares,0);
     const totC = carrinho.itens.reduce((s,i)=>s+i.qtd_caixas,0);
-    fc('#f8f5f1'); doc.rect(ML,y+2,X.end-ML,11,'F');
-    dc('#e2ddd8'); doc.setLineWidth(.4); doc.line(ML,y+2,X.end,y+2); doc.line(ML,y+13,X.end,y+13);
+    const totV = carrinho.itens.reduce((s,i)=>s+(i.preco_par||0)*i.qtd_pares,0);
+    const totHeight = totV > 0 ? 20 : 11;
+    if (y+totHeight > BOTTOM) { doc.addPage(); pg++; y = drawHeader(); drawFooter(pg); }
+    fc('#f8f5f1'); doc.rect(ML,y+2,X.end-ML,totHeight,'F');
+    dc('#e2ddd8'); doc.setLineWidth(.4); doc.line(ML,y+2,X.end,y+2); doc.line(ML,y+2+totHeight,X.end,y+2+totHeight);
     doc.setFont('helvetica','bold'); doc.setFontSize(9.5); tc('#26361e');
     doc.text(`TOTAL GERAL: ${totP} pares   ${carrinho.itens.length} ref.   ${totC} caixas`, ML+4, y+9);
+    if (totV > 0) {
+      const totVStr = totV.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); tc('#71706f');
+      doc.text('Investimento estimado:', ML+4, y+17);
+      doc.setFont('helvetica','bold'); tc('#4994c7');
+      doc.text(`R$ ${norm(totVStr)}`, X.end, y+17, {align:'right'});
+    }
 
     // Download
     const dd=String(hoje.getDate()).padStart(2,'0'), mm2=String(hoje.getMonth()+1).padStart(2,'0');
@@ -1734,10 +1998,10 @@ async function gerarPDF() {
 }
 
 // ── Zoom de foto ───────────────────────────────────────────────────
-function abrirZoom() {
-  const src = document.getElementById('lb-img')?.src;
-  if (!src || src.startsWith('data:')) return;
-  document.getElementById('img-zoom-img').src = src;
+function abrirZoom(src) {
+  const imgSrc = src || document.getElementById('lb-img')?.src;
+  if (!imgSrc || imgSrc.startsWith('data:')) return;
+  document.getElementById('img-zoom-img').src = imgSrc;
   document.getElementById('img-zoom-over').classList.add('vis');
 }
 function fecharZoom() {
@@ -1746,6 +2010,11 @@ function fecharZoom() {
 
 document.addEventListener('keydown', e=>{
   if (e.key==='Escape') { fecharZoom(); lbFechar(); fecharSeletor(); fecharDrawer(); fecharModalId(); }
+  if (document.getElementById('det-panel').style.display !== 'none') {
+    if (e.key==='ArrowLeft') detNav(-1);
+    if (e.key==='ArrowRight') detNav(1);
+    return;
+  }
   if (document.getElementById('lb').style.display==='none') return;
   if (e.key==='ArrowLeft') lbNav(-1);
   if (e.key==='ArrowRight') lbNav(1);
