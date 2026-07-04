@@ -1183,10 +1183,10 @@ function lbRender() {
       <button class="lb-tipo-tab ${lbTipo==='fl'?'on-fl':''}" onclick="lbSetTipo('fl')">FL</button>
     </div></div>`:'';
 
-  const tabsHtml=linhasVisiveis.length>1?`
+  const tabsHtml=linhasVisiveis.length>0?`
     <div><div class="lb-sec-label">Linha</div>
     <div class="lb-linha-tabs">
-      <button class="lb-linha-tab ${lbLinha==='__todas__'?'on':''}" onclick="lbSetLinha('__todas__')">Todas</button>
+      ${linhasVisiveis.length>1?`<button class="lb-linha-tab ${lbLinha==='__todas__'?'on':''}" onclick="lbSetLinha('__todas__')">Todas</button>`:''}
       ${linhasVisiveis.map(l=>`<button class="lb-linha-tab ${lbLinha===l?'on':''}" onclick="lbSetLinha('${esc(l)}')">${nomeLinha(l)}</button>`).join('')}
     </div></div>`:'';
 
