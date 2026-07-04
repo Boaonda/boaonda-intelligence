@@ -122,7 +122,7 @@ input:focus{border-color:#ed6842}
 @app.before_request
 def require_login():
     """Bloqueia todas as rotas exceto /login, /logout e o catálogo público."""
-    public_endpoints = {'login', 'logout', 'catalogo'}
+    public_endpoints = {'login', 'logout', 'catalogo', 'foto_proxy'}
     if request.endpoint in public_endpoints:
         return None
     # JSONs necessários para o catálogo público não exigem autenticação
@@ -531,6 +531,34 @@ def admin_fotos():
             message = f'Erro ao buscar fotos: {ex}'
             ok = False
     return render_template_string(_FOTOS_HTML, message=message, ok=ok)
+
+
+@app.route('/api/foto-proxy')
+def foto_proxy():
+    """Proxy server-side para imagens de produto — resolve CORS no PDF export."""
+    url = request.args.get('url', '').strip()
+    if not url or not url.startswith('https://'):
+        return '', 400
+    try:
+        from urllib.parse import urlparse
+        domain = urlparse(url).netloc
+        if 'boaonda.com.br' not in domain:
+            return '', 403
+    except Exception:
+        return '', 400
+    try:
+        import urllib.request as ureq
+        req = ureq.Request(url, headers={'User-Agent': 'Mozilla/5.0 Boaonda-Catalogo/1.0'})
+        with ureq.urlopen(req, timeout=8) as r:
+            data = r.read()
+            ct = r.headers.get('Content-Type', 'image/jpeg').split(';')[0]
+        from flask import Response
+        return Response(data, mimetype=ct, headers={
+            'Cache-Control': 'public, max-age=86400',
+        })
+    except Exception:
+        traceback.print_exc()
+        return '', 502
 
 
 @app.route('/admin/home')

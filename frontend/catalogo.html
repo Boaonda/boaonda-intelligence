@@ -420,7 +420,11 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 .id-title{font-size:16px;font-weight:800;color:var(--verde-dark)}
 .id-sub{font-size:12px;color:var(--txt-m);margin-top:4px;line-height:1.5}
 .id-body{padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.id-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:460px){.id-row2{grid-template-columns:1fr}}
 .id-field{display:flex;flex-direction:column;gap:5px}
+.id-box{max-width:480px}
+textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
 .id-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-m)}
 .id-input{padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;
           font-family:inherit;font-size:14px;color:var(--txt);outline:none;
@@ -639,13 +643,23 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
       <div class="id-sub">Opcional — para identificação no PDF do pedido</div>
     </div>
     <div class="id-body">
-      <div class="id-field">
-        <label class="id-label" for="id-nome">Seu nome</label>
-        <input class="id-input" id="id-nome" type="text" placeholder="Ex.: João Silva" autocomplete="name"/>
+      <div class="id-row2">
+        <div class="id-field">
+          <label class="id-label" for="id-nome">Seu nome</label>
+          <input class="id-input" id="id-nome" type="text" placeholder="Ex.: João Silva" autocomplete="name"/>
+        </div>
+        <div class="id-field">
+          <label class="id-label" for="id-empresa">Empresa</label>
+          <input class="id-input" id="id-empresa" type="text" placeholder="Ex.: Calçados Centro Ltda" autocomplete="organization"/>
+        </div>
       </div>
       <div class="id-field">
-        <label class="id-label" for="id-empresa">Empresa</label>
-        <input class="id-input" id="id-empresa" type="text" placeholder="Ex.: Calçados Centro Ltda" autocomplete="organization"/>
+        <label class="id-label" for="id-cnpj">CNPJ</label>
+        <input class="id-input" id="id-cnpj" type="text" placeholder="Ex.: 12.345.678/0001-99" autocomplete="off" maxlength="18" oninput="mascaraCNPJ(this)"/>
+      </div>
+      <div class="id-field">
+        <label class="id-label" for="id-obs">Observações do pedido</label>
+        <textarea class="id-input" id="id-obs" placeholder="Prazo de entrega, condição de pagamento, observações…"></textarea>
       </div>
     </div>
     <div class="id-footer">
@@ -1478,6 +1492,8 @@ function abrirModalId() {
   const saved = JSON.parse(localStorage.getItem(ID_KEY) || '{}');
   document.getElementById('id-nome').value    = saved.nome    || '';
   document.getElementById('id-empresa').value = saved.empresa || '';
+  document.getElementById('id-cnpj').value    = saved.cnpj    || '';
+  document.getElementById('id-obs').value     = '';
   document.getElementById('id-over').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   setTimeout(() => document.getElementById('id-nome').focus(), 80);
@@ -1493,13 +1509,24 @@ function idBgClick(e) { if (e.target.id === 'id-over') fecharModalId(); }
 function idConfirmar() {
   const nome    = document.getElementById('id-nome').value.trim();
   const empresa = document.getElementById('id-empresa').value.trim();
-  carrinho.cliente = { nome, empresa };
+  const cnpj    = document.getElementById('id-cnpj').value.trim();
+  const obs     = document.getElementById('id-obs').value.trim();
+  carrinho.cliente = { nome, empresa, cnpj, obs };
   salvarCarrinho();
-  if (nome || empresa) {
-    try { localStorage.setItem(ID_KEY, JSON.stringify({ nome, empresa })); } catch(e) {}
+  if (nome || empresa || cnpj) {
+    try { localStorage.setItem(ID_KEY, JSON.stringify({ nome, empresa, cnpj })); } catch(e) {}
   }
   fecharModalId();
-  gerarPDF(); // implementado no Passo 5
+  gerarPDF();
+}
+
+function mascaraCNPJ(el) {
+  let v = el.value.replace(/\D/g,'').substring(0,14);
+  if      (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})$/,'$1.$2.$3/$4-$5');
+  else if (v.length >  8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4})$/,'$1.$2.$3/$4');
+  else if (v.length >  5) v = v.replace(/^(\d{2})(\d{3})(\d{0,3})$/,'$1.$2.$3');
+  else if (v.length >  2) v = v.replace(/^(\d{2})(\d{0,3})$/,'$1.$2');
+  el.value = v;
 }
 
 // ── Geração do PDF (Passo 5) ───────────────────────────────────────
@@ -1508,23 +1535,23 @@ function norm(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,''); 
 
 async function imgToBase64(url) {
   if (!url || url.startsWith('data:')) return null;
+  const proxied = '/api/foto-proxy?url=' + encodeURIComponent(url);
   return new Promise(resolve => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    const timer = setTimeout(() => resolve(null), 7000);
+    const timer = setTimeout(() => resolve(null), 10000);
     img.onload = () => {
       clearTimeout(timer);
       try {
         const c = document.createElement('canvas');
-        c.width = 80; c.height = 80;
+        c.width = 120; c.height = 120;
         const ctx = c.getContext('2d');
-        ctx.fillStyle = '#f0ede8'; ctx.fillRect(0,0,80,80);
-        ctx.drawImage(img,0,0,80,80);
-        resolve({ data: c.toDataURL('image/jpeg',.85) });
+        ctx.fillStyle = '#f0ede8'; ctx.fillRect(0,0,120,120);
+        ctx.drawImage(img,0,0,120,120);
+        resolve({ data: c.toDataURL('image/jpeg',.92) });
       } catch(e) { resolve(null); }
     };
     img.onerror = () => { clearTimeout(timer); resolve(null); };
-    img.src = url;
+    img.src = proxied;
   });
 }
 
@@ -1559,7 +1586,7 @@ async function gerarPDF() {
       pares: ML+168,    // 182 — col 14mm
       end:   PW-ML,     // 196
     };
-    const ROW_H = 26, BOTTOM = PH-22, HDR_END = MT+41;
+    const ROW_H = 26, BOTTOM = PH-22;
     const hoje = new Date();
     const dataStr = hoje.toLocaleDateString('pt-BR');
     const cli = carrinho.cliente || {};
@@ -1581,23 +1608,41 @@ async function gerarPDF() {
       doc.setFont('helvetica','normal'); doc.setFontSize(9); tc('#71706f');
       doc.text('Data: '+dataStr, X.end, MT+15, {align:'right'});
 
+      // Bloco cliente
       let yc = MT+22;
-      if (cli.nome||cli.empresa) {
-        doc.setFontSize(9); tc('#26361e');
-        if (cli.nome)    { doc.setFont('helvetica','bold');   doc.text('Cliente:', ML, yc); doc.setFont('helvetica','normal'); doc.text(norm(cli.nome),    ML+20, yc); yc+=5; }
-        if (cli.empresa) { doc.setFont('helvetica','bold');   doc.text('Empresa:', ML, yc); doc.setFont('helvetica','normal'); doc.text(norm(cli.empresa), ML+20, yc); }
+      const LBL = ML+22;
+      doc.setFontSize(9);
+      if (cli.nome)    { doc.setFont('helvetica','bold'); tc('#71706f'); doc.text('Cliente:', ML, yc); doc.setFont('helvetica','normal'); tc('#26361e'); doc.text(norm(cli.nome),    LBL, yc); yc+=5; }
+      if (cli.empresa) { doc.setFont('helvetica','bold'); tc('#71706f'); doc.text('Empresa:', ML, yc); doc.setFont('helvetica','normal'); tc('#26361e'); doc.text(norm(cli.empresa), LBL, yc); yc+=5; }
+      if (cli.cnpj)    { doc.setFont('helvetica','bold'); tc('#71706f'); doc.text('CNPJ:',    ML, yc); doc.setFont('helvetica','normal'); tc('#26361e'); doc.text(norm(cli.cnpj),    LBL, yc); yc+=5; }
+
+      // Observações
+      if (cli.obs) {
+        yc += 2;
+        doc.setFont('helvetica','bold'); doc.setFontSize(8); tc('#71706f');
+        doc.text('Observacoes:', ML, yc); yc += 4;
+        const obsLines = doc.splitTextToSize(norm(cli.obs), X.end - ML - 6);
+        const obsH = obsLines.length * 4.5 + 6;
+        fc('#f8f5f1'); dc('#e2ddd8'); doc.setLineWidth(.3);
+        doc.roundedRect(ML, yc-3, X.end-ML, obsH, 2, 2, 'FD');
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); tc('#26361e');
+        doc.text(obsLines, ML+3, yc+1);
+        yc += obsH + 4;
       }
 
-      dc('#e2ddd8'); doc.setLineWidth(.5); doc.line(ML, MT+30, X.end, MT+30);
-
+      // Separador + cabeçalho de colunas
+      yc += 3;
+      dc('#e2ddd8'); doc.setLineWidth(.5); doc.line(ML, yc, X.end, yc); yc += 7;
       doc.setFont('helvetica','bold'); doc.setFontSize(7.5); tc('#9b9895');
-      doc.text('FOTO',       X.foto+2,  MT+36);
-      doc.text('REFERENCIA', X.ref+2,   MT+36);
-      doc.text('COR',        X.cor+2,   MT+36);
-      doc.text('GRADE',      X.grade+2, MT+36);
-      doc.text('CX',         X.cx+6,    MT+36, {align:'center'});
-      doc.text('PARES',      X.pares+7, MT+36, {align:'center'});
-      dc('#e2ddd8'); doc.setLineWidth(.4); doc.line(ML, MT+39, X.end, MT+39);
+      doc.text('FOTO',       X.foto+2,  yc);
+      doc.text('REFERENCIA', X.ref+2,   yc);
+      doc.text('COR',        X.cor+2,   yc);
+      doc.text('GRADE',      X.grade+2, yc);
+      doc.text('CX',         X.cx+6,    yc, {align:'center'});
+      doc.text('PARES',      X.pares+7, yc, {align:'center'});
+      yc += 3;
+      dc('#e2ddd8'); doc.setLineWidth(.4); doc.line(ML, yc, X.end, yc);
+      return yc + 2;
     }
 
     function drawFooter(pg) {
@@ -1658,16 +1703,16 @@ async function gerarPDF() {
     const fotos = await Promise.all(carrinho.itens.map(it => imgToBase64(it.foto_url)));
 
     // ── Renderizar ──────────────────────────────────────────────────
-    let pg=1, y=HDR_END+2;
-    drawHeader(); drawFooter(pg);
+    let pg=1;
+    let y = drawHeader(); drawFooter(pg);
 
     for (let i=0; i<carrinho.itens.length; i++) {
-      if (y+ROW_H > BOTTOM) { doc.addPage(); pg++; drawHeader(); drawFooter(pg); y=HDR_END+2; }
+      if (y+ROW_H > BOTTOM) { doc.addPage(); pg++; y = drawHeader(); drawFooter(pg); }
       y += drawItem(carrinho.itens[i], fotos[i], y);
     }
 
     // Totais
-    if (y+14 > BOTTOM) { doc.addPage(); pg++; drawHeader(); drawFooter(pg); y=HDR_END+2; }
+    if (y+14 > BOTTOM) { doc.addPage(); pg++; y = drawHeader(); drawFooter(pg); }
     const totP = carrinho.itens.reduce((s,i)=>s+i.qtd_pares,0);
     const totC = carrinho.itens.reduce((s,i)=>s+i.qtd_caixas,0);
     fc('#f8f5f1'); doc.rect(ML,y+2,X.end-ML,11,'F');
