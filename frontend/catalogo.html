@@ -187,7 +187,19 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
         display:flex;flex-direction:column;overflow:hidden}
 .lb-main{position:relative;flex:1;min-height:260px;display:flex;align-items:center;
          justify-content:center;padding:12px;user-select:none}
-.lb-main img{max-width:100%;max-height:320px;object-fit:contain;transition:opacity .2s;pointer-events:none}
+.lb-main img{max-width:100%;max-height:320px;object-fit:contain;transition:opacity .2s;cursor:zoom-in}
+/* Zoom overlay */
+.img-zoom-over{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:1600;
+  display:none;align-items:center;justify-content:center;cursor:zoom-out;padding:20px}
+.img-zoom-over.vis{display:flex;animation:zo-fade .16s ease}
+@keyframes zo-fade{from{opacity:0}to{opacity:1}}
+.img-zoom-img{max-width:100%;max-height:93vh;object-fit:contain;border-radius:8px;
+  cursor:default;animation:zo-scale .2s ease;box-shadow:0 0 80px rgba(0,0,0,.6)}
+@keyframes zo-scale{from{transform:scale(.88);opacity:0}to{transform:scale(1);opacity:1}}
+.img-zoom-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.15);
+  border:none;border-radius:50%;width:42px;height:42px;font-size:24px;color:#fff;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;line-height:1}
+.img-zoom-close:hover{background:rgba(255,255,255,.28)}
 .lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.85);
         border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;
         color:var(--txt);display:flex;align-items:center;justify-content:center;transition:.15s;
@@ -709,7 +721,7 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
     <!-- Galeria de imagens -->
     <div class="lb-gal">
       <div class="lb-main" id="lb-main">
-        <img id="lb-img" src="" alt=""/>
+        <img id="lb-img" src="" alt="" onclick="abrirZoom()"/>
         <button class="lb-nav prev" onclick="lbNav(-1)">‹</button>
         <button class="lb-nav next" onclick="lbNav(1)">›</button>
       </div>
@@ -1676,8 +1688,19 @@ async function gerarPDF() {
   }
 }
 
+// ── Zoom de foto ───────────────────────────────────────────────────
+function abrirZoom() {
+  const src = document.getElementById('lb-img')?.src;
+  if (!src || src.startsWith('data:')) return;
+  document.getElementById('img-zoom-img').src = src;
+  document.getElementById('img-zoom-over').classList.add('vis');
+}
+function fecharZoom() {
+  document.getElementById('img-zoom-over').classList.remove('vis');
+}
+
 document.addEventListener('keydown', e=>{
-  if (e.key==='Escape') { lbFechar(); fecharSeletor(); fecharDrawer(); fecharModalId(); }
+  if (e.key==='Escape') { fecharZoom(); lbFechar(); fecharSeletor(); fecharDrawer(); fecharModalId(); }
   if (document.getElementById('lb').style.display==='none') return;
   if (e.key==='ArrowLeft') lbNav(-1);
   if (e.key==='ArrowRight') lbNav(1);
@@ -1685,5 +1708,12 @@ document.addEventListener('keydown', e=>{
 
 init();
 </script>
+
+<!-- Zoom de foto -->
+<div class="img-zoom-over" id="img-zoom-over" onclick="fecharZoom()">
+  <button class="img-zoom-close" onclick="fecharZoom();event.stopPropagation()">×</button>
+  <img class="img-zoom-img" id="img-zoom-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
 </body>
 </html>
