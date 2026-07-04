@@ -337,6 +337,35 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 .cart-btn-pdf:hover:not(:disabled){background:var(--coral)}
 .cart-btn-pdf:disabled{background:var(--border);color:var(--txt-m);cursor:not-allowed}
 
+/* ── Modal Identificação ── */
+.id-over{position:fixed;inset:0;background:rgba(15,15,15,.6);backdrop-filter:blur(4px);
+         z-index:700;display:flex;align-items:center;justify-content:center;padding:16px}
+.id-box{background:var(--card);border-radius:16px;width:100%;max-width:400px;
+        display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+.id-header{padding:20px 20px 14px;border-bottom:1px solid var(--border)}
+.id-title{font-size:16px;font-weight:800;color:var(--verde-dark)}
+.id-sub{font-size:12px;color:var(--txt-m);margin-top:4px;line-height:1.5}
+.id-body{padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.id-field{display:flex;flex-direction:column;gap:5px}
+.id-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-m)}
+.id-input{padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;
+          font-family:inherit;font-size:14px;color:var(--txt);outline:none;
+          transition:.2s;background:var(--bg)}
+.id-input:focus{border-color:var(--coral);background:#fff}
+.id-footer{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--border)}
+.id-btn-cancel{flex:1;padding:11px;border:1.5px solid var(--border);border-radius:9px;
+               font-family:inherit;font-size:13px;font-weight:700;color:var(--txt-s);
+               background:transparent;cursor:pointer;transition:.15s}
+.id-btn-cancel:hover{border-color:var(--txt-m);color:var(--txt)}
+.id-btn-ok{flex:2;padding:11px;background:var(--verde-dark);color:#fff;border:none;
+           border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;
+           cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:7px}
+.id-btn-ok:hover{background:var(--coral)}
+@media(max-width:480px){
+  .id-over{padding:0;align-items:flex-end}
+  .id-box{border-radius:20px 20px 0 0}
+}
+
 /* ── Footer ── */
 .footer{text-align:center;padding:24px 16px;font-size:11px;color:var(--txt-m);
         border-top:1px solid var(--border)}
@@ -501,6 +530,33 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
     <div class="modelos-lista">
       <div class="sb-todos" onclick="filtrarRef('')">← Todos</div>
       <div id="modelos-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Identificação -->
+<div class="id-over" id="id-over" onclick="idBgClick(event)" style="display:none">
+  <div class="id-box">
+    <div class="id-header">
+      <div class="id-title">Antes de exportar</div>
+      <div class="id-sub">Opcional — para identificação no PDF do pedido</div>
+    </div>
+    <div class="id-body">
+      <div class="id-field">
+        <label class="id-label" for="id-nome">Seu nome</label>
+        <input class="id-input" id="id-nome" type="text" placeholder="Ex.: João Silva" autocomplete="name"/>
+      </div>
+      <div class="id-field">
+        <label class="id-label" for="id-empresa">Empresa</label>
+        <input class="id-input" id="id-empresa" type="text" placeholder="Ex.: Calçados Centro Ltda" autocomplete="organization"/>
+      </div>
+    </div>
+    <div class="id-footer">
+      <button class="id-btn-cancel" onclick="fecharModalId()">Cancelar</button>
+      <button class="id-btn-ok" onclick="idConfirmar()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Gerar PDF
+      </button>
     </div>
   </div>
 </div>
@@ -1207,10 +1263,42 @@ function fN(n){ return Math.round(n).toLocaleString('pt-BR'); }
 function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function mostrarErro(msg){ document.getElementById('grid').innerHTML=`<div class="empty"><p>${msg}</p></div>`; }
 
-function abrirModalId() { /* implementado no Passo 4 */ }
+// ── Modal Identificação (Passo 4) ──────────────────────────────────
+const ID_KEY = 'boaonda_cliente';
+
+function abrirModalId() {
+  fecharDrawer();
+  const saved = JSON.parse(localStorage.getItem(ID_KEY) || '{}');
+  document.getElementById('id-nome').value    = saved.nome    || '';
+  document.getElementById('id-empresa').value = saved.empresa || '';
+  document.getElementById('id-over').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('id-nome').focus(), 80);
+}
+
+function fecharModalId() {
+  document.getElementById('id-over').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function idBgClick(e) { if (e.target.id === 'id-over') fecharModalId(); }
+
+function idConfirmar() {
+  const nome    = document.getElementById('id-nome').value.trim();
+  const empresa = document.getElementById('id-empresa').value.trim();
+  carrinho.cliente = { nome, empresa };
+  salvarCarrinho();
+  if (nome || empresa) {
+    try { localStorage.setItem(ID_KEY, JSON.stringify({ nome, empresa })); } catch(e) {}
+  }
+  fecharModalId();
+  gerarPDF(); // implementado no Passo 5
+}
+
+function gerarPDF() { /* implementado no Passo 5 */ }
 
 document.addEventListener('keydown', e=>{
-  if (e.key==='Escape') { lbFechar(); fecharSeletor(); fecharDrawer(); }
+  if (e.key==='Escape') { lbFechar(); fecharSeletor(); fecharDrawer(); fecharModalId(); }
   if (document.getElementById('lb').style.display==='none') return;
   if (e.key==='ArrowLeft') lbNav(-1);
   if (e.key==='ArrowRight') lbNav(1);
