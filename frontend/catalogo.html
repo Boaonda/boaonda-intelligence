@@ -937,8 +937,8 @@ async function init() {
     document.getElementById('home-panel').style.display = 'block';
     document.getElementById('grid').style.display = 'none';
   }
-  ['f-busca'].forEach(id => document.getElementById(id).addEventListener('input', () => { renderGrid(); atualizarBadge(); }));
-  ['f-genero','f-tipo','f-mat','f-cor'].forEach(id => document.getElementById(id).addEventListener('change', () => { renderGrid(); atualizarBadge(); }));
+  ['f-busca'].forEach(id => document.getElementById(id).addEventListener('input', aplicarFiltro));
+  ['f-genero','f-tipo','f-mat','f-cor'].forEach(id => document.getElementById(id).addEventListener('change', aplicarFiltro));
   // Swipe na galeria
   iniciarSwipe();
 }
@@ -1146,10 +1146,23 @@ function popularFiltros() {
   [...cores].sort().forEach(c=>selC.append(new Option(c,c)));
 }
 
+function aplicarFiltro() {
+  if (mostrandoHome) {
+    mostrandoHome = false;
+    document.getElementById('home-panel').style.display = 'none';
+    document.getElementById('det-panel').style.display = 'none';
+    document.getElementById('grid').style.display = '';
+    const btnH = document.getElementById('btn-home-fbar');
+    if (btnH) btnH.classList.toggle('vis', HOME != null);
+  }
+  renderGrid();
+  atualizarBadge();
+}
+
 function toggleFL() {
   filtroFL = !filtroFL;
   document.getElementById('f-fl').classList.toggle('on', filtroFL);
-  renderGrid(); atualizarBadge();
+  aplicarFiltro();
 }
 
 function toggleFiltrosMob() {
