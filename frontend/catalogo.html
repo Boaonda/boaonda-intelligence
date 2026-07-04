@@ -419,6 +419,83 @@ let filtroRef = '', filtroFL = false;
 let lbRef = null, lbCor = null, lbLinha = '__todas__', lbTipo = 'todos', lbAng = 0;
 let filtrosMobAberto = false;
 
+// ── Carrinho ────────────────────────────────────────────────────────
+const CARRINHO_KEY = 'boaonda_carrinho';
+let carrinho = { cliente: { nome: '', empresa: '' }, itens: [] };
+
+function salvarCarrinho() {
+  try { localStorage.setItem(CARRINHO_KEY, JSON.stringify(carrinho)); } catch(e) {}
+}
+
+function carregarCarrinho() {
+  try {
+    const s = localStorage.getItem(CARRINHO_KEY);
+    if (s) { const p = JSON.parse(s); if (p && Array.isArray(p.itens)) carrinho = p; }
+  } catch(e) {}
+}
+
+function adicionarAoCarrinho(refKey, corKey, grade, qtdCaixas) {
+  const r = REFS[refKey]; if (!r) return;
+  const cp = parseCor(corKey);
+  let descricao = '';
+  const rawRef = ESTOQUE?.refs?.[refKey];
+  if (rawRef) {
+    const lk = Object.keys(rawRef.linhas || {})[0] || '';
+    descricao = lk.replace(/\s*\(\d+\)\s*$/, '').trim();
+  }
+  const qtdCx = Math.max(1, Math.min(parseInt(qtdCaixas) || 1, grade.completas));
+  const idx = carrinho.itens.findIndex(i => i.ref === refKey && i.cor === cp.code && i.grade_code === grade.code);
+  if (idx >= 0) {
+    const novaQtd = carrinho.itens[idx].qtd_caixas + qtdCx;
+    carrinho.itens[idx].qtd_caixas = Math.min(novaQtd, grade.completas);
+    carrinho.itens[idx].qtd_pares  = carrinho.itens[idx].qtd_caixas * grade.tot;
+  } else {
+    carrinho.itens.push({
+      ref: refKey, descricao,
+      cor: cp.code, cor_nome: cp.nome,
+      grade_code: grade.code,
+      grade_tamanhos: grade.sizes,
+      grade_pattern: grade.pattern,
+      grade_pares_cx: grade.tot,
+      grade_cx_disponiveis: grade.completas,
+      qtd_caixas: qtdCx,
+      qtd_pares: qtdCx * grade.tot,
+      foto_url: fotoRef(refKey, corKey),
+    });
+  }
+  salvarCarrinho();
+  animarFab();
+  atualizarCarrinhoUI();
+}
+
+function removerItem(idx) {
+  carrinho.itens.splice(idx, 1);
+  salvarCarrinho();
+  atualizarCarrinhoUI();
+}
+
+function atualizarQuantidade(idx, novaQtd) {
+  const item = carrinho.itens[idx]; if (!item) return;
+  const q = Math.max(1, Math.min(parseInt(novaQtd) || 1, item.grade_cx_disponiveis));
+  item.qtd_caixas = q;
+  item.qtd_pares  = q * item.grade_pares_cx;
+  salvarCarrinho();
+  atualizarCarrinhoUI();
+}
+
+function animarFab() {
+  const fab = document.getElementById('cart-fab'); if (!fab) return;
+  fab.classList.remove('pulsar'); void fab.offsetWidth; fab.classList.add('pulsar');
+}
+
+function atualizarCarrinhoUI() {
+  const n = carrinho.itens.length;
+  const badge = document.getElementById('cart-badge');
+  if (badge) { badge.textContent = n; badge.style.display = n ? 'flex' : 'none'; }
+  const drawer = document.getElementById('cart-drawer');
+  if (drawer && drawer.classList.contains('aberto')) renderDrawer();
+}
+
 // ── Init ───────────────────────────────────────────────────────────
 async function init() {
   try {
@@ -428,6 +505,7 @@ async function init() {
   } catch(e) { mostrarErro('Erro ao carregar dados.'); return; }
   if (!ESTOQUE) { mostrarErro('Dados indisponíveis.'); return; }
   if (ESTOQUE.gerado_em) document.getElementById('footer-data').textContent = ESTOQUE.gerado_em;
+  carregarCarrinho();
   prepararRefs();
   renderSidebar();
   popularFiltros();
