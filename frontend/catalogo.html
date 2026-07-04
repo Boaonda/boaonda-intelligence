@@ -209,6 +209,67 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
         font-size:13px;font-weight:700;text-decoration:none;transition:.15s}
 .lb-wpp:hover{background:#1ebe5a}
 
+/* ── Botão Carrinho no card ── */
+.cat-card{display:flex;flex-direction:column}
+.cat-info{flex:1}
+.btn-carrinho{width:100%;padding:10px;background:var(--coral);color:#fff;border:none;
+              font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+              letter-spacing:.02em;flex-shrink:0;
+              opacity:0;transition:background .15s,opacity .2s}
+.btn-carrinho:hover{background:var(--coral2)}
+.cat-card:hover .btn-carrinho{opacity:1}
+@media(max-width:750px){.btn-carrinho{opacity:1}}
+
+/* ── Seletor de grade ── */
+.slt-over{position:fixed;inset:0;background:rgba(15,15,15,.6);backdrop-filter:blur(4px);
+          z-index:1001;align-items:center;justify-content:center;padding:16px}
+.slt-box{background:var(--card);border-radius:16px;width:100%;max-width:520px;
+         max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
+.slt-header{display:flex;align-items:center;gap:12px;padding:18px 18px 14px;
+            border-bottom:1px solid var(--border);flex-shrink:0}
+.slt-foto{width:72px;height:72px;object-fit:contain;border-radius:8px;background:var(--bg);
+          border:1px solid var(--border);padding:4px;flex-shrink:0}
+.slt-titulo{font-size:15px;font-weight:800;color:var(--verde-dark);flex:1}
+.slt-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--txt-m);
+           padding:4px 8px;line-height:1;flex-shrink:0}
+.slt-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.slt-sec-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+               color:var(--txt-m);margin-bottom:6px}
+.slt-grades{display:flex;flex-direction:column;gap:6px}
+.slt-grade-row{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;
+               border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:.15s}
+.slt-grade-row.on{border-color:var(--coral);background:rgba(237,104,66,.05)}
+.slt-grade-row input[type=radio]{margin-top:3px;accent-color:var(--coral);flex-shrink:0;cursor:pointer}
+.slt-grade-info{flex:1;min-width:0}
+.slt-grade-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:0}
+.slt-grade-code{font-size:14px;font-weight:800;color:var(--azul)}
+.slt-grade-meta{font-size:11px;color:var(--txt-s);margin-left:8px}
+.slt-grade-sizes{font-size:11px;color:var(--txt-m);margin-top:3px}
+.slt-qty-row{display:flex;align-items:center;gap:12px}
+.slt-qtd{width:90px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;
+         font-family:inherit;font-size:16px;font-weight:700;text-align:center;
+         color:var(--txt);outline:none;transition:.2s}
+.slt-qtd:focus{border-color:var(--coral)}
+.slt-qtd.erro{border-color:var(--coral2);background:rgba(221,112,81,.07)}
+.slt-total-txt{font-size:13px;color:var(--cinza)}
+.slt-total-txt strong{font-size:16px;color:var(--verde-dark);font-weight:800}
+.slt-aviso{font-size:11px;color:var(--coral2);font-weight:600;margin-top:5px}
+.slt-sem-grade{padding:14px;font-size:13px;color:var(--txt-m);text-align:center;
+               border:1px dashed var(--border);border-radius:8px}
+.slt-footer{display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--border);flex-shrink:0}
+.slt-btn-cancel{flex:1;padding:11px;border:1.5px solid var(--border);border-radius:9px;
+                font-family:inherit;font-size:13px;font-weight:700;color:var(--txt-s);
+                background:transparent;cursor:pointer;transition:.15s}
+.slt-btn-cancel:hover{border-color:var(--txt-m)}
+.slt-btn-add{flex:2;padding:11px;background:var(--coral);border:none;border-radius:9px;
+             font-family:inherit;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:.15s}
+.slt-btn-add:hover:not(:disabled){background:var(--coral2)}
+.slt-btn-add:disabled{background:var(--border);color:var(--txt-m);cursor:not-allowed}
+@media(max-width:560px){
+  .slt-over{padding:0;align-items:flex-end}
+  .slt-box{border-radius:20px 20px 0 0;max-height:95vh}
+}
+
 /* ── Footer ── */
 .footer{text-align:center;padding:24px 16px;font-size:11px;color:var(--txt-m);
         border-top:1px solid var(--border)}
@@ -373,6 +434,35 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
     <div class="modelos-lista">
       <div class="sb-todos" onclick="filtrarRef('')">← Todos</div>
       <div id="modelos-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Seletor de grade (carrinho) -->
+<div class="slt-over" id="slt-over" onclick="sltBgClick(event)" style="display:none">
+  <div class="slt-box">
+    <div class="slt-header">
+      <img class="slt-foto" id="slt-foto" src="" alt=""/>
+      <div class="slt-titulo" id="slt-titulo"></div>
+      <button class="slt-close" onclick="fecharSeletor()">×</button>
+    </div>
+    <div class="slt-body">
+      <div>
+        <div class="slt-sec-label">Selecione a grade</div>
+        <div class="slt-grades" id="slt-grades"></div>
+      </div>
+      <div id="slt-qty-wrap">
+        <div class="slt-sec-label">Quantidade de caixas</div>
+        <div class="slt-qty-row">
+          <input class="slt-qtd" id="slt-qtd" type="number" min="1" value="1" oninput="sltAtualizarTotal()"/>
+          <div class="slt-total-txt">Total: <strong id="slt-total">—</strong></div>
+        </div>
+        <div class="slt-aviso" id="slt-aviso" style="display:none"></div>
+      </div>
+    </div>
+    <div class="slt-footer">
+      <button class="slt-btn-cancel" onclick="fecharSeletor()">Cancelar</button>
+      <button class="slt-btn-add" id="slt-btn-add" onclick="sltConfirmar()">+ Adicionar</button>
     </div>
   </div>
 </div>
@@ -685,6 +775,7 @@ function cardHtml(rk, r) {
       <div class="cat-cors">${dots}${mais}</div>
       <div class="cat-livre">${fN(r.livre)} pares <span>disponíveis</span></div>
     </div>
+    <button class="btn-carrinho" onclick="abrirSeletor(event,'${esc(rk)}','${esc(primCk)}')">+ Adicionar ao carrinho</button>
   </div>`;
 }
 
@@ -819,6 +910,95 @@ function lbSetCor(ck){lbCor=ck;lbAng=0;lbRender();}
 function lbSetLinha(l){lbLinha=l;lbRender();}
 function lbSetTipo(t){lbTipo=t;lbRender();}
 
+// ── Seletor de grade (Passo 2) ─────────────────────────────────────
+let sltRef = null, sltCor = null, sltGradeIdx = 0, sltQtd = 1;
+
+function sltGradesFechadas() {
+  const r = REFS[sltRef]; if (!r) return [];
+  return (r.cores[sltCor]?.grades || []).filter(g => g.tipo === 'fechada' && (g.completas || 0) > 0);
+}
+
+function abrirSeletor(e, refKey, corKey) {
+  e.stopPropagation();
+  sltRef = refKey; sltCor = corKey; sltGradeIdx = 0; sltQtd = 1;
+  renderSeletor();
+  document.getElementById('slt-over').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function fecharSeletor() {
+  document.getElementById('slt-over').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function sltBgClick(e) { if (e.target.id === 'slt-over') fecharSeletor(); }
+
+function renderSeletor() {
+  const r = REFS[sltRef]; if (!r) return;
+  const cp = parseCor(sltCor);
+  document.getElementById('slt-titulo').textContent = `${r.modelo} — ${cp.nome}`;
+  const foto = document.getElementById('slt-foto');
+  foto.src = fotoRef(sltRef, sltCor); foto.onerror = () => { foto.src = PH; };
+
+  const grades = sltGradesFechadas();
+  const qtyWrap = document.getElementById('slt-qty-wrap');
+  const btnAdd  = document.getElementById('slt-btn-add');
+
+  if (!grades.length) {
+    document.getElementById('slt-grades').innerHTML =
+      `<div class="slt-sem-grade">Sem grades fechadas disponíveis para esta cor.</div>`;
+    qtyWrap.style.display = 'none'; btnAdd.disabled = true; return;
+  }
+  qtyWrap.style.display = ''; btnAdd.disabled = false;
+  if (sltGradeIdx >= grades.length) sltGradeIdx = 0;
+
+  document.getElementById('slt-grades').innerHTML = grades.map((g, i) => {
+    const szTexto = (g.sizes || []).map((s, j) => `${s}(${g.pattern[j]})`).join(' ');
+    return `<label class="slt-grade-row ${i===sltGradeIdx?'on':''}" onclick="sltSelGrade(${i})">
+      <input type="radio" name="slt-grade" ${i===sltGradeIdx?'checked':''}/>
+      <div class="slt-grade-info">
+        <div class="slt-grade-head">
+          <span class="slt-grade-code">Grade ${g.code}</span>
+          <span class="slt-grade-meta">${g.tot} pares/cx · ${fN(g.completas)} cx disponíveis</span>
+        </div>
+        <div class="slt-grade-sizes">${szTexto}</div>
+      </div>
+    </label>`;
+  }).join('');
+
+  const qtdInput = document.getElementById('slt-qtd');
+  qtdInput.max = grades[sltGradeIdx].completas;
+  qtdInput.value = Math.min(sltQtd, grades[sltGradeIdx].completas);
+  sltQtd = parseInt(qtdInput.value) || 1;
+  sltAtualizarTotal();
+}
+
+function sltSelGrade(i) { sltGradeIdx = i; sltQtd = 1; renderSeletor(); }
+
+function sltAtualizarTotal() {
+  const grades = sltGradesFechadas();
+  const g = grades[sltGradeIdx]; if (!g) return;
+  const qtd = parseInt(document.getElementById('slt-qtd')?.value) || 0;
+  sltQtd = qtd;
+  document.getElementById('slt-total').textContent = `${fN(qtd * g.tot)} pares`;
+  const over = qtd > g.completas;
+  const under = qtd < 1;
+  document.getElementById('slt-qtd').classList.toggle('erro', over || under);
+  const aviso = document.getElementById('slt-aviso');
+  aviso.style.display = over ? 'block' : 'none';
+  aviso.textContent = `Máximo disponível: ${fN(g.completas)} caixas`;
+  document.getElementById('slt-btn-add').disabled = over || under;
+}
+
+function sltConfirmar() {
+  const grades = sltGradesFechadas();
+  const g = grades[sltGradeIdx]; if (!g) return;
+  const qtd = parseInt(document.getElementById('slt-qtd')?.value) || 0;
+  if (qtd < 1 || qtd > g.completas) return;
+  adicionarAoCarrinho(sltRef, sltCor, g, qtd);
+  fecharSeletor();
+}
+
 // ── Swipe na galeria ───────────────────────────────────────────────
 function iniciarSwipe() {
   const el = document.getElementById('lb-main');
@@ -877,8 +1057,8 @@ function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").repl
 function mostrarErro(msg){ document.getElementById('grid').innerHTML=`<div class="empty"><p>${msg}</p></div>`; }
 
 document.addEventListener('keydown', e=>{
+  if (e.key==='Escape') { lbFechar(); fecharSeletor(); }
   if (document.getElementById('lb').style.display==='none') return;
-  if (e.key==='Escape') lbFechar();
   if (e.key==='ArrowLeft') lbNav(-1);
   if (e.key==='ArrowRight') lbNav(1);
 });
