@@ -8,9 +8,9 @@
   },
   "destaques": [],
   "categorias": [
-    {"nome": "Feminino", "tipo_filtro": "SANDALIA", "cor": "#ed6842"},
-    {"nome": "Masculino", "tipo_filtro": "CHINELO", "cor": "#4994c7"},
-    {"nome": "Infantil", "tipo_filtro": "INFANTIL", "cor": "#6c9c37"}
+    {"nome": "Feminino", "tipo_filtro": "FEM", "cor": "#ed6842"},
+    {"nome": "Masculino", "tipo_filtro": "MASC", "cor": "#4994c7"},
+    {"nome": "Infantil", "tipo_filtro": "INF", "cor": "#6c9c37"}
   ],
   "institucional": {
     "texto": "A BOAONDA é uma marca de calçados injetados com palmilha anatômica, presente em mais de 4.000 pontos de venda no Brasil e em mais de 30 países.",

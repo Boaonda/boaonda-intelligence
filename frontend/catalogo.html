@@ -629,6 +629,12 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
 
   <!-- Filtros extras (desktop sempre visível; mobile colapsa) -->
   <div class="filtros-extras" id="filtros-extras">
+    <select class="fsel" id="f-genero">
+      <option value="">Todos os gêneros</option>
+      <option value="FEM">Feminino</option>
+      <option value="MASC">Masculino</option>
+      <option value="INF">Infantil</option>
+    </select>
     <select class="fsel" id="f-tipo"><option value="">Todos os tipos</option></select>
     <select class="fsel" id="f-mat"><option value="">Todos os materiais</option></select>
     <select class="fsel" id="f-cor"><option value="">Todas as cores</option></select>
@@ -932,7 +938,7 @@ async function init() {
     document.getElementById('grid').style.display = 'none';
   }
   ['f-busca'].forEach(id => document.getElementById(id).addEventListener('input', () => { renderGrid(); atualizarBadge(); }));
-  ['f-tipo','f-mat','f-cor'].forEach(id => document.getElementById(id).addEventListener('change', () => { renderGrid(); atualizarBadge(); }));
+  ['f-genero','f-tipo','f-mat','f-cor'].forEach(id => document.getElementById(id).addEventListener('change', () => { renderGrid(); atualizarBadge(); }));
   // Swipe na galeria
   iniciarSwipe();
 }
@@ -961,7 +967,14 @@ function prepararRefs() {
     if (livre <= 0) return;
     Object.keys(linhasMap).forEach(l => { if (!linhasMap[l].length) delete linhasMap[l]; });
     const preco_par = (raw.vlr_livre && raw.livre) ? raw.vlr_livre / raw.livre : 0;
-    REFS[refKey] = {modelo, tipo, material:mat, livre, cores, linhasMap, preco_par};
+    const generos = new Set();
+    Object.keys(raw.linhas || {}).forEach(lk => {
+      const words = lk.toUpperCase().split(/\s+/);
+      if (words.includes('FEM'))  generos.add('FEM');
+      if (words.includes('MASC')) generos.add('MASC');
+      if (words.includes('INF'))  generos.add('INF');
+    });
+    REFS[refKey] = {modelo, tipo, material:mat, livre, cores, linhasMap, preco_par, generos:[...generos]};
   });
 }
 
@@ -1007,10 +1020,18 @@ function verTodos() {
 }
 
 function verCategoria(tipo) {
-  if (tipo) document.getElementById('f-tipo').value = tipo;
+  const GENEROS = ['FEM','MASC','INF'];
+  if (GENEROS.includes(tipo)) {
+    document.getElementById('f-genero').value = tipo;
+    document.getElementById('f-tipo').value = '';
+  } else {
+    document.getElementById('f-genero').value = '';
+    if (tipo) document.getElementById('f-tipo').value = tipo;
+  }
   mostrandoHome = false;
   document.getElementById('home-panel').style.display = 'none';
   document.getElementById('grid').style.display = '';
+  document.getElementById('det-panel').style.display = 'none';
   const btnH = document.getElementById('btn-home-fbar');
   if (btnH) btnH.classList.toggle('vis', HOME != null);
   filtroRef = '';
@@ -1141,7 +1162,8 @@ function atualizarBadge() {
   const tipo = document.getElementById('f-tipo').value;
   const mat  = document.getElementById('f-mat').value;
   const cor  = document.getElementById('f-cor').value;
-  const n = (tipo?1:0)+(mat?1:0)+(cor?1:0)+(filtroFL?1:0);
+  const genero2 = document.getElementById('f-genero').value;
+  const n = (genero2?1:0)+(tipo?1:0)+(mat?1:0)+(cor?1:0)+(filtroFL?1:0);
   const badge = document.getElementById('filtros-badge');
   badge.textContent = n || '';
   badge.classList.toggle('vis', n > 0);
@@ -1159,8 +1181,10 @@ function renderGrid() {
   const tipo=document.getElementById('f-tipo').value;
   const mat=document.getElementById('f-mat').value;
   const cor=document.getElementById('f-cor').value;
+  const genero=document.getElementById('f-genero').value;
   const filtrados = Object.entries(REFS).filter(([rk,r]) => {
     if (filtroRef && filtroRef!==rk) return false;
+    if (genero && !(r.generos||[]).includes(genero)) return false;
     if (tipo && r.tipo!==tipo) return false;
     if (mat  && r.material!==mat) return false;
     if (busca && !(rk+' '+r.modelo).toUpperCase().includes(busca)) return false;
