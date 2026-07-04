@@ -110,6 +110,61 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 .empty{grid-column:1/-1;padding:50px 20px;text-align:center;color:var(--txt-m)}
 .empty p{font-size:13px;margin-top:10px}
 
+/* ── Home Panel ── */
+.home-panel{max-width:1060px}
+.home-section{margin-bottom:28px}
+.home-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--txt-m);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.home-sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.home-banner{border-radius:14px;padding:32px 36px;display:flex;align-items:center;
+  justify-content:space-between;gap:24px;margin-bottom:28px;position:relative;
+  overflow:hidden;min-height:160px;background:var(--verde-dark)}
+.home-banner-bg{position:absolute;right:0;top:0;bottom:0;width:45%;object-fit:cover;
+  border-radius:0 14px 14px 0;opacity:.85}
+.home-banner-txt{position:relative;z-index:1;flex:1;min-width:0}
+.home-banner-tag{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--coral);margin-bottom:8px}
+.home-banner-titulo{font-size:26px;font-weight:800;line-height:1.15;color:#fff;margin-bottom:10px}
+.home-banner-sub{font-size:13px;color:rgba(255,255,255,.72);line-height:1.55;max-width:380px;margin-bottom:20px}
+.home-banner-cta{display:inline-flex;align-items:center;gap:6px;background:var(--coral);
+  color:#fff;border:none;border-radius:8px;padding:10px 22px;font-family:inherit;
+  font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+.home-banner-cta:hover{background:var(--coral2)}
+
+.home-destaques{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px}
+.home-destaques::-webkit-scrollbar{height:3px}
+.home-destaques::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.home-dest-card{flex:0 0 170px;background:var(--card);border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;cursor:pointer;transition:.15s}
+.home-dest-card:hover{box-shadow:0 4px 18px rgba(38,54,30,.1);transform:translateY(-2px)}
+.home-dest-img-w{aspect-ratio:1;background:#f0ede8;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.home-dest-img{width:100%;height:100%;object-fit:contain;padding:8px}
+.home-dest-info{padding:10px}
+.home-dest-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--coral);margin-bottom:2px}
+.home-dest-modelo{font-size:12px;font-weight:700;color:var(--verde-dark)}
+.home-dest-sub{font-size:10px;color:var(--txt-m);margin-top:2px}
+
+.home-cats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:640px){.home-cats{grid-template-columns:1fr 1fr}}
+.home-cat-tile{border-radius:12px;padding:20px 18px;cursor:pointer;transition:.15s;
+  display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border)}
+.home-cat-tile:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.07)}
+.home-cat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:20px;flex-shrink:0}
+.home-cat-nome{font-size:14px;font-weight:700;color:var(--verde-dark)}
+.home-cat-sub{font-size:10px;color:var(--txt-m);margin-top:2px}
+
+.home-inst{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:24px 28px;display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.home-inst-texto{flex:1;min-width:200px;font-size:13px;color:var(--txt-s);line-height:1.65}
+.home-inst-contacts{flex:0 0 220px}
+.home-inst-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt);margin-bottom:8px}
+.home-inst-row a{color:var(--coral);text-decoration:none}
+.home-inst-row a:hover{text-decoration:underline}
+.home-inst-row svg{flex-shrink:0;color:var(--txt-m)}
+
 /* ── Lightbox ── */
 .lb-over{position:fixed;inset:0;background:rgba(15,15,15,.65);backdrop-filter:blur(4px);
          z-index:999;display:flex;align-items:center;justify-content:center;padding:14px}
@@ -516,6 +571,28 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
         <div class="spinner"></div><span>Carregando catálogo…</span>
       </div>
     </div>
+    <!-- Home panel — exibido quando nenhum produto está selecionado -->
+    <div id="home-panel" class="home-panel" style="display:none">
+      <div class="home-banner" id="home-banner">
+        <div class="home-banner-txt">
+          <div class="home-banner-tag">BOAONDA Calçados</div>
+          <div class="home-banner-titulo" id="home-banner-titulo">Vai com tudo, vai de boa!</div>
+          <div class="home-banner-sub" id="home-banner-sub"></div>
+          <button class="home-banner-cta" onclick="verTodos()">Ver coleção →</button>
+        </div>
+      </div>
+      <section class="home-section" id="home-dest-sec" style="display:none">
+        <div class="home-sec-title">Destaques</div>
+        <div class="home-destaques" id="home-destaques"></div>
+      </section>
+      <section class="home-section" id="home-cats-sec" style="display:none">
+        <div class="home-sec-title">Categorias</div>
+        <div class="home-cats" id="home-cats"></div>
+      </section>
+      <section class="home-section" id="home-inst-sec" style="display:none">
+        <div class="home-inst" id="home-inst"></div>
+      </section>
+    </div>
   </main>
 </div>
 
@@ -655,6 +732,7 @@ const PH = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox
 // ── Estado ─────────────────────────────────────────────────────────
 let ESTOQUE = null, FOTOS = null, REFS = {};
 let filtroRef = '', filtroFL = false;
+let HOME = null, mostrandoHome = false;
 let lbRef = null, lbCor = null, lbLinha = '__todas__', lbTipo = 'todos', lbAng = 0;
 let filtrosMobAberto = false;
 
@@ -738,9 +816,10 @@ function atualizarCarrinhoUI() {
 // ── Init ───────────────────────────────────────────────────────────
 async function init() {
   try {
-    const [re, rf] = await Promise.allSettled([fetch('dados_estoque.json'), fetch('dados_fotos.json')]);
+    const [re, rf, rh] = await Promise.allSettled([fetch('dados_estoque.json'), fetch('dados_fotos.json'), fetch('dados_home.json')]);
     ESTOQUE = re.status==='fulfilled' && re.value.ok ? await re.value.json() : null;
     FOTOS   = rf.status==='fulfilled' && rf.value.ok ? await rf.value.json() : {refs:{}};
+    HOME    = rh.status==='fulfilled' && rh.value.ok ? await rh.value.json() : null;
   } catch(e) { mostrarErro('Erro ao carregar dados.'); return; }
   if (!ESTOQUE) { mostrarErro('Dados indisponíveis.'); return; }
   if (ESTOQUE.gerado_em) document.getElementById('footer-data').textContent = ESTOQUE.gerado_em;
@@ -749,6 +828,12 @@ async function init() {
   renderSidebar();
   popularFiltros();
   renderGrid();
+  if (HOME) {
+    renderHome();
+    mostrandoHome = true;
+    document.getElementById('home-panel').style.display = 'block';
+    document.getElementById('grid').style.display = 'none';
+  }
   ['f-busca'].forEach(id => document.getElementById(id).addEventListener('input', () => { renderGrid(); atualizarBadge(); }));
   ['f-tipo','f-mat','f-cor'].forEach(id => document.getElementById(id).addEventListener('change', () => { renderGrid(); atualizarBadge(); }));
   // Swipe na galeria
@@ -804,13 +889,111 @@ function renderSidebar() {
 function filtrarRef(rk) {
   filtroRef = rk;
   renderSidebar();
-  renderGrid();
+  const showHome = (rk === '' && HOME != null);
+  mostrandoHome = showHome;
+  document.getElementById('home-panel').style.display = showHome ? 'block' : 'none';
+  document.getElementById('grid').style.display = showHome ? 'none' : '';
+  if (!showHome) renderGrid();
   fecharModelosMob();
-  // Atualiza label do botão mobile
   const lbl = document.getElementById('modelos-btn-label');
   const btn = document.getElementById('modelos-mob-btn');
   if (lbl) lbl.textContent = rk ? (REFS[rk]?.modelo || 'Modelos') : 'Modelos';
   if (btn) btn.classList.toggle('ativo', !!rk);
+}
+
+function verTodos() {
+  filtrarRef('');
+}
+
+function verCategoria(tipo) {
+  if (tipo) document.getElementById('f-tipo').value = tipo;
+  mostrandoHome = false;
+  document.getElementById('home-panel').style.display = 'none';
+  document.getElementById('grid').style.display = '';
+  filtroRef = '';
+  renderSidebar();
+  renderGrid();
+  atualizarBadge();
+  window.scrollTo(0, 0);
+}
+
+function renderHome() {
+  if (!HOME) return;
+  // Banner
+  const b = HOME.banner || {};
+  const bannerEl = document.getElementById('home-banner');
+  if (bannerEl && b.cor_fundo) bannerEl.style.background = b.cor_fundo;
+  const tEl = document.getElementById('home-banner-titulo');
+  const sEl = document.getElementById('home-banner-sub');
+  if (tEl) tEl.textContent = b.titulo || '';
+  if (sEl) sEl.textContent = b.subtitulo || '';
+  if (bannerEl && b.imagem_url) {
+    const old = bannerEl.querySelector('.home-banner-bg');
+    if (old) old.remove();
+    const img = document.createElement('img');
+    img.className = 'home-banner-bg'; img.src = b.imagem_url; img.alt = '';
+    bannerEl.appendChild(img);
+  }
+  // Destaques
+  const destaques = (HOME.destaques || []).filter(d => d.ref && REFS[d.ref]);
+  const dSec = document.getElementById('home-dest-sec');
+  const dEl  = document.getElementById('home-destaques');
+  if (dSec) dSec.style.display = destaques.length ? 'block' : 'none';
+  if (dEl && destaques.length) {
+    dEl.innerHTML = destaques.map(d => {
+      const r = REFS[d.ref];
+      const ck = Object.keys(r.cores)[0] || '';
+      const foto = fotoRef(d.ref, ck);
+      const nc = Object.keys(r.cores).length;
+      const ph = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Crect fill='%23f0ede8' width='1' height='1'/%3E%3C/svg%3E";
+      return `<div class="home-dest-card" onclick="filtrarRef('${esc(d.ref)}')">
+        <div class="home-dest-img-w"><img class="home-dest-img" src="${foto}" alt="" loading="lazy" onerror="this.src='${ph}'"></div>
+        <div class="home-dest-info">
+          <div class="home-dest-label">${esc(d.label||'Destaque')}</div>
+          <div class="home-dest-modelo">${esc(r.modelo)}</div>
+          <div class="home-dest-sub">${fN(r.livre)} pares · ${nc} cor${nc!==1?'es':''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  // Categorias
+  const cats = HOME.categorias || [];
+  const cSec = document.getElementById('home-cats-sec');
+  const cEl  = document.getElementById('home-cats');
+  if (cSec) cSec.style.display = cats.length ? 'block' : 'none';
+  if (cEl && cats.length) {
+    cEl.innerHTML = cats.map(c => {
+      const cor = c.cor || '#ed6842';
+      const icones = {SANDALIA:'👠',CHINELO:'🩴',BOTA:'👢',INFANTIL:'🧒',TENIS:'👟',SAPATILHA:'🩰'};
+      const icon = icones[c.tipo_filtro?.toUpperCase()] || '👟';
+      return `<div class="home-cat-tile" onclick="verCategoria('${esc(c.tipo_filtro||'')}')" style="border-left:4px solid ${cor}">
+        <div class="home-cat-icon" style="background:${cor}22">${icon}</div>
+        <div>
+          <div class="home-cat-nome">${esc(c.nome)}</div>
+          <div class="home-cat-sub">Ver produtos →</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  // Institucional
+  const inst = HOME.institucional || {};
+  const iSec = document.getElementById('home-inst-sec');
+  const iEl  = document.getElementById('home-inst');
+  const hasI = inst.texto || inst.email || inst.whatsapp || inst.site;
+  if (iSec) iSec.style.display = hasI ? 'block' : 'none';
+  if (iEl && hasI) {
+    const svgMail = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>`;
+    const svgWpp  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.23a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.58 2.42h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
+    const svgWeb  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
+    const svgPin  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+    let rows = '';
+    if (inst.email)    rows += `<div class="home-inst-row">${svgMail}<a href="mailto:${esc(inst.email)}">${esc(inst.email)}</a></div>`;
+    if (inst.whatsapp) rows += `<div class="home-inst-row">${svgWpp}<a href="https://wa.me/${inst.whatsapp.replace(/\D/g,'')}" target="_blank">WhatsApp</a></div>`;
+    if (inst.site)     rows += `<div class="home-inst-row">${svgWeb}<a href="https://${esc(inst.site)}" target="_blank">${esc(inst.site)}</a></div>`;
+    if (inst.endereco) rows += `<div class="home-inst-row">${svgPin}${esc(inst.endereco)}</div>`;
+    iEl.innerHTML = (inst.texto ? `<div class="home-inst-texto">${esc(inst.texto)}</div>` : '') +
+                    (rows ? `<div class="home-inst-contacts">${rows}</div>` : '');
+  }
 }
 
 function toggleModelosMob() {

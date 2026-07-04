@@ -29,11 +29,11 @@ DATA_FILES = (
     'dados_carteira.json',
     'boaonda_dados_completos.json', 'config_producao.json',
     'dados_capacidade.json', 'dados_ocupacao_semanal.json',
-    'dados_faturamento.json', 'dados_fotos.json',
+    'dados_faturamento.json', 'dados_fotos.json', 'dados_home.json',
 )
 
 # Arquivos JSON servidos publicamente (sem autenticação) para o catálogo público.
-DATA_FILES_PUBLICOS = {'dados_estoque.json', 'dados_fotos.json'}
+DATA_FILES_PUBLICOS = {'dados_estoque.json', 'dados_fotos.json', 'dados_home.json'}
 
 # Primeira execução com volume vazio: semeia com os JSONs versionados no repo
 if DATA_DIR != FRONTEND_DIR:
@@ -233,6 +233,8 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
   <a class="back" href="/">← Voltar ao portal</a>
   &nbsp;·&nbsp;
   <a class="back" href="/admin/fotos">Atualizar fotos do catálogo →</a>
+  &nbsp;·&nbsp;
+  <a class="back" href="/admin/home">Editar home do catálogo →</a>
 </div>
 </body>
 </html>'''
@@ -529,6 +531,29 @@ def admin_fotos():
             message = f'Erro ao buscar fotos: {ex}'
             ok = False
     return render_template_string(_FOTOS_HTML, message=message, ok=ok)
+
+
+@app.route('/admin/home')
+def admin_home():
+    return send_from_directory(FRONTEND_DIR, 'admin_home.html')
+
+
+@app.route('/admin/home/save', methods=['POST'])
+def admin_home_save():
+    dados = request.get_json(silent=True)
+    if not dados or not isinstance(dados, dict):
+        return jsonify({'status': 'erro', 'mensagem': 'Payload inválido.'}), 400
+    dados['gerado_em'] = datetime.now().strftime('%d/%m/%Y %H:%M')
+    out = DATA_DIR / 'dados_home.json'
+    try:
+        with open(out, 'w', encoding='utf-8') as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+        if DATA_DIR != FRONTEND_DIR:
+            shutil.copy(out, FRONTEND_DIR / 'dados_home.json')
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'status': 'erro', 'mensagem': str(ex)}), 500
+    return jsonify({'status': 'ok'})
 
 
 @app.route('/admin/recarregar', methods=['GET', 'POST'])

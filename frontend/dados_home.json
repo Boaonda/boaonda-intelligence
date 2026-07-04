@@ -1,0 +1,22 @@
+{
+  "gerado_em": "04/07/2026",
+  "banner": {
+    "titulo": "Vai com tudo, vai de boa!",
+    "subtitulo": "Conheça a coleção Boaonda — conforto e estilo para todos os dias.",
+    "imagem_url": "",
+    "cor_fundo": "#26361e"
+  },
+  "destaques": [],
+  "categorias": [
+    {"nome": "Feminino", "tipo_filtro": "SANDALIA", "cor": "#ed6842"},
+    {"nome": "Masculino", "tipo_filtro": "CHINELO", "cor": "#4994c7"},
+    {"nome": "Infantil", "tipo_filtro": "INFANTIL", "cor": "#6c9c37"}
+  ],
+  "institucional": {
+    "texto": "A BOAONDA é uma marca de calçados injetados com palmilha anatômica, presente em mais de 4.000 pontos de venda no Brasil e em mais de 30 países.",
+    "email": "",
+    "whatsapp": "",
+    "site": "www.boaonda.com.br",
+    "endereco": "Sapiranga/RS"
+  }
+}

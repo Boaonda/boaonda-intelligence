@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Boaonda Intelligence — Home do Catálogo</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--coral:#ed6842;--verde:#6c9c37;--verde-dark:#26361e;--bg:#f8f5f1;--card:#fff;--line:#e2ddd8;--txt-s:#71706f;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
+body{background:var(--bg);color:var(--verde-dark);min-height:100vh;padding:32px 20px}
+.wrap{max-width:700px;margin:0 auto}
+.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px;margin-bottom:4px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
+h1{font-size:16px;font-weight:700;margin:24px 0 4px}
+p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:20px}
+.sec-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--verde-dark);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.field{margin-bottom:16px}
+label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-s);margin-bottom:6px}
+.hint{font-size:11px;color:var(--txt-m);margin-top:4px}
+input[type=text],input[type=url],textarea,select{width:100%;background:#f3f0eb;border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--verde-dark);font-size:13px;font-family:inherit;outline:none;transition:.2s}
+input[type=text]:focus,input[type=url]:focus,textarea:focus,select:focus{border-color:var(--coral);background:#fff}
+textarea{resize:vertical;min-height:80px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.row2{grid-template-columns:1fr}}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-m);padding:0 8px 10px;text-align:left}
+.tbl td{padding:6px 8px 6px 0}
+.tbl td:first-child{width:28px;color:var(--txt-m);font-weight:600;padding-left:0}
+.tbl input[type=text]{padding:8px 10px;font-size:12px}
+.tbl input[type=color]{width:40px;height:36px;border:1px solid var(--line);border-radius:6px;cursor:pointer;padding:2px;background:#f3f0eb}
+.btn-salvar{background:var(--coral);color:#fff;border:none;border-radius:8px;padding:13px 28px;font-size:13px;font-weight:700;cursor:pointer;margin-right:12px;transition:.15s}
+.btn-salvar:hover{background:#dd7051}
+.btn-salvar:disabled{opacity:.5;cursor:not-allowed}
+.msg{border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:16px;display:none}
+.msg.ok{background:rgba(108,156,55,.1);color:var(--verde);border:1px solid rgba(108,156,55,.25);display:block}
+.msg.err{background:rgba(239,68,68,.08);color:#c0392b;border:1px solid rgba(239,68,68,.25);display:block}
+.back{display:inline-block;font-size:12px;color:var(--txt-s);text-decoration:none;vertical-align:middle}
+.back:hover{color:var(--coral)}
+.cor-preview{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin-right:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">BOAONDA <span>· Intelligence</span></div>
+  <h1>Home do Catálogo Público</h1>
+  <p class="sub">Gerencie as informações exibidas na tela inicial do catálogo quando nenhum produto está selecionado.</p>
+
+  <div id="msg" class="msg"></div>
+
+  <!-- BANNER -->
+  <div class="card">
+    <div class="sec-title">Banner de Boas-vindas</div>
+    <div class="field">
+      <label>Título principal</label>
+      <input type="text" id="banner-titulo" placeholder="Ex.: Vai com tudo, vai de boa!"/>
+    </div>
+    <div class="field">
+      <label>Subtítulo</label>
+      <textarea id="banner-subtitulo" rows="2" placeholder="Ex.: Conheça a coleção Boaonda..."></textarea>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>URL da imagem (opcional)</label>
+        <input type="url" id="banner-imagem" placeholder="https://..."/>
+        <div class="hint">Imagem exibida ao lado do texto no banner. Deixe vazio para texto centralizado.</div>
+      </div>
+      <div class="field">
+        <label>Cor de fundo</label>
+        <select id="banner-cor">
+          <option value="#26361e">Verde escuro (padrão)</option>
+          <option value="#ed6842">Coral</option>
+          <option value="#4994c7">Azul oceânico</option>
+          <option value="#1c2030">Grafite</option>
+          <option value="#3d2b1f">Marrom escuro</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESTAQUES -->
+  <div class="card">
+    <div class="sec-title">Destaques / Lançamentos</div>
+    <p class="hint" style="margin-bottom:14px">Até 6 produtos exibidos em destaque na home. Use a referência exata (ex.: <strong>1317 NELLIE</strong>).</p>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Referência do produto</th>
+          <th>Etiqueta (ex.: Lançamento)</th>
+        </tr>
+      </thead>
+      <tbody id="dest-tbody"></tbody>
+    </table>
+    <datalist id="refs-list"></datalist>
+  </div>
+
+  <!-- CATEGORIAS -->
+  <div class="card">
+    <div class="sec-title">Categorias em Destaque</div>
+    <p class="hint" style="margin-bottom:14px">Até 6 categorias. O filtro deve corresponder ao tipo de produto (ex.: <strong>SANDALIA</strong>, <strong>CHINELO</strong>, <strong>BOTA</strong>, <strong>INFANTIL</strong>).</p>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nome da categoria</th>
+          <th>Tipo (filtro)</th>
+          <th>Cor</th>
+        </tr>
+      </thead>
+      <tbody id="cat-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- INSTITUCIONAL -->
+  <div class="card">
+    <div class="sec-title">Texto Institucional + Contato</div>
+    <div class="field">
+      <label>Texto institucional</label>
+      <textarea id="inst-texto" rows="4" placeholder="Breve descrição da marca..."></textarea>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>E-mail de contato</label>
+        <input type="text" id="inst-email" placeholder="contato@boaonda.com.br"/>
+      </div>
+      <div class="field">
+        <label>WhatsApp (só números, com DDI)</label>
+        <input type="text" id="inst-whatsapp" placeholder="5551999999999"/>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Site</label>
+        <input type="text" id="inst-site" placeholder="www.boaonda.com.br"/>
+      </div>
+      <div class="field">
+        <label>Endereço / Cidade</label>
+        <input type="text" id="inst-endereco" placeholder="Sapiranga/RS"/>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-salvar" id="btn-salvar" onclick="salvar()">Salvar alterações</button>
+  <a class="back" href="/">← Voltar ao portal</a>
+  &nbsp;·&nbsp;
+  <a class="back" href="/catalogo" target="_blank">Ver catálogo ↗</a>
+</div>
+
+<script>
+const N_DEST = 6, N_CAT = 6;
+let dadosAtual = {};
+
+function buildTables() {
+  const destTb = document.getElementById('dest-tbody');
+  const catTb  = document.getElementById('cat-tbody');
+  destTb.innerHTML = '';
+  catTb.innerHTML  = '';
+  for (let i = 0; i < N_DEST; i++) {
+    const d = (dadosAtual.destaques || [])[i] || {};
+    destTb.innerHTML += `<tr>
+      <td>${i+1}</td>
+      <td><input type="text" id="dest-ref-${i}" list="refs-list" value="${escHtml(d.ref||'')}" placeholder="Referência"/></td>
+      <td><input type="text" id="dest-lbl-${i}" value="${escHtml(d.label||'')}" placeholder="Ex.: Lançamento"/></td>
+    </tr>`;
+  }
+  for (let i = 0; i < N_CAT; i++) {
+    const c = (dadosAtual.categorias || [])[i] || {};
+    const cor = c.cor || '#ed6842';
+    catTb.innerHTML += `<tr>
+      <td>${i+1}</td>
+      <td><input type="text" id="cat-nome-${i}" value="${escHtml(c.nome||'')}" placeholder="Ex.: Feminino"/></td>
+      <td><input type="text" id="cat-tipo-${i}" value="${escHtml(c.tipo_filtro||'')}" placeholder="SANDALIA"/></td>
+      <td><input type="color" id="cat-cor-${i}" value="${cor}"/></td>
+    </tr>`;
+  }
+}
+
+function fillForm() {
+  const b = dadosAtual.banner || {};
+  document.getElementById('banner-titulo').value    = b.titulo    || '';
+  document.getElementById('banner-subtitulo').value = b.subtitulo || '';
+  document.getElementById('banner-imagem').value    = b.imagem_url || '';
+  const sel = document.getElementById('banner-cor');
+  for (const opt of sel.options) { if (opt.value === b.cor_fundo) { opt.selected = true; break; } }
+  const inst = dadosAtual.institucional || {};
+  document.getElementById('inst-texto').value     = inst.texto    || '';
+  document.getElementById('inst-email').value     = inst.email    || '';
+  document.getElementById('inst-whatsapp').value  = inst.whatsapp || '';
+  document.getElementById('inst-site').value      = inst.site     || '';
+  document.getElementById('inst-endereco').value  = inst.endereco || '';
+  buildTables();
+}
+
+function collectData() {
+  const destaques = [];
+  for (let i = 0; i < N_DEST; i++) {
+    const ref = (document.getElementById(`dest-ref-${i}`)?.value || '').trim();
+    const lbl = (document.getElementById(`dest-lbl-${i}`)?.value || '').trim();
+    if (ref) destaques.push({ ref, label: lbl || 'Destaque' });
+  }
+  const categorias = [];
+  for (let i = 0; i < N_CAT; i++) {
+    const nome = (document.getElementById(`cat-nome-${i}`)?.value || '').trim();
+    const tipo = (document.getElementById(`cat-tipo-${i}`)?.value || '').trim().toUpperCase();
+    const cor  = document.getElementById(`cat-cor-${i}`)?.value || '#ed6842';
+    if (nome) categorias.push({ nome, tipo_filtro: tipo, cor });
+  }
+  return {
+    banner: {
+      titulo:    document.getElementById('banner-titulo').value.trim(),
+      subtitulo: document.getElementById('banner-subtitulo').value.trim(),
+      imagem_url: document.getElementById('banner-imagem').value.trim(),
+      cor_fundo:  document.getElementById('banner-cor').value,
+    },
+    destaques,
+    categorias,
+    institucional: {
+      texto:    document.getElementById('inst-texto').value.trim(),
+      email:    document.getElementById('inst-email').value.trim(),
+      whatsapp: document.getElementById('inst-whatsapp').value.trim().replace(/\D/g,''),
+      site:     document.getElementById('inst-site').value.trim(),
+      endereco: document.getElementById('inst-endereco').value.trim(),
+    },
+  };
+}
+
+async function salvar() {
+  const btn = document.getElementById('btn-salvar');
+  const msg = document.getElementById('msg');
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
+  msg.className = 'msg';
+  msg.style.display = 'none';
+  try {
+    const r = await fetch('/admin/home/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(collectData()),
+    });
+    const data = await r.json();
+    if (data.status === 'ok') {
+      msg.textContent = 'Home do catálogo atualizada com sucesso!';
+      msg.className = 'msg ok';
+    } else {
+      msg.textContent = 'Erro: ' + (data.mensagem || 'Falha ao salvar.');
+      msg.className = 'msg err';
+    }
+  } catch(e) {
+    msg.textContent = 'Erro de conexão: ' + e.message;
+    msg.className = 'msg err';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Salvar alterações';
+    msg.style.display = 'block';
+    window.scrollTo(0, 0);
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function init() {
+  buildTables();
+  try {
+    const re = await fetch('/dados_estoque.json');
+    if (re.ok) {
+      const est = await re.json();
+      const dl = document.getElementById('refs-list');
+      for (const ref of Object.keys(est.refs || {})) {
+        const opt = document.createElement('option'); opt.value = ref; dl.appendChild(opt);
+      }
+    }
+  } catch(e) {}
+  try {
+    const rh = await fetch('/dados_home.json');
+    if (rh.ok) {
+      dadosAtual = await rh.json();
+      fillForm();
+    }
+  } catch(e) {}
+}
+
+init();
+</script>
+</body>
+</html>
