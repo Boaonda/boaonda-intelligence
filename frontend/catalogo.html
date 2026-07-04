@@ -19,7 +19,14 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 /* ── Header ── */
 .header{background:var(--verde-dark);padding:0 20px;display:flex;align-items:center;
         justify-content:space-between;height:var(--hdr-h);position:sticky;top:0;z-index:200}
-.hdr-brand{display:flex;align-items:baseline;gap:8px}
+.hdr-brand{display:flex;align-items:baseline;gap:8px;cursor:pointer;border-radius:6px;padding:4px 6px;margin:-4px -6px;transition:.15s}
+.hdr-brand:hover .hdr-mark{opacity:.82}
+.btn-home-fbar{display:none;align-items:center;gap:5px;padding:8px 12px;
+  border:1px solid rgba(237,104,66,.25);border-radius:7px;font-family:inherit;font-size:12px;
+  font-weight:700;color:var(--coral);background:rgba(237,104,66,.06);
+  cursor:pointer;white-space:nowrap;transition:.15s;flex-shrink:0}
+.btn-home-fbar:hover{background:rgba(237,104,66,.12);border-color:var(--coral)}
+.btn-home-fbar.vis{display:flex}
 .hdr-mark{font-size:18px;font-weight:800;letter-spacing:2px;color:var(--coral)}
 .hdr-sub{font-size:10px;font-weight:400;color:rgba(255,255,255,.4);letter-spacing:1px}
 .hdr-tag{font-size:10px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase}
@@ -525,7 +532,7 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 <body>
 
 <header class="header">
-  <div class="hdr-brand">
+  <div class="hdr-brand" onclick="filtrarRef('')" title="Ir para a home">
     <span class="hdr-mark">BOAONDA</span>
     <span class="hdr-sub">Calçados</span>
   </div>
@@ -533,6 +540,7 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 </header>
 
 <div class="filter-bar">
+  <button class="btn-home-fbar" id="btn-home-fbar" onclick="filtrarRef('')">← Início</button>
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input class="search-input" id="f-busca" type="text" placeholder="Buscar modelo…" autocomplete="off"/>
@@ -893,6 +901,8 @@ function filtrarRef(rk) {
   mostrandoHome = showHome;
   document.getElementById('home-panel').style.display = showHome ? 'block' : 'none';
   document.getElementById('grid').style.display = showHome ? 'none' : '';
+  const btnH = document.getElementById('btn-home-fbar');
+  if (btnH) btnH.classList.toggle('vis', !showHome && HOME != null);
   if (!showHome) renderGrid();
   fecharModelosMob();
   const lbl = document.getElementById('modelos-btn-label');
@@ -910,6 +920,8 @@ function verCategoria(tipo) {
   mostrandoHome = false;
   document.getElementById('home-panel').style.display = 'none';
   document.getElementById('grid').style.display = '';
+  const btnH = document.getElementById('btn-home-fbar');
+  if (btnH) btnH.classList.toggle('vis', HOME != null);
   filtroRef = '';
   renderSidebar();
   renderGrid();
