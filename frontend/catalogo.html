@@ -202,8 +202,14 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
               border:1px solid rgba(73,148,199,.25);border-radius:8px;
               background:rgba(73,148,199,.06);font-size:12px;font-weight:600;color:var(--azul)}
 
-/* WhatsApp — fixo na base do painel */
-.lb-wpp-wrap{padding:12px 16px;border-top:1px solid var(--border);background:var(--card);flex-shrink:0}
+/* WhatsApp + Carrinho — fixo na base do painel */
+.lb-wpp-wrap{padding:12px 16px;border-top:1px solid var(--border);background:var(--card);
+             flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+.lb-add-carr{display:flex;align-items:center;justify-content:center;gap:7px;
+             background:var(--coral);color:#fff;border-radius:9px;padding:12px;
+             font-size:13px;font-weight:700;border:none;font-family:inherit;
+             cursor:pointer;transition:.15s;width:100%}
+.lb-add-carr:hover{background:var(--coral2)}
 .lb-wpp{display:flex;align-items:center;justify-content:center;gap:7px;
         background:#25D366;color:#fff;border-radius:9px;padding:12px;
         font-size:13px;font-weight:700;text-decoration:none;transition:.15s}
@@ -880,10 +886,14 @@ function lbRender() {
     </div>
     ${gradesHtml?`<div><div class="lb-sec-label">Grades</div><div class="lb-grades">${gradesHtml}</div></div>`:''}`;
 
-  // WhatsApp sempre visível na base
+  // Botões fixos na base
   const msg=encodeURIComponent(`Olá! Tenho interesse no modelo ${r.modelo} · cor ${cp.nome}. Disponibilidade: ${fN(livre)} pares. Podem me auxiliar?`);
   document.getElementById('lb-wpp-wrap').innerHTML =
-    `<a class="lb-wpp" href="https://wa.me/${WPP_NUMERO}?text=${msg}" target="_blank" rel="noopener">
+    `<button class="lb-add-carr" onclick="abrirSeletor(event,'${esc(lbRef)}','${esc(lbCor)}')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      Adicionar ao carrinho
+    </button>
+    <a class="lb-wpp" href="https://wa.me/${WPP_NUMERO}?text=${msg}" target="_blank" rel="noopener">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.994 0C5.369 0 0 5.369 0 11.994c0 2.104.55 4.076 1.512 5.785L0 24l6.404-1.49A11.96 11.96 0 0 0 11.994 24C18.62 24 24 18.632 24 11.994 24 5.369 18.62 0 11.994 0zm0 21.818a9.823 9.823 0 0 1-5.012-1.374l-.36-.213-3.73.868.884-3.636-.235-.372A9.823 9.823 0 0 1 2.18 11.994c0-5.415 4.402-9.818 9.815-9.818 5.414 0 9.817 4.403 9.817 9.818 0 5.413-4.403 9.824-9.818 9.824z"/></svg>
       Pedir via WhatsApp</a>`;
 
