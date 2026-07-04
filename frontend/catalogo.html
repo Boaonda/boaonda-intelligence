@@ -276,6 +276,67 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
   .slt-box{border-radius:20px 20px 0 0;max-height:95vh}
 }
 
+/* ── FAB Carrinho ── */
+.cart-fab{position:fixed;bottom:24px;right:24px;z-index:500;width:56px;height:56px;
+          border-radius:50%;background:var(--verde-dark);color:#fff;border:none;cursor:pointer;
+          display:flex;align-items:center;justify-content:center;
+          box-shadow:0 4px 20px rgba(0,0,0,.28);transition:background .2s,transform .2s;
+          font-family:inherit}
+.cart-fab:hover{background:var(--coral);transform:scale(1.08)}
+.cart-badge{position:absolute;top:-4px;right:-4px;background:var(--coral);color:#fff;
+            border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:700;
+            display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+@keyframes pulsar{0%{transform:scale(1)}30%{transform:scale(1.22)}65%{transform:scale(.95)}100%{transform:scale(1)}}
+.cart-fab.pulsar{animation:pulsar .4s ease}
+
+/* ── Drawer Carrinho ── */
+.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:600;display:none}
+.cart-overlay.aberto{display:block}
+.cart-drawer{position:fixed;top:0;right:0;bottom:0;width:360px;max-width:100vw;
+             background:var(--card);z-index:601;display:flex;flex-direction:column;
+             transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+             box-shadow:-4px 0 28px rgba(0,0,0,.14)}
+.cart-drawer.aberto{transform:translateX(0)}
+.cart-head{display:flex;align-items:center;justify-content:space-between;
+           padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+.cart-head-title{font-size:15px;font-weight:800;color:var(--verde-dark)}
+.cart-head-close{background:none;border:none;font-size:22px;cursor:pointer;
+                 color:var(--txt-m);padding:4px 8px;line-height:1;transition:.15s}
+.cart-head-close:hover{color:var(--txt)}
+.cart-items{flex:1;overflow-y:auto;padding:8px 0}
+.cart-items::-webkit-scrollbar{width:3px}
+.cart-items::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.cart-vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;
+            height:200px;gap:10px;color:var(--txt-m);font-size:13px;padding:20px}
+.cart-item{display:flex;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border2);
+           align-items:flex-start}
+.cart-item-foto{width:52px;height:52px;object-fit:contain;border-radius:7px;background:var(--bg);
+                border:1px solid var(--border);padding:3px;flex-shrink:0}
+.cart-item-body{flex:1;min-width:0}
+.cart-item-ref{font-size:13px;font-weight:700;color:var(--verde-dark);white-space:nowrap;
+               overflow:hidden;text-overflow:ellipsis}
+.cart-item-meta{font-size:11px;color:var(--txt-s);margin-top:1px}
+.cart-item-grade{font-size:11px;color:var(--azul);font-weight:600;margin-top:2px}
+.cart-item-row{display:flex;align-items:center;gap:8px;margin-top:7px}
+.cart-item-qtd{width:58px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;
+               font-family:inherit;font-size:13px;font-weight:700;text-align:center;
+               color:var(--txt);outline:none;transition:.2s}
+.cart-item-qtd:focus{border-color:var(--coral)}
+.cart-item-pares{font-size:11px;color:var(--cinza);flex:1}
+.cart-item-del{background:none;border:none;cursor:pointer;color:var(--txt-m);
+               padding:4px 6px;font-size:15px;line-height:1;transition:.15s}
+.cart-item-del:hover{color:var(--coral2)}
+.cart-footer{padding:14px 18px;border-top:1px solid var(--border);background:var(--card);flex-shrink:0}
+.cart-total-row{display:flex;justify-content:space-between;align-items:baseline;
+                margin-bottom:12px;font-size:12px;color:var(--txt-s)}
+.cart-total-row strong{font-size:15px;color:var(--verde-dark);font-weight:800}
+.cart-btn-pdf{width:100%;padding:12px;background:var(--verde-dark);color:#fff;border:none;
+              border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;
+              cursor:pointer;transition:.15s;display:flex;align-items:center;
+              justify-content:center;gap:7px}
+.cart-btn-pdf:hover:not(:disabled){background:var(--coral)}
+.cart-btn-pdf:disabled{background:var(--border);color:var(--txt-m);cursor:not-allowed}
+
 /* ── Footer ── */
 .footer{text-align:center;padding:24px 16px;font-size:11px;color:var(--txt-m);
         border-top:1px solid var(--border)}
@@ -441,6 +502,32 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
       <div class="sb-todos" onclick="filtrarRef('')">← Todos</div>
       <div id="modelos-list"></div>
     </div>
+  </div>
+</div>
+
+<!-- FAB Carrinho -->
+<button class="cart-fab" id="cart-fab" onclick="toggleDrawer()">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+  <span class="cart-badge" id="cart-badge" style="display:none">0</span>
+</button>
+
+<!-- Overlay + Drawer Carrinho -->
+<div class="cart-overlay" id="cart-overlay" onclick="fecharDrawer()"></div>
+<div class="cart-drawer" id="cart-drawer">
+  <div class="cart-head">
+    <span class="cart-head-title">Meu pedido</span>
+    <button class="cart-head-close" onclick="fecharDrawer()">×</button>
+  </div>
+  <div class="cart-items" id="cart-items"></div>
+  <div class="cart-footer">
+    <div class="cart-total-row">
+      <span id="cart-total-label">Total</span>
+      <strong id="cart-total-val">—</strong>
+    </div>
+    <button class="cart-btn-pdf" id="cart-btn-pdf" onclick="abrirModalId()" disabled>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Exportar PDF
+    </button>
   </div>
 </div>
 
@@ -920,6 +1007,60 @@ function lbSetCor(ck){lbCor=ck;lbAng=0;lbRender();}
 function lbSetLinha(l){lbLinha=l;lbRender();}
 function lbSetTipo(t){lbTipo=t;lbRender();}
 
+// ── Drawer Carrinho (Passo 3) ──────────────────────────────────────
+function toggleDrawer() {
+  document.getElementById('cart-drawer').classList.contains('aberto') ? fecharDrawer() : abrirDrawer();
+}
+
+function abrirDrawer() {
+  renderDrawer();
+  document.getElementById('cart-drawer').classList.add('aberto');
+  document.getElementById('cart-overlay').classList.add('aberto');
+  document.body.style.overflow = 'hidden';
+}
+
+function fecharDrawer() {
+  document.getElementById('cart-drawer').classList.remove('aberto');
+  document.getElementById('cart-overlay').classList.remove('aberto');
+  document.body.style.overflow = '';
+}
+
+function renderDrawer() {
+  const itens = carrinho.itens;
+  const totalPares = itens.reduce((s, i) => s + i.qtd_pares, 0);
+  const totalCx    = itens.reduce((s, i) => s + i.qtd_caixas, 0);
+  const lbl = document.getElementById('cart-total-label');
+  const val = document.getElementById('cart-total-val');
+  const btn = document.getElementById('cart-btn-pdf');
+  if (lbl) lbl.textContent = itens.length ? `${itens.length} item${itens.length !== 1 ? 'ns' : ''}` : 'Total';
+  if (val) val.textContent = itens.length ? `${fN(totalPares)} pares · ${totalCx} cx` : '—';
+  if (btn) btn.disabled = !itens.length;
+
+  const el = document.getElementById('cart-items'); if (!el) return;
+  if (!itens.length) {
+    el.innerHTML = `<div class="cart-vazio">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span>Carrinho vazio</span></div>`;
+    return;
+  }
+  el.innerHTML = itens.map((item, idx) =>
+    `<div class="cart-item">
+      <img class="cart-item-foto" src="${esc(item.foto_url||PH)}" onerror="this.src='${PH}'" alt=""/>
+      <div class="cart-item-body">
+        <div class="cart-item-ref">${item.ref}</div>
+        <div class="cart-item-meta">Cor ${item.cor} ${item.cor_nome}</div>
+        <div class="cart-item-grade">Grade ${item.grade_code} · ${item.grade_pares_cx} pares/cx</div>
+        <div class="cart-item-row">
+          <input class="cart-item-qtd" type="number" min="1" max="${item.grade_cx_disponiveis}"
+            value="${item.qtd_caixas}" onchange="atualizarQuantidade(${idx},this.value)"/>
+          <span class="cart-item-pares">${fN(item.qtd_pares)} pares</span>
+          <button class="cart-item-del" onclick="removerItem(${idx})" title="Remover">🗑</button>
+        </div>
+      </div>
+    </div>`
+  ).join('');
+}
+
 // ── Seletor de grade (Passo 2) ─────────────────────────────────────
 let sltRef = null, sltCor = null, sltGradeIdx = 0, sltQtd = 1;
 
@@ -1066,8 +1207,10 @@ function fN(n){ return Math.round(n).toLocaleString('pt-BR'); }
 function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function mostrarErro(msg){ document.getElementById('grid').innerHTML=`<div class="empty"><p>${msg}</p></div>`; }
 
+function abrirModalId() { /* implementado no Passo 4 */ }
+
 document.addEventListener('keydown', e=>{
-  if (e.key==='Escape') { lbFechar(); fecharSeletor(); }
+  if (e.key==='Escape') { lbFechar(); fecharSeletor(); fecharDrawer(); }
   if (document.getElementById('lb').style.display==='none') return;
   if (e.key==='ArrowLeft') lbNav(-1);
   if (e.key==='ArrowRight') lbNav(1);
