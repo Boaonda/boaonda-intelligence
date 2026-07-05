@@ -27,7 +27,7 @@ textarea{resize:vertical;min-height:80px}
 .tbl th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-m);padding:0 8px 10px;text-align:left}
 .tbl td{padding:6px 8px 6px 0}
 .tbl td:first-child{width:28px;color:var(--txt-m);font-weight:600;padding-left:0}
-.tbl input[type=text]{padding:8px 10px;font-size:12px}
+.tbl input[type=text],.tbl input[type=number]{padding:8px 10px;font-size:12px}
 .tbl input[type=color]{width:40px;height:36px;border:1px solid var(--line);border-radius:6px;cursor:pointer;padding:2px;background:#f3f0eb}
 .btn-salvar{background:var(--coral);color:#fff;border:none;border-radius:8px;padding:13px 28px;font-size:13px;font-weight:700;cursor:pointer;margin-right:12px;transition:.15s}
 .btn-salvar:hover{background:#dd7051}
@@ -157,11 +157,11 @@ textarea{resize:vertical;min-height:80px}
     </div>
 
     <div class="field" style="margin-bottom:0">
-      <label>Links diretos para produtos (até 4)</label>
-      <p class="hint" style="margin-bottom:10px">Ao clicar no botão o cliente vai direto ao produto. Deixe em branco os que não usar.</p>
+      <label>Links diretos para produtos (até 10)</label>
+      <p class="hint" style="margin-bottom:10px">Ao clicar no botão o cliente vai direto ao produto. Preencha <strong>apenas um</strong> campo de preço por item (desconto % <em>ou</em> preço final). Deixe em branco os que não usar.</p>
       <table class="tbl">
         <thead>
-          <tr><th>#</th><th>Referência do produto</th><th>Linha específica</th><th>Rótulo do botão</th></tr>
+          <tr><th>#</th><th>Referência</th><th>Linha</th><th>Desc %</th><th>Preço final (R$)</th><th>Rótulo do botão</th></tr>
         </thead>
         <tbody id="promo-links-tbody"></tbody>
       </table>
@@ -205,7 +205,7 @@ textarea{resize:vertical;min-height:80px}
 </div>
 
 <script>
-const N_DEST = 6, N_CAT = 6, N_PROMO_LINKS = 4;
+const N_DEST = 6, N_CAT = 6, N_PROMO_LINKS = 10;
 let dadosAtual = {};
 let ESTOQUE_REFS = {};
 
@@ -236,10 +236,14 @@ function buildTables() {
   }
   for (let i = 0; i < N_PROMO_LINKS; i++) {
     const l = (dadosAtual.promocao?.links || [])[i] || {};
+    const dp = l.desconto_pct != null ? l.desconto_pct : '';
+    const pp = l.preco_promo  != null ? l.preco_promo  : '';
     promoTb.innerHTML += `<tr>
       <td>${i+1}</td>
       <td><input type="text" id="promo-link-ref-${i}" list="refs-list-promo" value="${escHtml(l.ref||'')}" placeholder="1317 NELLIE" oninput="atualizarLinhasPromo(${i})"/></td>
       <td><select id="promo-link-linha-${i}" style="width:100%"><option value="">Todas as linhas</option></select></td>
+      <td><input type="number" id="promo-link-dp-${i}" value="${escHtml(String(dp))}" min="0" max="100" step="0.1" placeholder="15" style="width:68px"/></td>
+      <td><input type="number" id="promo-link-pp-${i}" value="${escHtml(String(pp))}" min="0" step="0.01" placeholder="29.90" style="width:80px"/></td>
       <td><input type="text" id="promo-link-lbl-${i}" value="${escHtml(l.label||'')}" placeholder="Ex.: NELLIE Estampado"/></td>
     </tr>`;
   }
@@ -299,10 +303,14 @@ function collectData() {
   }
   const promoLinks = [];
   for (let i = 0; i < N_PROMO_LINKS; i++) {
+    const dpRaw = parseFloat(document.getElementById(`promo-link-dp-${i}`)?.value);
+    const ppRaw = parseFloat(document.getElementById(`promo-link-pp-${i}`)?.value);
     promoLinks.push({
-      ref:   (document.getElementById(`promo-link-ref-${i}`)?.value || '').trim(),
-      linha: (document.getElementById(`promo-link-linha-${i}`)?.value || '').trim(),
-      label: (document.getElementById(`promo-link-lbl-${i}`)?.value || '').trim(),
+      ref:          (document.getElementById(`promo-link-ref-${i}`)?.value || '').trim(),
+      linha:        (document.getElementById(`promo-link-linha-${i}`)?.value || '').trim(),
+      desconto_pct: (!isNaN(dpRaw) && dpRaw > 0) ? dpRaw : null,
+      preco_promo:  (!isNaN(ppRaw) && ppRaw > 0) ? ppRaw : null,
+      label:        (document.getElementById(`promo-link-lbl-${i}`)?.value || '').trim(),
     });
   }
   return {

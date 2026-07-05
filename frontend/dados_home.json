@@ -13,10 +13,16 @@
     "texto": "",
     "imagem_url": "",
     "links": [
-      {"ref": "", "linha": "", "label": ""},
-      {"ref": "", "linha": "", "label": ""},
-      {"ref": "", "linha": "", "label": ""},
-      {"ref": "", "linha": "", "label": ""}
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
+      {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""}
     ]
   },
   "categorias": [

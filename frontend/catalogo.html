@@ -118,6 +118,13 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
                  color:#fff;border-radius:4px;padding:2px 5px;margin-left:5px}
 .linha-promo-tag{font-size:8px;font-weight:700;background:var(--coral);color:#fff;
                  border-radius:3px;padding:1px 4px;margin-left:4px;vertical-align:middle}
+.cat-preco-promo{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:2px}
+.preco-de{text-decoration:line-through;color:var(--txt-m);font-size:10px;font-weight:400}
+.preco-promo-val{color:var(--coral);font-size:12px;font-weight:800}
+.preco-off-badge{display:inline-block;background:var(--coral);color:#fff;font-size:7px;
+                 font-weight:700;border-radius:3px;padding:1px 4px}
+.det-preco-promo{font-size:17px;font-weight:800;color:var(--coral);line-height:1.1}
+.det-preco-de{font-size:11px;color:var(--txt-m);text-decoration:line-through;margin-top:1px}
 
 /* ── Empty ── */
 .empty{grid-column:1/-1;padding:50px 20px;text-align:center;color:var(--txt-m)}
@@ -1293,6 +1300,20 @@ function renderGrid() {
   });
 }
 
+function promoPrecoParaRef(rk) {
+  if (!HOME?.promocao?.ativa) return null;
+  const link = (HOME.promocao.links || []).find(l => l.ref === rk && (l.preco_promo > 0 || l.desconto_pct > 0));
+  if (!link) return null;
+  const original = REFS[rk]?.preco_par;
+  if (!original) return null;
+  if (link.preco_promo > 0) {
+    const pct = Math.round((1 - link.preco_promo / original) * 100);
+    return { preco: link.preco_promo, original, pct };
+  }
+  const preco = original * (1 - link.desconto_pct / 100);
+  return { preco, original, pct: Math.round(link.desconto_pct) };
+}
+
 function cardHtml(rk, r) {
   const cks=Object.keys(r.cores);
   const primCk = cks.filter(ck=>!ck.toUpperCase().includes('[FL]'))[0] || cks[0] || '';
@@ -1307,6 +1328,10 @@ function cardHtml(rk, r) {
   const flBadge = cks.some(ck=>ck.toUpperCase().includes('[FL]')) ? `<span class="cat-fl-badge">FL</span>` : '';
   const promoAtiva = HOME?.promocao?.ativa && (HOME.promocao.links||[]).some(l=>l.ref===rk);
   const promoBadge = promoAtiva ? `<span class="cat-promo-badge">PROMO</span>` : '';
+  const pp = promoPrecoParaRef(rk);
+  const precoHtml = pp
+    ? `<div class="cat-preco cat-preco-promo"><span class="preco-de">${fBRL(pp.original)}</span><span class="preco-promo-val">${fBRL(pp.preco)}</span><span class="preco-off-badge">-${pp.pct}%</span><span style="color:var(--txt-m);font-size:10px">/par</span></div>`
+    : (r.preco_par ? `<div class="cat-preco">${fBRL(r.preco_par)}<span>/par</span></div>` : '');
   return `<div class="cat-card" onclick="abrirDetalhe('${esc(rk)}','${esc(primCk)}')">
     <div class="cat-img-wrap">
       <img class="cat-img loading" data-src="${esc(fotoSrc)}" alt="${r.modelo}" onerror="this.src='${PH}'"/>
@@ -1316,7 +1341,7 @@ function cardHtml(rk, r) {
       <div class="cat-tipo">${r.tipo}${r.material?' · '+r.material:''}</div>
       <div class="cat-cors">${dots}${mais}</div>
       <div class="cat-livre">${fN(r.livre)} pares <span>disponíveis</span></div>
-      ${r.preco_par ? `<div class="cat-preco">${fBRL(r.preco_par)}<span>/par</span></div>` : ''}
+      ${precoHtml}
     </div>
     <button class="btn-carrinho" onclick="abrirSeletor(event,'${esc(rk)}','${esc(primCk)}')">+ Adicionar ao carrinho</button>
   </div>`;
@@ -1590,7 +1615,11 @@ function detRender() {
         `<div class="lb-disp">` +
           `<div><div class="lb-disp-v">${fN(livre)} pares dispon&#237;veis</div>` +
           `<div class="lb-disp-s">${r.modelo} &#183; ${cp.nome}</div></div>` +
-          (r.preco_par ? `<div style="text-align:right"><div style="font-size:15px;font-weight:800;color:var(--azul)">${fBRL(r.preco_par)}</div><div class="lb-disp-s">por par</div></div>` : '') +
+          (() => {
+            const pp = promoPrecoParaRef(detRef);
+            if (pp) return `<div style="text-align:right"><div class="det-preco-promo">${fBRL(pp.preco)} <span class="preco-off-badge">-${pp.pct}%</span></div><div class="det-preco-de">${fBRL(pp.original)}</div><div class="lb-disp-s">por par</div></div>`;
+            return r.preco_par ? `<div style="text-align:right"><div style="font-size:15px;font-weight:800;color:var(--azul)">${fBRL(r.preco_par)}</div><div class="lb-disp-s">por par</div></div>` : '';
+          })() +
         `</div>` +
         (gradesHtml ? `<div><div class="lb-sec-label">Grades</div><div class="lb-grades">${gradesHtml}</div></div>` : '') +
         `<div class="det-acoes">` +
