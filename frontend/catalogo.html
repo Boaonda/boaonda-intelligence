@@ -1300,9 +1300,15 @@ function renderGrid() {
   });
 }
 
-function promoPrecoParaRef(rk) {
+function promoPrecoParaRef(rk, linha) {
   if (!HOME?.promocao?.ativa) return null;
-  const link = (HOME.promocao.links || []).find(l => l.ref === rk && (l.preco_promo > 0 || l.desconto_pct > 0));
+  const link = (HOME.promocao.links || []).find(l => {
+    if (l.ref !== rk || !(l.preco_promo > 0 || l.desconto_pct > 0)) return false;
+    // card (sem linha) ou aba "Todas": só promo global (l.linha vazio)
+    if (!linha || linha === '__todas__') return !l.linha;
+    // aba de linha específica: promo global OU promo exata para essa linha
+    return !l.linha || l.linha === linha;
+  });
   if (!link) return null;
   const original = REFS[rk]?.preco_par;
   if (!original) return null;
@@ -1616,7 +1622,7 @@ function detRender() {
           `<div><div class="lb-disp-v">${fN(livre)} pares dispon&#237;veis</div>` +
           `<div class="lb-disp-s">${r.modelo} &#183; ${cp.nome}</div></div>` +
           (() => {
-            const pp = promoPrecoParaRef(detRef);
+            const pp = promoPrecoParaRef(detRef, detLinha);
             if (pp) return `<div style="text-align:right"><div class="det-preco-promo">${fBRL(pp.preco)} <span class="preco-off-badge">-${pp.pct}%</span></div><div class="det-preco-de">${fBRL(pp.original)}</div><div class="lb-disp-s">por par</div></div>`;
             return r.preco_par ? `<div style="text-align:right"><div style="font-size:15px;font-weight:800;color:var(--azul)">${fBRL(r.preco_par)}</div><div class="lb-disp-s">por par</div></div>` : '';
           })() +
