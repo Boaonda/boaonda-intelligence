@@ -161,7 +161,7 @@ textarea{resize:vertical;min-height:80px}
       <p class="hint" style="margin-bottom:10px">Ao clicar no botão o cliente vai direto ao produto. Deixe em branco os que não usar.</p>
       <table class="tbl">
         <thead>
-          <tr><th>#</th><th>Referência do produto</th><th>Rótulo do botão</th></tr>
+          <tr><th>#</th><th>Referência do produto</th><th>Linha específica</th><th>Rótulo do botão</th></tr>
         </thead>
         <tbody id="promo-links-tbody"></tbody>
       </table>
@@ -207,6 +207,7 @@ textarea{resize:vertical;min-height:80px}
 <script>
 const N_DEST = 6, N_CAT = 6, N_PROMO_LINKS = 4;
 let dadosAtual = {};
+let ESTOQUE_REFS = {};
 
 function buildTables() {
   const destTb = document.getElementById('dest-tbody');
@@ -237,7 +238,8 @@ function buildTables() {
     const l = (dadosAtual.promocao?.links || [])[i] || {};
     promoTb.innerHTML += `<tr>
       <td>${i+1}</td>
-      <td><input type="text" id="promo-link-ref-${i}" list="refs-list-promo" value="${escHtml(l.ref||'')}" placeholder="1317 NELLIE"/></td>
+      <td><input type="text" id="promo-link-ref-${i}" list="refs-list-promo" value="${escHtml(l.ref||'')}" placeholder="1317 NELLIE" oninput="atualizarLinhasPromo(${i})"/></td>
+      <td><select id="promo-link-linha-${i}" style="width:100%"><option value="">Todas as linhas</option></select></td>
       <td><input type="text" id="promo-link-lbl-${i}" value="${escHtml(l.label||'')}" placeholder="Ex.: NELLIE Estampado"/></td>
     </tr>`;
   }
@@ -271,6 +273,14 @@ function fillForm() {
   document.getElementById('inst-site').value      = inst.site     || '';
   document.getElementById('inst-endereco').value  = inst.endereco || '';
   buildTables();
+  for (let i = 0; i < N_PROMO_LINKS; i++) {
+    const l = (dadosAtual.promocao?.links || [])[i] || {};
+    atualizarLinhasPromo(i);
+    if (l.linha) {
+      const sel = document.getElementById(`promo-link-linha-${i}`);
+      if (sel) sel.value = l.linha;
+    }
+  }
 }
 
 function collectData() {
@@ -291,6 +301,7 @@ function collectData() {
   for (let i = 0; i < N_PROMO_LINKS; i++) {
     promoLinks.push({
       ref:   (document.getElementById(`promo-link-ref-${i}`)?.value || '').trim(),
+      linha: (document.getElementById(`promo-link-linha-${i}`)?.value || '').trim(),
       label: (document.getElementById(`promo-link-lbl-${i}`)?.value || '').trim(),
     });
   }
@@ -394,15 +405,26 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function atualizarLinhasPromo(i) {
+  const ref = (document.getElementById(`promo-link-ref-${i}`)?.value || '').trim();
+  const sel = document.getElementById(`promo-link-linha-${i}`);
+  if (!sel) return;
+  const linhas = ref && ESTOQUE_REFS[ref] ? Object.keys(ESTOQUE_REFS[ref].linhas || {}) : [];
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">Todas as linhas</option>` +
+    linhas.map(l => `<option value="${escHtml(l)}"${l===cur?' selected':''}>${escHtml(l)}</option>`).join('');
+}
+
 async function init() {
   buildTables();
   try {
     const re = await fetch('/dados_estoque.json');
     if (re.ok) {
       const est = await re.json();
+      ESTOQUE_REFS = est.refs || {};
       const dl  = document.getElementById('refs-list');
       const dl2 = document.getElementById('refs-list-promo');
-      for (const ref of Object.keys(est.refs || {})) {
+      for (const ref of Object.keys(ESTOQUE_REFS)) {
         const o1 = document.createElement('option'); o1.value = ref; dl.appendChild(o1);
         const o2 = document.createElement('option'); o2.value = ref; dl2.appendChild(o2);
       }

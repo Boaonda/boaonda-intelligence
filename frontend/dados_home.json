@@ -13,10 +13,10 @@
     "texto": "",
     "imagem_url": "",
     "links": [
-      {"ref": "", "label": ""},
-      {"ref": "", "label": ""},
-      {"ref": "", "label": ""},
-      {"ref": "", "label": ""}
+      {"ref": "", "linha": "", "label": ""},
+      {"ref": "", "linha": "", "label": ""},
+      {"ref": "", "linha": "", "label": ""},
+      {"ref": "", "linha": "", "label": ""}
     ]
   },
   "categorias": [

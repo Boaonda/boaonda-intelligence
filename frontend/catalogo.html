@@ -114,6 +114,10 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 .cat-preco span{color:var(--txt-m);font-weight:400}
 .cat-fl-badge{display:inline-block;font-size:8px;font-weight:700;background:rgba(73,148,199,.12);
               color:var(--azul);border-radius:4px;padding:2px 5px;margin-left:5px}
+.cat-promo-badge{display:inline-block;font-size:8px;font-weight:700;background:var(--coral);
+                 color:#fff;border-radius:4px;padding:2px 5px;margin-left:5px}
+.linha-promo-tag{font-size:8px;font-weight:700;background:var(--coral);color:#fff;
+                 border-radius:3px;padding:1px 4px;margin-left:4px;vertical-align:middle}
 
 /* ── Empty ── */
 .empty{grid-column:1/-1;padding:50px 20px;text-align:center;color:var(--txt-m)}
@@ -1164,7 +1168,7 @@ function renderPromo() {
     : '';
   const linksHtml = links.length
     ? `<div class="promo-links">${links.map(l =>
-        `<button class="promo-link-btn" onclick="abrirDetalhe('${esc(l.ref)}','${esc(Object.keys(REFS[l.ref].cores)[0]||'')}')">
+        `<button class="promo-link-btn" onclick="abrirDetalhe('${esc(l.ref)}','${esc(Object.keys(REFS[l.ref].cores)[0]||'')}','${esc(l.linha||'')}')">
           ${esc(l.label || REFS[l.ref]?.modelo || l.ref)} →
         </button>`).join('')}</div>`
     : '';
@@ -1301,12 +1305,14 @@ function cardHtml(rk, r) {
   }).join('');
   const mais = cks.length>DMAX ? `<span class="cor-mais">+${cks.length-DMAX}</span>` : '';
   const flBadge = cks.some(ck=>ck.toUpperCase().includes('[FL]')) ? `<span class="cat-fl-badge">FL</span>` : '';
+  const promoAtiva = HOME?.promocao?.ativa && (HOME.promocao.links||[]).some(l=>l.ref===rk);
+  const promoBadge = promoAtiva ? `<span class="cat-promo-badge">PROMO</span>` : '';
   return `<div class="cat-card" onclick="abrirDetalhe('${esc(rk)}','${esc(primCk)}')">
     <div class="cat-img-wrap">
       <img class="cat-img loading" data-src="${esc(fotoSrc)}" alt="${r.modelo}" onerror="this.src='${PH}'"/>
     </div>
     <div class="cat-info">
-      <div class="cat-modelo">${r.modelo}${flBadge}</div>
+      <div class="cat-modelo">${r.modelo}${flBadge}${promoBadge}</div>
       <div class="cat-tipo">${r.tipo}${r.material?' · '+r.material:''}</div>
       <div class="cat-cors">${dots}${mais}</div>
       <div class="cat-livre">${fN(r.livre)} pares <span>disponíveis</span></div>
@@ -1453,8 +1459,8 @@ function lbSetLinha(l){lbLinha=l;lbRender();}
 function lbSetTipo(t){lbTipo=t;lbRender();}
 
 // ── Painel de Detalhe do Produto ────────────────────────────────────
-function abrirDetalhe(rk, ck) {
-  detRef = rk; detCor = ck; detLinha = '__todas__'; detTipo = 'todos'; detAng = 0;
+function abrirDetalhe(rk, ck, linha) {
+  detRef = rk; detCor = ck; detLinha = linha || '__todas__'; detTipo = 'todos'; detAng = 0;
   filtroRef = rk;
   renderSidebar();
   document.getElementById('grid').style.display = 'none';
@@ -1529,13 +1535,15 @@ function detRender() {
       `<button class="lb-tipo-tab ${detTipo==='fl'?'on-fl':''}" onclick="detSetTipo('fl')">FL</button>` +
       `</div></div>` : '';
 
+  const promoLinhas = (HOME?.promocao?.ativa ? (HOME.promocao.links||[]) : [])
+    .filter(l => l.ref === detRef && l.linha).map(l => l.linha);
   const todasBtn = linhasVisiveis.length > 1
     ? `<button class="lb-linha-tab ${detLinha==='__todas__'?'on':''}" onclick="detSetLinha('__todas__')">Todas</button>` : '';
   const tabsHtml = linhasVisiveis.length > 0
     ? `<div><div class="lb-sec-label">Linha</div><div class="lb-linha-tabs">` +
       todasBtn +
       linhasVisiveis.map(l =>
-        `<button class="lb-linha-tab ${detLinha===l?'on':''}" onclick="detSetLinha('${esc(l)}')">${nomeLinha(l)}</button>`
+        `<button class="lb-linha-tab ${detLinha===l?'on':''}" onclick="detSetLinha('${esc(l)}')">${nomeLinha(l)}${promoLinhas.includes(l)?'<span class="linha-promo-tag">PROMO</span>':''}</button>`
       ).join('') +
       `</div></div>` : '';
 
