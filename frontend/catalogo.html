@@ -714,7 +714,7 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
 
 <div class="page-body">
   <aside class="sidebar" id="sidebar">
-    <div class="sb-todos" onclick="filtrarRef('')">← Todos</div>
+    <div class="sb-todos" onclick="mostrarTodos()">← Todos</div>
     <div class="sb-title">Referências</div>
     <div id="sb-list"></div>
   </aside>
@@ -761,7 +761,7 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
       <button class="modelos-fechar" onclick="fecharModelosMob()">×</button>
     </div>
     <div class="modelos-lista">
-      <div class="sb-todos" onclick="filtrarRef('')">← Todos</div>
+      <div class="sb-todos" onclick="mostrarTodos()">← Todos</div>
       <div id="modelos-list"></div>
     </div>
   </div>
@@ -1085,7 +1085,24 @@ function filtrarRef(rk) {
 }
 
 function verTodos() {
-  filtrarRef('');
+  mostrarTodos();
+}
+
+function mostrarTodos() {
+  filtroRef = '';
+  renderSidebar();
+  mostrandoHome = false;
+  document.getElementById('home-panel').style.display = 'none';
+  document.getElementById('det-panel').style.display = 'none';
+  document.getElementById('grid').style.display = '';
+  const btnH = document.getElementById('btn-home-fbar');
+  if (btnH) btnH.classList.toggle('vis', HOME != null);
+  renderGrid();
+  fecharModelosMob();
+  const lbl = document.getElementById('modelos-btn-label');
+  const btn = document.getElementById('modelos-mob-btn');
+  if (lbl) lbl.textContent = 'Modelos';
+  if (btn) btn.classList.remove('ativo');
 }
 
 function verCategoria(tipo) {
