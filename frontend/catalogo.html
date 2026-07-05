@@ -157,6 +157,35 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
   .promo-body{grid-template-columns:1fr}
   .promo-img{max-height:72vw;padding:8px}
 }
+/* ── Promo gallery ── */
+.promo-img-col{flex-direction:column;align-items:stretch;padding:0}
+.promo-gal{display:flex;flex-direction:column;height:100%}
+.promo-main-wrap{position:relative;flex:1;min-height:200px;cursor:zoom-in;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;background:#f0ede8}
+.promo-main-wrap .promo-img{transition:opacity .18s;padding:12px;max-height:400px}
+.promo-zoom-hint{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;
+  background:rgba(0,0,0,.4);color:#fff;font-size:13px;display:flex;align-items:center;
+  justify-content:center;opacity:0;transition:opacity .2s;pointer-events:none}
+.promo-main-wrap:hover .promo-zoom-hint{opacity:1}
+.promo-thumbs{display:flex;gap:6px;padding:8px 10px;flex-wrap:wrap;background:#e8e4df}
+.promo-thumb{width:48px;height:62px;object-fit:contain;border-radius:5px;cursor:pointer;
+  border:2px solid transparent;background:#f0ede8;padding:2px;transition:border-color .15s}
+.promo-thumb.active,.promo-thumb:hover{border-color:var(--coral)}
+/* ── Promo lightbox ── */
+#promo-lb{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9900;
+  display:none;align-items:center;justify-content:center}
+#promo-lb-img{max-width:90vw;max-height:88vh;object-fit:contain;border-radius:8px;display:block}
+.plb-btn{position:absolute;background:rgba(255,255,255,.15);border:none;color:#fff;
+  font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:background .15s}
+.plb-btn:hover{background:rgba(255,255,255,.3)}
+#plb-close{top:16px;right:16px;font-size:18px}
+#plb-prev{left:16px;top:50%;transform:translateY(-50%)}
+#plb-next{right:16px;top:50%;transform:translateY(-50%)}
+#plb-dots{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+.plb-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.35);
+  cursor:pointer;border:none;transition:background .15s}
+.plb-dot.on{background:#fff}
 
 /* ── Home Panel ── */
 .home-panel{max-width:1060px}
@@ -1169,10 +1198,28 @@ function renderPromo() {
   const p = HOME?.promocao;
   if (!p || !p.ativa) { el.style.display = 'none'; return; }
 
+  // Coleta imagens válidas — suporta novo campo `imagens` (array) e legado `imagem_url`
+  _promoImgs = ((p.imagens || []).concat(p.imagem_url ? [p.imagem_url] : [])).filter(u => u);
+  _promoActiveIdx = 0;
+
   const links = (p.links || []).filter(l => l.ref && REFS[l.ref]);
-  const imgHtml = p.imagem_url
-    ? `<div class="promo-img-col"><img class="promo-img" src="${esc(p.imagem_url)}" alt="${esc(p.titulo||'Promoção')}" onerror="this.closest('.promo-img-col').style.display='none'"/></div>`
-    : '';
+
+  const imgColHtml = _promoImgs.length === 0 ? '' : (() => {
+    const alt = esc(p.titulo || 'Promoção');
+    const thumbsHtml = _promoImgs.length > 1
+      ? `<div class="promo-thumbs">${_promoImgs.map((src, i) =>
+          `<img class="promo-thumb${i===0?' active':''}" src="${esc(src)}"
+               onclick="trocarPromoImg(this,${i})" onerror="this.style.display='none'" alt=""/>`
+        ).join('')}</div>`
+      : '';
+    return `<div class="promo-img-col"><div class="promo-gal">` +
+      `<div class="promo-main-wrap" onclick="abrirPromoLb(_promoActiveIdx)">` +
+        `<img class="promo-img" id="promo-main-img" src="${esc(_promoImgs[0])}" alt="${alt}"` +
+             ` onerror="this.closest('.promo-img-col').style.display='none'"/>` +
+        `<span class="promo-zoom-hint">&#128269;</span>` +
+      `</div>${thumbsHtml}</div></div>`;
+  })();
+
   const linksHtml = links.length
     ? `<div class="promo-links">${links.map(l =>
         `<button class="promo-link-btn" onclick="abrirDetalhe('${esc(l.ref)}','${esc(Object.keys(REFS[l.ref].cores)[0]||'')}','${esc(l.linha||'')}')">
@@ -1184,7 +1231,7 @@ function renderPromo() {
     `<div class="home-promo">` +
       `<div class="promo-hdr"><span style="font-size:14px">🏷</span><span class="promo-hdr-tag">Promoção Especial</span></div>` +
       `<div class="promo-body">` +
-        imgHtml +
+        imgColHtml +
         `<div class="promo-content">` +
           (p.titulo ? `<div class="promo-titulo">${esc(p.titulo)}</div>` : '') +
           (p.texto  ? `<div class="promo-texto">${esc(p.texto).replace(/\n/g,'<br>')}</div>` : '') +
@@ -2141,6 +2188,47 @@ async function gerarPDF() {
   }
 }
 
+// ── Promo lightbox ─────────────────────────────────────────────────
+let _promoImgs = [], _promoActiveIdx = 0;
+
+function trocarPromoImg(thumbEl, idx) {
+  document.querySelectorAll('.promo-thumb').forEach(t => t.classList.remove('active'));
+  thumbEl.classList.add('active');
+  _promoActiveIdx = idx;
+  const main = document.getElementById('promo-main-img');
+  if (main) { main.style.opacity = '.3'; main.src = _promoImgs[idx]; main.onload = () => { main.style.opacity = '1'; }; }
+}
+
+function abrirPromoLb(idx) {
+  if (!_promoImgs.length) return;
+  _promoActiveIdx = idx;
+  document.getElementById('promo-lb-img').src = _promoImgs[idx];
+  const multi = _promoImgs.length > 1;
+  document.getElementById('plb-prev').style.display = multi ? '' : 'none';
+  document.getElementById('plb-next').style.display = multi ? '' : 'none';
+  const dots = document.getElementById('plb-dots');
+  dots.innerHTML = multi
+    ? _promoImgs.map((_, i) => `<button class="plb-dot${i===idx?' on':''}" onclick="navPromoLbTo(${i})"></button>`).join('')
+    : '';
+  document.getElementById('promo-lb').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function fecharPromoLb() {
+  document.getElementById('promo-lb').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function promoLbBgClick(e) { if (e.target === document.getElementById('promo-lb')) fecharPromoLb(); }
+
+function navPromoLbTo(idx) {
+  _promoActiveIdx = idx;
+  document.getElementById('promo-lb-img').src = _promoImgs[idx];
+  document.querySelectorAll('.plb-dot').forEach((d, i) => d.classList.toggle('on', i === idx));
+}
+
+function navPromoLb(d) { navPromoLbTo((_promoActiveIdx + d + _promoImgs.length) % _promoImgs.length); }
+
 // ── Zoom de foto ───────────────────────────────────────────────────
 function abrirZoom(src) {
   const imgSrc = src || document.getElementById('lb-img')?.src;
@@ -2153,7 +2241,12 @@ function fecharZoom() {
 }
 
 document.addEventListener('keydown', e=>{
-  if (e.key==='Escape') { fecharZoom(); lbFechar(); fecharSeletor(); fecharDrawer(); fecharModalId(); }
+  if (e.key==='Escape') { fecharZoom(); fecharPromoLb(); lbFechar(); fecharSeletor(); fecharDrawer(); fecharModalId(); }
+  if (document.getElementById('promo-lb').style.display !== 'none') {
+    if (e.key==='ArrowLeft')  navPromoLb(-1);
+    if (e.key==='ArrowRight') navPromoLb(1);
+    return;
+  }
   if (document.getElementById('det-panel').style.display !== 'none') {
     if (e.key==='ArrowLeft') detNav(-1);
     if (e.key==='ArrowRight') detNav(1);
@@ -2171,6 +2264,15 @@ init();
 <div class="img-zoom-over" id="img-zoom-over" onclick="fecharZoom()">
   <button class="img-zoom-close" onclick="fecharZoom();event.stopPropagation()">×</button>
   <img class="img-zoom-img" id="img-zoom-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<!-- Lightbox de imagens da promoção -->
+<div id="promo-lb" onclick="promoLbBgClick(event)">
+  <img id="promo-lb-img" src="" alt=""/>
+  <button class="plb-btn" id="plb-close" onclick="fecharPromoLb()">&#10005;</button>
+  <button class="plb-btn" id="plb-prev" onclick="navPromoLb(-1)">&#8249;</button>
+  <button class="plb-btn" id="plb-next" onclick="navPromoLb(1)">&#8250;</button>
+  <div id="plb-dots"></div>
 </div>
 
 </body>

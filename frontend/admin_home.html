@@ -49,6 +49,15 @@ textarea{resize:vertical;min-height:80px}
 .upload-msg{font-size:11px;margin-top:6px;padding:6px 10px;border-radius:6px}
 .upload-msg.ok{background:rgba(108,156,55,.1);color:var(--verde)}
 .upload-msg.err{background:rgba(239,68,68,.08);color:#c0392b}
+.promo-imgs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.promo-img-slot{border:1.5px dashed var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.promo-img-slot.has-img{border-color:var(--coral);border-style:solid}
+.promo-slot-num{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-m)}
+.promo-slot-preview{border-radius:6px;overflow:hidden;background:#f0ede8;display:flex;align-items:center;justify-content:center;min-height:80px}
+.promo-slot-preview img{width:100%;max-height:180px;object-fit:contain}
+.btn-remove-img{font-size:11px;font-weight:600;color:#c0392b;background:none;border:none;cursor:pointer;padding:0;text-align:left;font-family:inherit}
+.btn-remove-img:hover{text-decoration:underline}
+@media(max-width:480px){.promo-imgs-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -134,17 +143,9 @@ textarea{resize:vertical;min-height:80px}
     </div>
 
     <div class="field">
-      <label>Imagem da campanha</label>
-      <div id="promo-img-preview" style="display:none">
-        <img id="promo-img-el" src="" alt="Imagem atual" class="upload-preview"/>
-      </div>
-      <div class="upload-row">
-        <input type="file" id="promo-img-file" accept="image/jpeg,image/png,image/webp" style="flex:1;min-width:160px;font-size:12px"/>
-        <button type="button" class="btn-upload" id="btn-upload-promo" onclick="uploadPromoImagem()">Fazer upload</button>
-      </div>
-      <div class="hint">JPG, PNG ou WEBP — formato vertical recomendado (ex.: 800×1400px). Cada novo upload substitui a imagem anterior.</div>
-      <input type="hidden" id="promo-imagem-url" value=""/>
-      <div id="promo-upload-msg" style="display:none" class="upload-msg"></div>
+      <label>Imagens da campanha (até 4 — ampliaveis no catálogo)</label>
+      <p class="hint" style="margin-bottom:12px">JPG, PNG ou WEBP. Formato vertical recomendado (ex.: 800×1400 px). Cada slot é independente.</p>
+      <div class="promo-imgs-grid" id="promo-imgs-container"></div>
     </div>
 
     <div class="field">
@@ -205,7 +206,7 @@ textarea{resize:vertical;min-height:80px}
 </div>
 
 <script>
-const N_DEST = 6, N_CAT = 6, N_PROMO_LINKS = 10;
+const N_DEST = 6, N_CAT = 6, N_PROMO_LINKS = 10, N_PROMO_IMGS = 4;
 let dadosAtual = {};
 let ESTOQUE_REFS = {};
 
@@ -249,6 +250,30 @@ function buildTables() {
   }
 }
 
+function buildImgSlots() {
+  const c = document.getElementById('promo-imgs-container');
+  if (!c) return;
+  c.innerHTML = '';
+  for (let i = 0; i < N_PROMO_IMGS; i++) {
+    const url = (dadosAtual.promocao?.imagens || [])[i] || '';
+    c.innerHTML += `
+      <div class="promo-img-slot${url?' has-img':''}" id="promo-slot-${i}">
+        <div class="promo-slot-num">Imagem ${i+1}</div>
+        <div class="promo-slot-preview" id="promo-slot-preview-${i}"${url?'':' style="display:none"'}>
+          <img id="promo-slot-img-${i}" src="${url?escHtml(url)+'?v='+Date.now():''}" alt="Imagem ${i+1}"
+               onerror="document.getElementById('promo-slot-preview-${i}').style.display='none';document.getElementById('promo-slot-${i}').classList.remove('has-img');document.getElementById('promo-slot-rm-${i}').style.display='none'"/>
+        </div>
+        <div class="upload-row">
+          <input type="file" id="promo-slot-file-${i}" accept="image/jpeg,image/png,image/webp" style="flex:1;min-width:100px;font-size:11px"/>
+          <button type="button" class="btn-upload" onclick="uploadPromoImagem(${i})">Upload</button>
+        </div>
+        <button type="button" class="btn-remove-img" id="promo-slot-rm-${i}" onclick="removePromoImagem(${i})"${url?'':' style="display:none"'}>✕ Remover</button>
+        <input type="hidden" id="promo-slot-url-${i}" value="${escHtml(url)}"/>
+        <div id="promo-slot-msg-${i}" class="upload-msg" style="display:none"></div>
+      </div>`;
+  }
+}
+
 function fillForm() {
   const b = dadosAtual.banner || {};
   document.getElementById('banner-titulo').value    = b.titulo    || '';
@@ -262,13 +287,7 @@ function fillForm() {
   document.getElementById('promo-ativa').checked  = !!p.ativa;
   document.getElementById('promo-titulo').value   = p.titulo || '';
   document.getElementById('promo-texto').value    = p.texto  || '';
-  document.getElementById('promo-imagem-url').value = p.imagem_url || '';
-  if (p.imagem_url) {
-    const imgEl = document.getElementById('promo-img-el');
-    imgEl.src = p.imagem_url + '?v=' + Date.now();
-    imgEl.onerror = () => { document.getElementById('promo-img-preview').style.display = 'none'; };
-    document.getElementById('promo-img-preview').style.display = '';
-  }
+  buildImgSlots();
 
   const inst = dadosAtual.institucional || {};
   document.getElementById('inst-texto').value     = inst.texto    || '';
@@ -325,7 +344,7 @@ function collectData() {
       ativa:      document.getElementById('promo-ativa').checked,
       titulo:     document.getElementById('promo-titulo').value.trim(),
       texto:      document.getElementById('promo-texto').value.trim(),
-      imagem_url: document.getElementById('promo-imagem-url').value.trim(),
+      imagens: Array.from({length: N_PROMO_IMGS}, (_, i) => (document.getElementById(`promo-slot-url-${i}`)?.value || '').trim()),
       links:      promoLinks,
     },
     categorias,
@@ -339,42 +358,61 @@ function collectData() {
   };
 }
 
-async function uploadPromoImagem() {
-  const fileInput = document.getElementById('promo-img-file');
-  const file = fileInput.files[0];
-  if (!file) { alert('Selecione uma imagem primeiro.'); return; }
-  const btn = document.getElementById('btn-upload-promo');
-  const msgEl = document.getElementById('promo-upload-msg');
-  btn.disabled = true;
-  btn.textContent = 'Enviando…';
-  msgEl.className = 'upload-msg';
-  msgEl.style.display = 'none';
+async function uploadPromoImagem(i) {
+  const fileInput = document.getElementById(`promo-slot-file-${i}`);
+  const msgEl    = document.getElementById(`promo-slot-msg-${i}`);
+  const btn      = document.querySelector(`#promo-slot-${i} .btn-upload`);
+  if (!fileInput?.files?.[0]) {
+    msgEl.textContent = '✗ Selecione um arquivo primeiro.';
+    msgEl.className = 'upload-msg err';
+    msgEl.style.display = 'block';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Enviando…'; msgEl.style.display = 'none';
   const fd = new FormData();
-  fd.append('imagem', file);
+  fd.append('imagem', fileInput.files[0]);
+  fd.append('idx', String(i));
   try {
     const r = await fetch('/admin/home/upload-imagem', { method: 'POST', body: fd });
-    const data = await r.json();
-    if (data.status === 'ok') {
-      document.getElementById('promo-imagem-url').value = data.url;
-      const imgEl = document.getElementById('promo-img-el');
-      imgEl.src = data.url + '?v=' + Date.now();
-      imgEl.onerror = () => {};
-      document.getElementById('promo-img-preview').style.display = '';
-      msgEl.textContent = '✓ Imagem enviada com sucesso! Clique em "Salvar alterações" para confirmar.';
+    const d = await r.json();
+    if (d.status === 'ok') {
+      document.getElementById(`promo-slot-url-${i}`).value = d.url;
+      const imgEl = document.getElementById(`promo-slot-img-${i}`);
+      imgEl.src = d.url + '?v=' + Date.now();
+      document.getElementById(`promo-slot-preview-${i}`).style.display = '';
+      document.getElementById(`promo-slot-rm-${i}`).style.display = '';
+      document.getElementById(`promo-slot-${i}`).classList.add('has-img');
+      msgEl.textContent = '✓ Enviada! Clique em "Salvar alterações" para confirmar.';
       msgEl.className = 'upload-msg ok';
       fileInput.value = '';
     } else {
-      msgEl.textContent = '✗ ' + (data.mensagem || 'Erro ao enviar a imagem.');
+      msgEl.textContent = '✗ ' + (d.mensagem || 'Erro ao enviar.');
       msgEl.className = 'upload-msg err';
     }
   } catch(e) {
     msgEl.textContent = '✗ Erro de conexão: ' + e.message;
     msgEl.className = 'upload-msg err';
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Fazer upload';
-    msgEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Upload'; msgEl.style.display = 'block';
   }
+}
+
+async function removePromoImagem(i) {
+  const msgEl = document.getElementById(`promo-slot-msg-${i}`);
+  try {
+    const r = await fetch('/admin/home/remove-imagem', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({idx: i}),
+    });
+    if ((await r.json()).status === 'ok') {
+      document.getElementById(`promo-slot-url-${i}`).value = '';
+      document.getElementById(`promo-slot-preview-${i}`).style.display = 'none';
+      document.getElementById(`promo-slot-rm-${i}`).style.display = 'none';
+      document.getElementById(`promo-slot-${i}`).classList.remove('has-img');
+      if (msgEl) { msgEl.textContent = 'Imagem removida.'; msgEl.className = 'upload-msg ok'; msgEl.style.display = 'block'; }
+    }
+  } catch(e) {}
 }
 
 async function salvar() {

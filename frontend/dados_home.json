@@ -11,7 +11,7 @@
     "ativa": false,
     "titulo": "",
     "texto": "",
-    "imagem_url": "",
+    "imagens": ["", "", "", ""],
     "links": [
       {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},
       {"ref": "", "linha": "", "desconto_pct": null, "preco_promo": null, "label": ""},

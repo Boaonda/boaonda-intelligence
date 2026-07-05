@@ -122,7 +122,7 @@ input:focus{border-color:#ed6842}
 @app.before_request
 def require_login():
     """Bloqueia todas as rotas exceto /login, /logout e o catálogo público."""
-    public_endpoints = {'login', 'logout', 'catalogo', 'foto_proxy', 'promo_imagem'}
+    public_endpoints = {'login', 'logout', 'catalogo', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx'}
     if request.endpoint in public_endpoints:
         return None
     # JSONs necessários para o catálogo público não exigem autenticação
@@ -568,34 +568,66 @@ def admin_home():
 
 @app.route('/promo-imagem')
 def promo_imagem():
-    """Serve a imagem da promoção — pública (sem autenticação)."""
+    """Rota de compatibilidade — serve a imagem do slot 0."""
+    return promo_imagem_idx(0)
+
+
+@app.route('/promo-imagem/<int:idx>')
+def promo_imagem_idx(idx):
+    """Serve a imagem de promoção pelo índice (0-3) — pública."""
+    if idx < 0 or idx > 3:
+        return '', 404
     for ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
-        p = DATA_DIR / f'promo_imagem{ext}'
+        p = DATA_DIR / f'promo_imagem_{idx}{ext}'
         if p.exists():
-            from flask import Response
-            return send_from_directory(DATA_DIR, f'promo_imagem{ext}', max_age=0)
+            return send_from_directory(DATA_DIR, f'promo_imagem_{idx}{ext}', max_age=0)
+    # backward compat: slot 0 também aceita o nome antigo sem índice
+    if idx == 0:
+        for ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+            p = DATA_DIR / f'promo_imagem{ext}'
+            if p.exists():
+                return send_from_directory(DATA_DIR, f'promo_imagem{ext}', max_age=0)
     return '', 404
 
 
 @app.route('/admin/home/upload-imagem', methods=['POST'])
 def admin_home_upload_imagem():
+    idx = int(request.form.get('idx', 0))
+    if idx < 0 or idx > 3:
+        return jsonify({'status': 'erro', 'mensagem': 'Índice inválido.'}), 400
     f = request.files.get('imagem')
     if not f or not f.filename:
         return jsonify({'status': 'erro', 'mensagem': 'Nenhum arquivo enviado.'}), 400
     ext = Path(f.filename).suffix.lower()
     if ext not in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
         return jsonify({'status': 'erro', 'mensagem': 'Formato não suportado. Use JPG, PNG ou WEBP.'}), 400
-    # Remove imagens anteriores de outros formatos
     for old_ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
-        old = DATA_DIR / f'promo_imagem{old_ext}'
+        old = DATA_DIR / f'promo_imagem_{idx}{old_ext}'
         if old.exists():
             old.unlink()
-    saved_name = f'promo_imagem{ext}'
+    saved_name = f'promo_imagem_{idx}{ext}'
     save_path = DATA_DIR / saved_name
     f.save(str(save_path))
     if DATA_DIR != FRONTEND_DIR:
         shutil.copy(save_path, FRONTEND_DIR / saved_name)
-    return jsonify({'status': 'ok', 'url': '/promo-imagem'})
+    return jsonify({'status': 'ok', 'url': f'/promo-imagem/{idx}'})
+
+
+@app.route('/admin/home/remove-imagem', methods=['POST'])
+def admin_home_remove_imagem():
+    data = request.get_json(silent=True) or {}
+    idx = int(data.get('idx', -1))
+    if idx < 0 or idx > 3:
+        return jsonify({'status': 'erro', 'mensagem': 'Índice inválido.'}), 400
+    for ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+        p = DATA_DIR / f'promo_imagem_{idx}{ext}'
+        if p.exists():
+            p.unlink()
+            if DATA_DIR != FRONTEND_DIR:
+                fp = FRONTEND_DIR / f'promo_imagem_{idx}{ext}'
+                if fp.exists():
+                    fp.unlink()
+    return jsonify({'status': 'ok'})
 
 
 @app.route('/admin/home/save', methods=['POST'])
