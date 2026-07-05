@@ -38,6 +38,17 @@ textarea{resize:vertical;min-height:80px}
 .back{display:inline-block;font-size:12px;color:var(--txt-s);text-decoration:none;vertical-align:middle}
 .back:hover{color:var(--coral)}
 .cor-preview{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin-right:4px}
+.toggle-wrap{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f3f0eb;border-radius:8px;border:1px solid var(--line);cursor:pointer}
+.toggle-wrap input[type=checkbox]{width:18px;height:18px;accent-color:var(--coral);cursor:pointer;flex-shrink:0}
+.toggle-wrap span{font-size:12px;font-weight:700;color:var(--verde-dark)}
+.btn-upload{background:var(--verde-dark);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:.15s}
+.btn-upload:hover{background:var(--coral)}
+.btn-upload:disabled{opacity:.5;cursor:not-allowed}
+.upload-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.upload-preview{max-width:180px;max-height:260px;border-radius:8px;border:1px solid var(--line);object-fit:contain;background:#f0ede8;display:block;margin-bottom:10px}
+.upload-msg{font-size:11px;margin-top:6px;padding:6px 10px;border-radius:6px}
+.upload-msg.ok{background:rgba(108,156,55,.1);color:var(--verde)}
+.upload-msg.err{background:rgba(239,68,68,.08);color:#c0392b}
 </style>
 </head>
 <body>
@@ -112,6 +123,52 @@ textarea{resize:vertical;min-height:80px}
     </table>
   </div>
 
+  <!-- PROMOÇÃO -->
+  <div class="card">
+    <div class="sec-title">Banner de Promoção</div>
+    <div class="field">
+      <label class="toggle-wrap" for="promo-ativa">
+        <input type="checkbox" id="promo-ativa"/>
+        <span>Promoção ativa — visível no catálogo público</span>
+      </label>
+    </div>
+
+    <div class="field">
+      <label>Imagem da campanha</label>
+      <div id="promo-img-preview" style="display:none">
+        <img id="promo-img-el" src="" alt="Imagem atual" class="upload-preview"/>
+      </div>
+      <div class="upload-row">
+        <input type="file" id="promo-img-file" accept="image/jpeg,image/png,image/webp" style="flex:1;min-width:160px;font-size:12px"/>
+        <button type="button" class="btn-upload" id="btn-upload-promo" onclick="uploadPromoImagem()">Fazer upload</button>
+      </div>
+      <div class="hint">JPG, PNG ou WEBP — formato vertical recomendado (ex.: 800×1400px). Cada novo upload substitui a imagem anterior.</div>
+      <input type="hidden" id="promo-imagem-url" value=""/>
+      <div id="promo-upload-msg" style="display:none" class="upload-msg"></div>
+    </div>
+
+    <div class="field">
+      <label>Título da promoção (opcional)</label>
+      <input type="text" id="promo-titulo" placeholder="Ex.: Especial Dia das Mães — Nellie Estampados"/>
+    </div>
+    <div class="field">
+      <label>Texto descritivo (opcional)</label>
+      <textarea id="promo-texto" rows="3" placeholder="Informações adicionais sobre a promoção…"></textarea>
+    </div>
+
+    <div class="field" style="margin-bottom:0">
+      <label>Links diretos para produtos (até 4)</label>
+      <p class="hint" style="margin-bottom:10px">Ao clicar no botão o cliente vai direto ao produto. Deixe em branco os que não usar.</p>
+      <table class="tbl">
+        <thead>
+          <tr><th>#</th><th>Referência do produto</th><th>Rótulo do botão</th></tr>
+        </thead>
+        <tbody id="promo-links-tbody"></tbody>
+      </table>
+      <datalist id="refs-list-promo"></datalist>
+    </div>
+  </div>
+
   <!-- INSTITUCIONAL -->
   <div class="card">
     <div class="sec-title">Texto Institucional + Contato</div>
@@ -148,14 +205,16 @@ textarea{resize:vertical;min-height:80px}
 </div>
 
 <script>
-const N_DEST = 6, N_CAT = 6;
+const N_DEST = 6, N_CAT = 6, N_PROMO_LINKS = 4;
 let dadosAtual = {};
 
 function buildTables() {
   const destTb = document.getElementById('dest-tbody');
   const catTb  = document.getElementById('cat-tbody');
+  const promoTb = document.getElementById('promo-links-tbody');
   destTb.innerHTML = '';
   catTb.innerHTML  = '';
+  promoTb.innerHTML = '';
   for (let i = 0; i < N_DEST; i++) {
     const d = (dadosAtual.destaques || [])[i] || {};
     destTb.innerHTML += `<tr>
@@ -170,8 +229,16 @@ function buildTables() {
     catTb.innerHTML += `<tr>
       <td>${i+1}</td>
       <td><input type="text" id="cat-nome-${i}" value="${escHtml(c.nome||'')}" placeholder="Ex.: Feminino"/></td>
-      <td><input type="text" id="cat-tipo-${i}" value="${escHtml(c.tipo_filtro||'')}" placeholder="SANDALIA"/></td>
+      <td><input type="text" id="cat-tipo-${i}" value="${escHtml(c.tipo_filtro||'')}" placeholder="FEM"/></td>
       <td><input type="color" id="cat-cor-${i}" value="${cor}"/></td>
+    </tr>`;
+  }
+  for (let i = 0; i < N_PROMO_LINKS; i++) {
+    const l = (dadosAtual.promocao?.links || [])[i] || {};
+    promoTb.innerHTML += `<tr>
+      <td>${i+1}</td>
+      <td><input type="text" id="promo-link-ref-${i}" list="refs-list-promo" value="${escHtml(l.ref||'')}" placeholder="1317 NELLIE"/></td>
+      <td><input type="text" id="promo-link-lbl-${i}" value="${escHtml(l.label||'')}" placeholder="Ex.: NELLIE Estampado"/></td>
     </tr>`;
   }
 }
@@ -183,6 +250,20 @@ function fillForm() {
   document.getElementById('banner-imagem').value    = b.imagem_url || '';
   const sel = document.getElementById('banner-cor');
   for (const opt of sel.options) { if (opt.value === b.cor_fundo) { opt.selected = true; break; } }
+
+  // Promoção
+  const p = dadosAtual.promocao || {};
+  document.getElementById('promo-ativa').checked  = !!p.ativa;
+  document.getElementById('promo-titulo').value   = p.titulo || '';
+  document.getElementById('promo-texto').value    = p.texto  || '';
+  document.getElementById('promo-imagem-url').value = p.imagem_url || '';
+  if (p.imagem_url) {
+    const imgEl = document.getElementById('promo-img-el');
+    imgEl.src = p.imagem_url + '?v=' + Date.now();
+    imgEl.onerror = () => { document.getElementById('promo-img-preview').style.display = 'none'; };
+    document.getElementById('promo-img-preview').style.display = '';
+  }
+
   const inst = dadosAtual.institucional || {};
   document.getElementById('inst-texto').value     = inst.texto    || '';
   document.getElementById('inst-email').value     = inst.email    || '';
@@ -206,6 +287,13 @@ function collectData() {
     const cor  = document.getElementById(`cat-cor-${i}`)?.value || '#ed6842';
     if (nome) categorias.push({ nome, tipo_filtro: tipo, cor });
   }
+  const promoLinks = [];
+  for (let i = 0; i < N_PROMO_LINKS; i++) {
+    promoLinks.push({
+      ref:   (document.getElementById(`promo-link-ref-${i}`)?.value || '').trim(),
+      label: (document.getElementById(`promo-link-lbl-${i}`)?.value || '').trim(),
+    });
+  }
   return {
     banner: {
       titulo:    document.getElementById('banner-titulo').value.trim(),
@@ -214,6 +302,13 @@ function collectData() {
       cor_fundo:  document.getElementById('banner-cor').value,
     },
     destaques,
+    promocao: {
+      ativa:      document.getElementById('promo-ativa').checked,
+      titulo:     document.getElementById('promo-titulo').value.trim(),
+      texto:      document.getElementById('promo-texto').value.trim(),
+      imagem_url: document.getElementById('promo-imagem-url').value.trim(),
+      links:      promoLinks,
+    },
     categorias,
     institucional: {
       texto:    document.getElementById('inst-texto').value.trim(),
@@ -223,6 +318,44 @@ function collectData() {
       endereco: document.getElementById('inst-endereco').value.trim(),
     },
   };
+}
+
+async function uploadPromoImagem() {
+  const fileInput = document.getElementById('promo-img-file');
+  const file = fileInput.files[0];
+  if (!file) { alert('Selecione uma imagem primeiro.'); return; }
+  const btn = document.getElementById('btn-upload-promo');
+  const msgEl = document.getElementById('promo-upload-msg');
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+  msgEl.className = 'upload-msg';
+  msgEl.style.display = 'none';
+  const fd = new FormData();
+  fd.append('imagem', file);
+  try {
+    const r = await fetch('/admin/home/upload-imagem', { method: 'POST', body: fd });
+    const data = await r.json();
+    if (data.status === 'ok') {
+      document.getElementById('promo-imagem-url').value = data.url;
+      const imgEl = document.getElementById('promo-img-el');
+      imgEl.src = data.url + '?v=' + Date.now();
+      imgEl.onerror = () => {};
+      document.getElementById('promo-img-preview').style.display = '';
+      msgEl.textContent = '✓ Imagem enviada com sucesso! Clique em "Salvar alterações" para confirmar.';
+      msgEl.className = 'upload-msg ok';
+      fileInput.value = '';
+    } else {
+      msgEl.textContent = '✗ ' + (data.mensagem || 'Erro ao enviar a imagem.');
+      msgEl.className = 'upload-msg err';
+    }
+  } catch(e) {
+    msgEl.textContent = '✗ Erro de conexão: ' + e.message;
+    msgEl.className = 'upload-msg err';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Fazer upload';
+    msgEl.style.display = 'block';
+  }
 }
 
 async function salvar() {
@@ -267,9 +400,11 @@ async function init() {
     const re = await fetch('/dados_estoque.json');
     if (re.ok) {
       const est = await re.json();
-      const dl = document.getElementById('refs-list');
+      const dl  = document.getElementById('refs-list');
+      const dl2 = document.getElementById('refs-list-promo');
       for (const ref of Object.keys(est.refs || {})) {
-        const opt = document.createElement('option'); opt.value = ref; dl.appendChild(opt);
+        const o1 = document.createElement('option'); o1.value = ref; dl.appendChild(o1);
+        const o2 = document.createElement('option'); o2.value = ref; dl2.appendChild(o2);
       }
     }
   } catch(e) {}

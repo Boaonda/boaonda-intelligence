@@ -7,6 +7,18 @@
     "cor_fundo": "#26361e"
   },
   "destaques": [],
+  "promocao": {
+    "ativa": false,
+    "titulo": "",
+    "texto": "",
+    "imagem_url": "",
+    "links": [
+      {"ref": "", "label": ""},
+      {"ref": "", "label": ""},
+      {"ref": "", "label": ""},
+      {"ref": "", "label": ""}
+    ]
+  },
   "categorias": [
     {"nome": "Feminino", "tipo_filtro": "FEM", "cor": "#ed6842"},
     {"nome": "Masculino", "tipo_filtro": "MASC", "cor": "#4994c7"},

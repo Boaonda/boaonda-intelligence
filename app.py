@@ -122,7 +122,7 @@ input:focus{border-color:#ed6842}
 @app.before_request
 def require_login():
     """Bloqueia todas as rotas exceto /login, /logout e o catálogo público."""
-    public_endpoints = {'login', 'logout', 'catalogo', 'foto_proxy'}
+    public_endpoints = {'login', 'logout', 'catalogo', 'foto_proxy', 'promo_imagem'}
     if request.endpoint in public_endpoints:
         return None
     # JSONs necessários para o catálogo público não exigem autenticação
@@ -564,6 +564,38 @@ def foto_proxy():
 @app.route('/admin/home')
 def admin_home():
     return send_from_directory(FRONTEND_DIR, 'admin_home.html')
+
+
+@app.route('/promo-imagem')
+def promo_imagem():
+    """Serve a imagem da promoção — pública (sem autenticação)."""
+    for ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+        p = DATA_DIR / f'promo_imagem{ext}'
+        if p.exists():
+            from flask import Response
+            return send_from_directory(DATA_DIR, f'promo_imagem{ext}', max_age=0)
+    return '', 404
+
+
+@app.route('/admin/home/upload-imagem', methods=['POST'])
+def admin_home_upload_imagem():
+    f = request.files.get('imagem')
+    if not f or not f.filename:
+        return jsonify({'status': 'erro', 'mensagem': 'Nenhum arquivo enviado.'}), 400
+    ext = Path(f.filename).suffix.lower()
+    if ext not in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+        return jsonify({'status': 'erro', 'mensagem': 'Formato não suportado. Use JPG, PNG ou WEBP.'}), 400
+    # Remove imagens anteriores de outros formatos
+    for old_ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+        old = DATA_DIR / f'promo_imagem{old_ext}'
+        if old.exists():
+            old.unlink()
+    saved_name = f'promo_imagem{ext}'
+    save_path = DATA_DIR / saved_name
+    f.save(str(save_path))
+    if DATA_DIR != FRONTEND_DIR:
+        shutil.copy(save_path, FRONTEND_DIR / saved_name)
+    return jsonify({'status': 'ok', 'url': '/promo-imagem'})
 
 
 @app.route('/admin/home/save', methods=['POST'])

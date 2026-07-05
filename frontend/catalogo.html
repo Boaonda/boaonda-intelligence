@@ -119,6 +119,34 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 .empty{grid-column:1/-1;padding:50px 20px;text-align:center;color:var(--txt-m)}
 .empty p{font-size:13px;margin-top:10px}
 
+/* ── Promoção ── */
+.home-promo{border-radius:14px;overflow:hidden;margin-bottom:28px;
+  border:1.5px solid rgba(237,104,66,.22);background:var(--card);
+  box-shadow:0 6px 28px rgba(237,104,66,.08)}
+.promo-hdr{background:var(--coral);padding:10px 20px;
+  display:flex;align-items:center;gap:8px}
+.promo-hdr-tag{font-size:10px;font-weight:800;color:#fff;
+  text-transform:uppercase;letter-spacing:.14em}
+.promo-body{display:grid;grid-template-columns:240px 1fr;align-items:stretch}
+.promo-img-col{background:#f0ede8;overflow:hidden;
+  display:flex;align-items:center;justify-content:center}
+.promo-img{width:100%;display:block;object-fit:contain;
+  max-height:420px;padding:12px}
+.promo-content{padding:26px 28px;display:flex;flex-direction:column;
+  justify-content:center;gap:14px}
+.promo-titulo{font-size:20px;font-weight:800;color:var(--verde-dark);line-height:1.2}
+.promo-texto{font-size:13px;color:var(--txt-s);line-height:1.65}
+.promo-links{display:flex;flex-wrap:wrap;gap:8px}
+.promo-link-btn{display:inline-flex;align-items:center;gap:5px;
+  padding:9px 18px;background:var(--coral);color:#fff;border-radius:20px;
+  font-size:12px;font-weight:700;cursor:pointer;border:none;
+  font-family:inherit;transition:.15s;touch-action:manipulation}
+.promo-link-btn:hover{background:var(--coral2)}
+@media(max-width:750px){
+  .promo-body{grid-template-columns:1fr}
+  .promo-img{max-height:72vw;padding:8px}
+}
+
 /* ── Home Panel ── */
 .home-panel{max-width:1060px}
 .home-section{margin-bottom:28px}
@@ -668,6 +696,7 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
           <button class="home-banner-cta" onclick="verTodos()">Ver coleção →</button>
         </div>
       </div>
+      <div id="home-promo-sec" style="display:none"></div>
       <section class="home-section" id="home-dest-sec" style="display:none">
         <div class="home-sec-title">Destaques</div>
         <div class="home-destaques" id="home-destaques"></div>
@@ -1058,6 +1087,9 @@ function renderHome() {
     img.className = 'home-banner-bg'; img.src = b.imagem_url; img.alt = '';
     bannerEl.appendChild(img);
   }
+  // Promoção
+  renderPromo();
+
   // Destaques
   const destaques = (HOME.destaques || []).filter(d => d.ref && REFS[d.ref]);
   const dSec = document.getElementById('home-dest-sec');
@@ -1118,6 +1150,38 @@ function renderHome() {
     iEl.innerHTML = (inst.texto ? `<div class="home-inst-texto">${esc(inst.texto)}</div>` : '') +
                     (rows ? `<div class="home-inst-contacts">${rows}</div>` : '');
   }
+}
+
+function renderPromo() {
+  const el = document.getElementById('home-promo-sec');
+  if (!el) return;
+  const p = HOME?.promocao;
+  if (!p || !p.ativa) { el.style.display = 'none'; return; }
+
+  const links = (p.links || []).filter(l => l.ref && REFS[l.ref]);
+  const imgHtml = p.imagem_url
+    ? `<div class="promo-img-col"><img class="promo-img" src="${esc(p.imagem_url)}" alt="${esc(p.titulo||'Promoção')}" onerror="this.closest('.promo-img-col').style.display='none'"/></div>`
+    : '';
+  const linksHtml = links.length
+    ? `<div class="promo-links">${links.map(l =>
+        `<button class="promo-link-btn" onclick="abrirDetalhe('${esc(l.ref)}','${esc(Object.keys(REFS[l.ref].cores)[0]||'')}')">
+          ${esc(l.label || REFS[l.ref]?.modelo || l.ref)} →
+        </button>`).join('')}</div>`
+    : '';
+
+  el.innerHTML =
+    `<div class="home-promo">` +
+      `<div class="promo-hdr"><span style="font-size:14px">🏷</span><span class="promo-hdr-tag">Promoção Especial</span></div>` +
+      `<div class="promo-body">` +
+        imgHtml +
+        `<div class="promo-content">` +
+          (p.titulo ? `<div class="promo-titulo">${esc(p.titulo)}</div>` : '') +
+          (p.texto  ? `<div class="promo-texto">${esc(p.texto).replace(/\n/g,'<br>')}</div>` : '') +
+          linksHtml +
+        `</div>` +
+      `</div>` +
+    `</div>`;
+  el.style.display = '';
 }
 
 function toggleModelosMob() {
