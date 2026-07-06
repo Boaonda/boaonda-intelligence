@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import os
 import shutil
+import threading
 import traceback
 
 from flask import (Flask, request, jsonify, send_from_directory,
@@ -477,66 +478,143 @@ p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
 .msg{border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:16px}
 .msg.ok{background:rgba(108,156,55,.1);color:var(--verde);border:1px solid rgba(108,156,55,.25)}
 .msg.err{background:rgba(239,68,68,.08);color:#c0392b;border:1px solid rgba(239,68,68,.25)}
-.stat{font-size:12px;color:var(--txt-s);margin-top:8px}
-.stat strong{color:var(--verde-dark)}
+.msg.run{background:rgba(237,104,66,.08);color:var(--coral);border:1px solid rgba(237,104,66,.25)}
 .back{display:inline-block;margin-top:8px;font-size:12px;color:var(--txt-s);text-decoration:none}
 .back:hover{color:var(--coral)}
-.warn{background:rgba(237,104,66,.08);border:1px solid rgba(237,104,66,.2);border-radius:8px;
-      padding:10px 14px;font-size:11px;color:var(--coral);margin-bottom:16px}
+.progress-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:12px}
+.progress-fill{height:100%;background:var(--coral);border-radius:3px;width:0%;transition:width .5s}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(237,104,66,.3);
+  border-top-color:var(--coral);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="brand">BOAONDA <span>· Intelligence</span></div>
   <h1>Atualizar fotos do catálogo</h1>
-  <p class="sub">Busca as imagens de produto no Inside Boaonda e gera o arquivo de fotos usado pelo catálogo público. Pode levar 2–3 minutos.</p>
+  <p class="sub">Busca as imagens de produto no Inside Boaonda e gera o arquivo de fotos usado pelo catálogo público.</p>
 
-  {% if message %}
-  <div class="msg {{ 'ok' if ok else 'err' }}">{{ message|safe }}</div>
-  {% endif %}
+  <div id="status-box"></div>
 
-  <div class="warn">⏳ O processo pode demorar 2 a 3 minutos. Não feche a página enquanto estiver carregando.</div>
-
-  <form class="card" method="post"
-    onsubmit="document.getElementById('btn').textContent='Buscando fotos… aguarde';document.getElementById('btn').disabled=true">
-    <button class="btn" id="btn" type="submit">Buscar fotos e atualizar catálogo</button>
-  </form>
+  <div class="card" id="form-card">
+    <button class="btn" id="btn" onclick="iniciarJob()">Buscar fotos e atualizar catálogo</button>
+    <div class="progress-bar" id="pbar" style="display:none"><div class="progress-fill" id="pfill"></div></div>
+  </div>
 
   <a class="back" href="/upload">← Voltar para Atualizar dados</a>
   &nbsp;·&nbsp;
   <a class="back" href="/catalogo" target="_blank">Ver catálogo público ↗</a>
 </div>
+<script>
+let _poll = null;
+let _elapsed = 0;
+
+function iniciarJob() {
+  document.getElementById('btn').disabled = true;
+  document.getElementById('pbar').style.display = 'block';
+  document.getElementById('status-box').innerHTML =
+    '<div class="msg run"><span class="spinner"></span>Iniciando busca de fotos…</div>';
+  fetch('/admin/fotos/start', {method:'POST'})
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) { _elapsed = 0; _poll = setInterval(verificarStatus, 3000); }
+      else { mostrarErro(d.msg || 'Erro ao iniciar'); }
+    })
+    .catch(() => mostrarErro('Erro de conexão'));
+}
+
+function verificarStatus() {
+  _elapsed += 3;
+  const pct = Math.min(95, Math.round(_elapsed / 120 * 100));
+  document.getElementById('pfill').style.width = pct + '%';
+  fetch('/admin/fotos/status')
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'done') {
+        clearInterval(_poll);
+        document.getElementById('pfill').style.width = '100%';
+        const s = d.stats || {};
+        document.getElementById('status-box').innerHTML =
+          '<div class="msg ok">✓ Fotos atualizadas com sucesso!<br>' +
+          'Total: <strong>' + s.total + '</strong> cores · ' +
+          'Completas: <strong>' + s.completas + '</strong> · ' +
+          'Parciais: <strong>' + s.parciais + '</strong> · ' +
+          'Sem foto: <strong>' + s.sem_foto + '</strong> · ' +
+          'Cobertura: <strong>' + s.cobertura_pct + '%</strong></div>';
+        document.getElementById('btn').disabled = false;
+        document.getElementById('pbar').style.display = 'none';
+      } else if (d.status === 'error') {
+        clearInterval(_poll);
+        mostrarErro(d.msg || 'Erro desconhecido');
+      } else {
+        document.getElementById('status-box').innerHTML =
+          '<div class="msg run"><span class="spinner"></span>Buscando fotos no Inside Boaonda… ' + _elapsed + 's</div>';
+      }
+    })
+    .catch(() => {});
+}
+
+function mostrarErro(msg) {
+  document.getElementById('status-box').innerHTML =
+    '<div class="msg err">✗ ' + msg + '</div>';
+  document.getElementById('btn').disabled = false;
+  document.getElementById('pbar').style.display = 'none';
+}
+</script>
 </body>
 </html>'''
 
 
-@app.route('/admin/fotos', methods=['GET', 'POST'])
+# Estado do job de fotos — persistido em arquivo para sobreviver entre workers
+FOTOS_JOB_FILE = DATA_DIR / 'fotos_job.json'
+
+def _ler_job():
+    try:
+        return json.loads(FOTOS_JOB_FILE.read_text(encoding='utf-8'))
+    except Exception:
+        return {'status': 'idle'}
+
+def _salvar_job(dados):
+    try:
+        FOTOS_JOB_FILE.write_text(json.dumps(dados, ensure_ascii=False), encoding='utf-8')
+    except Exception:
+        pass
+
+def _rodar_fotos_bg():
+    try:
+        import gerar_dados_fotos
+        stats = gerar_dados_fotos.gerar(
+            estoque_path=str(DATA_DIR / 'dados_estoque.json'),
+            fotos_out=str(DATA_DIR / 'dados_fotos.json'),
+        )
+        if DATA_DIR != FRONTEND_DIR:
+            shutil.copy(DATA_DIR / 'dados_fotos.json', FRONTEND_DIR / 'dados_fotos.json')
+        _salvar_job({'status': 'done', 'stats': stats,
+                     'ts': datetime.now().strftime('%d/%m/%Y %H:%M')})
+    except Exception as ex:
+        traceback.print_exc()
+        _salvar_job({'status': 'error', 'msg': str(ex)})
+
+
+@app.route('/admin/fotos', methods=['GET'])
 def admin_fotos():
-    message, ok = None, True
-    if request.method == 'POST':
-        try:
-            import gerar_dados_fotos
-            stats = gerar_dados_fotos.gerar(
-                estoque_path=str(DATA_DIR / 'dados_estoque.json'),
-                fotos_out=str(DATA_DIR / 'dados_fotos.json'),
-            )
-            # Copia de volta para FRONTEND_DIR para persistir no repo
-            if DATA_DIR != FRONTEND_DIR:
-                shutil.copy(DATA_DIR / 'dados_fotos.json',
-                            FRONTEND_DIR / 'dados_fotos.json')
-            message = (
-                f"Fotos atualizadas com sucesso!<br>"
-                f"Total: {stats['total']} cores · "
-                f"Completas: {stats['completas']} · "
-                f"Parciais: {stats['parciais']} · "
-                f"Sem foto: {stats['sem_foto']} · "
-                f"Cobertura: {stats['cobertura_pct']}%"
-            )
-        except Exception as ex:
-            traceback.print_exc()
-            message = f'Erro ao buscar fotos: {ex}'
-            ok = False
-    return render_template_string(_FOTOS_HTML, message=message, ok=ok)
+    return render_template_string(_FOTOS_HTML)
+
+
+@app.route('/admin/fotos/start', methods=['POST'])
+def admin_fotos_start():
+    job = _ler_job()
+    if job.get('status') == 'running':
+        return jsonify({'ok': False, 'msg': 'Já existe um processo em andamento.'})
+    _salvar_job({'status': 'running', 'started': datetime.now().strftime('%d/%m/%Y %H:%M')})
+    t = threading.Thread(target=_rodar_fotos_bg, daemon=True)
+    t.start()
+    return jsonify({'ok': True})
+
+
+@app.route('/admin/fotos/status')
+def admin_fotos_status():
+    return jsonify(_ler_job())
 
 
 @app.route('/api/foto-proxy')
