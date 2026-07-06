@@ -83,8 +83,8 @@ def extrair_ref_num(ref_key: str) -> str:
 
 
 def extrair_linha_code(linha_descr: str) -> str | None:
-    """'SANDALIA FEM TR (185)' → '185'"""
-    m = re.search(r'\((\d+)\)\s*$', linha_descr.strip())
+    """'SANDALIA FEM TR (185)' → '185'   |   'BOTA FEM PVC (103) FOSCA' → '103'"""
+    m = re.search(r'\((\d+)\)', linha_descr.strip())
     return m.group(1) if m else None
 
 
