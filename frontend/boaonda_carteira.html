@@ -76,6 +76,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .drill-cliente{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px}
 .drill-cliente:hover{background:rgba(255,255,255,.03)}
 .drill-cliente.ativa{background:var(--card2)}
+.drill-cliente.sub{padding-left:24px;background:rgba(255,255,255,.018)}
+.drill-cliente.sub:hover{background:rgba(255,255,255,.04)}
+.drill-cliente.sub.ativa{background:rgba(73,148,199,.12)}
 .drill-arrow{width:14px;color:var(--txt-m);font-size:10px}
 .drill-cliente.ativa .drill-arrow{color:var(--coral)}
 .dc-nome{flex:1;color:var(--txt-s);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -488,11 +491,15 @@ function renderCharts(){
 // ── Drilldown — Pares por mês de entrega prevista ───────────
 let mesEntregaAtivo = null;
 let mesEntregaLabelAtivo = '';
-let entregaModo = 'cliente';   // 'cliente' | 'modelo'
+let entregaModo = 'cliente';   // 'cliente' | 'modelo' | 'etapa'
 let clienteEntregaAtivo = null;
 let modeloEntregaAtivo = null;
+let etapaEntregaAtiva = null;
+let clienteEmEtapaEntregaAtivo = null;
 let CLIENTES_ENTREGA_REF = [];
 let MODELOS_ENTREGA_REF = [];
+let ETAPAS_ENTREGA_REF = [];
+let CLIENTES_EM_ETAPA_REF = [];
 
 function mesKey(dataBr){
   if(!dataBr) return null;
@@ -505,18 +512,24 @@ function toggleMesEntrega(key, label){
   else { mesEntregaAtivo = key; mesEntregaLabelAtivo = label; }
   clienteEntregaAtivo = null;
   modeloEntregaAtivo = null;
+  etapaEntregaAtiva = null;
+  clienteEmEtapaEntregaAtivo = null;
   renderEntregaDrill();
 }
 function fecharEntregaDrill(){
   mesEntregaAtivo = null;
   clienteEntregaAtivo = null;
   modeloEntregaAtivo = null;
+  etapaEntregaAtiva = null;
+  clienteEmEtapaEntregaAtivo = null;
   renderEntregaDrill();
 }
 function setEntregaModo(modo){
   entregaModo = modo;
   clienteEntregaAtivo = null;
   modeloEntregaAtivo = null;
+  etapaEntregaAtiva = null;
+  clienteEmEtapaEntregaAtivo = null;
   renderEntregaDrill();
 }
 function toggleClienteEntrega(idx){
@@ -527,6 +540,17 @@ function toggleClienteEntrega(idx){
 function toggleModeloEntrega(idx){
   const ref = MODELOS_ENTREGA_REF[idx];
   modeloEntregaAtivo = (modeloEntregaAtivo===ref) ? null : ref;
+  renderEntregaDrill();
+}
+function toggleEtapaEntrega(idx){
+  const nome = ETAPAS_ENTREGA_REF[idx];
+  if(etapaEntregaAtiva === nome){ etapaEntregaAtiva = null; }
+  else { etapaEntregaAtiva = nome; clienteEmEtapaEntregaAtivo = null; }
+  renderEntregaDrill();
+}
+function toggleClienteEmEtapa(idx){
+  const nome = CLIENTES_EM_ETAPA_REF[idx];
+  clienteEmEtapaEntregaAtivo = (clienteEmEtapaEntregaAtivo===nome) ? null : nome;
   renderEntregaDrill();
 }
 
@@ -561,6 +585,27 @@ function renderEntregaDrill(){
       </div>
       ${modeloEntregaAtivo===m.ref ? renderClientesModelo(m.pedidos) : ''}
     `).join('');
+  } else if(entregaModo === 'etapa'){
+    const porEtapa = {};
+    pedidos.forEach(p=>{
+      const etapa = p.etapa || '(sem etapa)';
+      if(!porEtapa[etapa]) porEtapa[etapa] = {etapa, pares:0, clientes:new Set(), pedidos:[]};
+      porEtapa[etapa].pares += p.pares;
+      porEtapa[etapa].clientes.add(p.cliente);
+      porEtapa[etapa].pedidos.push(p);
+    });
+    const etapas = Object.values(porEtapa).sort((a,b)=>b.pares-a.pares);
+    count = etapas.length;
+    ETAPAS_ENTREGA_REF = [];
+    listaHtml = etapas.map(e=>`
+      <div class="drill-cliente ${etapaEntregaAtiva===e.etapa?'ativa':''}" onclick="toggleEtapaEntrega(${ETAPAS_ENTREGA_REF.push(e.etapa)-1})">
+        <div class="drill-arrow">${etapaEntregaAtiva===e.etapa?'▾':'▸'}</div>
+        <div class="dc-nome">${e.etapa}</div>
+        <div class="dc-ped">${f(e.clientes.size)} cli.</div>
+        <div class="dc-pares">${f(e.pares)} pares</div>
+      </div>
+      ${etapaEntregaAtiva===e.etapa ? renderClientesEtapaDrill(e.pedidos) : ''}
+    `).join('');
   } else {
     const porCliente = {};
     pedidos.forEach(p=>{
@@ -583,15 +628,17 @@ function renderEntregaDrill(){
     `).join('');
   }
 
+  const modoLabel = entregaModo==='modelo' ? 'modelo' : entregaModo==='etapa' ? 'etapa' : 'cliente';
   wrap.innerHTML = `
     <div class="drill">
       <div class="drill-head">
-        <span>${count} ${entregaModo==='modelo'?'modelo':'cliente'}(s) — entrega em ${mesEntregaLabelAtivo||mesEntregaAtivo}</span>
+        <span>${count} ${modoLabel}(s) — entrega em ${mesEntregaLabelAtivo||mesEntregaAtivo}</span>
         <div class="drill-sort">
           <span>ver por</span>
           <select onchange="setEntregaModo(this.value)">
             <option value="cliente" ${entregaModo==='cliente'?'selected':''}>Cliente</option>
             <option value="modelo" ${entregaModo==='modelo'?'selected':''}>Modelo</option>
+            <option value="etapa" ${entregaModo==='etapa'?'selected':''}>Etapa</option>
           </select>
           <span class="drill-close" onclick="event.stopPropagation();fecharEntregaDrill()">fechar ✕</span>
         </div>
@@ -649,6 +696,27 @@ function renderClientesModelo(pedidosModelo){
         </tbody>
       </table>
     </div>`;
+}
+
+function renderClientesEtapaDrill(pedidosEtapa){
+  const porCliente = {};
+  pedidosEtapa.forEach(p=>{
+    const k = p.cliente;
+    if(!porCliente[k]) porCliente[k] = {cliente:k, pares:0, pedidos:[]};
+    porCliente[k].pares += p.pares;
+    porCliente[k].pedidos.push(p);
+  });
+  const clientes = Object.values(porCliente).sort((a,b)=>b.pares-a.pares);
+  CLIENTES_EM_ETAPA_REF = [];
+  return clientes.map(c=>`
+    <div class="drill-cliente sub ${clienteEmEtapaEntregaAtivo===c.cliente?'ativa':''}" onclick="event.stopPropagation();toggleClienteEmEtapa(${CLIENTES_EM_ETAPA_REF.push(c.cliente)-1})">
+      <div class="drill-arrow">${clienteEmEtapaEntregaAtivo===c.cliente?'▾':'▸'}</div>
+      <div class="dc-nome">${c.cliente}</div>
+      <div class="dc-ped">${f(c.pedidos.length)} ped.</div>
+      <div class="dc-pares">${f(c.pares)} pares</div>
+    </div>
+    ${clienteEmEtapaEntregaAtivo===c.cliente ? renderProdutosCliente(c.pedidos) : ''}
+  `).join('');
 }
 
 // Tabela
