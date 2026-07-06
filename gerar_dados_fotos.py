@@ -120,13 +120,17 @@ def buscar_wp(session, query: str) -> list:
 
 
 def slug_de(item: dict) -> str:
-    """Retorna o slug/nome do arquivo do media item para comparação."""
-    src   = item.get("source_url", "")
+    """Retorna o slug do media item para comparação.
+    Prioriza o campo 'slug' do WordPress — mais confiável que o filename,
+    que pode conter sufixos automáticos como -scaled ou -rotated.
+    """
     slug  = item.get("slug", "")
+    src   = item.get("source_url", "")
     title = (item.get("title") or {}).get("rendered", "")
-    # Prefere o nome do arquivo extraído da URL
-    fname = src.rsplit("/", 1)[-1].rsplit(".", 1)[0]   # sem extensão
-    return (fname or slug or title).lower()
+    if slug:
+        return slug.lower()
+    fname = src.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+    return (fname or title).lower()
 
 
 def fotos_por_prefixo(session, prefixo: str) -> dict:
