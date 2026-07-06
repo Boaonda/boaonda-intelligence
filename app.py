@@ -171,7 +171,13 @@ def serve_file(filename):
     # JSONs gerados pelo /upload vivem em DATA_DIR (volume persistente);
     # o restante (HTML/CSS/JS dos dashboards) vem do código versionado.
     if filename in DATA_FILES:
-        return send_from_directory(DATA_DIR, filename)
+        resp = send_from_directory(DATA_DIR, filename)
+        # JSONs públicos do catálogo: cache de 5 min no browser (reduz carga
+        # em acessos simultâneos; TTL curto garante atualização pós-upload).
+        if filename in DATA_FILES_PUBLICOS:
+            resp.cache_control.public = True
+            resp.cache_control.max_age = 300
+        return resp
     return send_from_directory(FRONTEND_DIR, filename)
 
 
