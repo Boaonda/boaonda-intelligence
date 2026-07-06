@@ -1904,10 +1904,8 @@ function iniciarSwipe() {
 function fotoRef(rk, ck) {
   const fo=(FOTOS?.refs?.[rk]||{})[ck]||{};
   for (const a of ANGULOS) if (fo[a]) return fo[a];
-  for (const ck2 of Object.keys(FOTOS?.refs?.[rk]||{})) {
-    const fo2=(FOTOS.refs[rk]||{})[ck2]||{};
-    for (const a of ANGULOS) if (fo2[a]) return fo2[a];
-  }
+  // Sem foto para essa cor específica — retorna placeholder em vez de
+  // tentar outra cor, o que poderia mostrar foto de produto diferente.
   return PH;
 }
 function fotoAngulo(rk, ck, angIdx) {
