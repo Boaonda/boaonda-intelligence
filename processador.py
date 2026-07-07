@@ -281,11 +281,23 @@ def carregar_linhas_3ys(arquivo_3ys=None):
 
     sep = detectar_sep(arquivo_3ys)
     linhas = []
+    header = []
     with open(arquivo_3ys, 'r', encoding='utf-8', errors='replace') as f_:
         reader = csv.reader(f_, delimiter=sep)
-        next(reader)
+        header = next(reader, [])
         for row in reader:
             linhas.append(row)
+
+    n_cols = len(header)
+    print(f"    CSV: {len(linhas):,} linhas, {n_cols} colunas, sep={sep!r}")
+    # Verifica se as colunas-chave estão dentro do range do CSV
+    campos_chave = ('abr_grp', 'anomes', 'qtd', 'pos_item', 'cod_esp', 'local', 'plano')
+    for c in campos_chave:
+        idx = IDX[c]
+        hdr_val = header[idx] if idx < n_cols else f'(FORA: CSV tem só {n_cols} cols)'
+        row0_val = g(linhas[0], idx) if linhas else '—'
+        print(f"      IDX[{c:12s}]={idx:3d}  header={hdr_val!r:30s}  1ª linha={row0_val!r}")
+
     return linhas
 
 
@@ -395,6 +407,12 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
     total_mes = canais_mes['MI'] + canais_mes['ME'] + canais_mes['ECOM']
     print(f"    Mês {mes_atual}: {total_mes:,} pares (MI+ME+ECOM) "
           f"| Grupo Mould: {canais_mes['GRUPO_MOULD']:,}")
+    # Diagnóstico — mostra os anomes presentes para detectar incompatibilidade de formato
+    anomes_presentes = sorted({g(row, IDX['anomes']) for row in ([] if not hasattr(processar_vendas, '_linhas_diag') else [])})
+    top_anomes = sorted(mensal.keys())[-6:]
+    print(f"    anomes no CSV (últimos 6): {top_anomes} | esperado: {mes_atual}")
+    if mes_atual not in mensal:
+        print(f"    *** AVISO: {mes_atual} NÃO encontrado nos dados — verifique formato do campo anomes no CSV ***")
 
     mensal_out = {}
     for k, v in sorted(mensal.items()):
@@ -455,6 +473,10 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
         'holdings_top20': [(n, dict(cv), sum(cv.values()))
             for n, cv in sorted(holdings.items(), key=lambda x: -sum(x[1].values()))[:20]],
         'pendente_validacao': canais_mes.get('MI',0) < 10000,
+        '_diag': {
+            'anomes_presentes': sorted(mensal_out.keys())[-6:],
+            'mes_atual_ok': mes_atual in mensal_out,
+        },
     }
 
 # ─── VENDAS COMPOSTO EVA ─────────────────────────────────────────────
@@ -1613,6 +1635,7 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         'mes_label': mes_label,
         'vendas_mes': cm,
         'estoque_totais': t,
+        'diag_vendas': vendas.get('_diag', {}),
         'arquivos': ['dados_portal.json','dados_programacao.json','dados_programacao_detalhe.json',
                       'dados_refs_tabela.json','dados_vendas.json','dados_vendas_eva.json','dados_estoque.json',
                       'dados_carteira.json','dados_faturamento.json','boaonda_dados_completos.json'],

@@ -299,9 +299,19 @@ def upload():
 
         cm = resumo['vendas_mes']
         t  = resumo['estoque_totais']
+        diag = resumo.get('diag_vendas', {})
         msg = (f"Dados atualizados em {resumo['gerado_em']}.<br>"
                f"Estoque livre: {t['livre']:,}".replace(',', '.') +
-               f" | Vendas {resumo['mes_label']}: MI {cm.get('MI',0):,}".replace(',', '.'))
+               f" | Vendas {resumo['mes_label']}: MI {cm.get('MI',0):,} ME {cm.get('ME',0):,}".replace(',', '.'))
+        if diag:
+            anomes_ok = diag.get('mes_atual_ok', True)
+            anomes_str = ', '.join(diag.get('anomes_presentes', []))
+            if not anomes_ok:
+                msg += (f"<br><b style='color:#e55'>⚠ Atenção: o mês {resumo['mes_label']} não foi encontrado no CSV. "
+                        f"Anomes presentes: {anomes_str or '(nenhum)'}. "
+                        f"Verifique se o campo AAMM do CSV está no formato AAAAMM (ex: 202607).</b>")
+            else:
+                msg += f"<br><small style='color:#888'>Anomes no CSV: {anomes_str}</small>"
         return render_template_string(_UPLOAD_HTML, message=msg, ok=True)
 
     except Exception as ex:
