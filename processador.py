@@ -648,10 +648,11 @@ def processar_programacao(linhas, output_dir='.'):
         if not any(p in abr for p in GRUPOS_OK): continue
         plano = g(row, IDX['plano'])
         if not plano or plano in ('Não se aplica','NÃ£o se aplica',''): continue
-        # Item cancelado não é produção — não conta na programação (mesma
-        # regra da carteira). Sem isto, semanas passadas ficam infladas em
-        # ~40-55% por pedidos que foram programados e depois cancelados.
-        if g(row, IDX['pos_item']).strip().upper() == 'CANCELADO': continue
+        # NÃO excluir pos_item='Cancelado' aqui: ~94% desses itens são GRUPO
+        # MOULD (armazém / pronta entrega) — produção real de reposição de
+        # estoque, deliberadamente contada como volume 'pe' na programação.
+        # O "Cancelado" nesses casos é status interno do armazém, não
+        # cancelamento de cliente. (Ver auditoria 2026-07-10.)
         dt = parse_date(g(row, IDX['dt_plano']))
         if not dt: continue
         if dt.weekday() > 4: continue  # excluir fins de semana
