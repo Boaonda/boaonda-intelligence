@@ -74,6 +74,23 @@ IDX = {
     'conta_contabil':81,
 }
 
+# Nome da coluna no cabeçalho do 3YS.csv para cada campo de IDX. Usado para
+# localizar as colunas PELO NOME em vez de posição fixa — assim, se o T.I.
+# adicionar/remover/reordenar colunas na exportação, a importação continua
+# funcionando (a posição fixa em IDX vira apenas fallback). A comparação é
+# case-insensitive e ignora espaços nas pontas.
+CSV_COL_NAMES = {
+    'razao':'razao_social', 'ref':'Referencia', 'descr':'Descricao',
+    'forma':'Combinacao', 'qtd':'qtd_item', 'dt_ent':'dt_entrada',
+    'dt_fat':'dt_faturam', 'pedido':'pedido', 'anomes':'anomesentrada',
+    'marca':'Marca', 'linha':'Linha', 'vlr':'valorliquido',
+    'cod_esp':'cod_esp_ent_sai', 'abr_grp':'descricaogrpcad',
+    'holding':'holding', 'nomeholder':'nomeholding', 'plano':'planoproducao',
+    'dt_plano':'dt_plano', 'pos_item':'pos_item', 'etapa':'etapa_atual',
+    'local':'LocalEstoque', 'tipomontagem':'CorPalmilha', 'cfop':'cfop',
+    'conta_contabil':'ContaContabil',
+}
+
 # Query usada quando MYSQL_HOST está configurado (ver db_mysql.py) — substitui
 # a leitura do 3YS.csv. Os alias das colunas seguem as chaves de IDX usadas
 # pelo processamento, para que _linha_de_db_row monte a linha "sintética"
@@ -280,24 +297,56 @@ def carregar_linhas_3ys(arquivo_3ys=None):
         return [_linha_de_db_row(r) for r in db_rows]
 
     sep = detectar_sep(arquivo_3ys)
-    linhas = []
+    linhas_raw = []
     header = []
     with open(arquivo_3ys, 'r', encoding='utf-8', errors='replace') as f_:
         reader = csv.reader(f_, delimiter=sep)
         header = next(reader, [])
         for row in reader:
-            linhas.append(row)
+            linhas_raw.append(row)
 
-    n_cols = len(header)
-    print(f"    CSV: {len(linhas):,} linhas, {n_cols} colunas, sep={sep!r}")
-    # Verifica se as colunas-chave estão dentro do range do CSV
+    print(f"    CSV: {len(linhas_raw):,} linhas, {len(header)} colunas, sep={sep!r}")
+    # Reordena cada linha para o layout do IDX resolvendo as colunas PELO NOME
+    # do cabeçalho (robusto a inserção/remoção/reordenação de colunas pelo T.I.).
+    linhas = _remapear_csv_por_nome(header, linhas_raw)
+    return linhas
+
+
+def _remapear_csv_por_nome(header, linhas_raw):
+    """Constrói linhas 'sintéticas' (indexáveis por IDX) a partir do CSV,
+    localizando cada coluna pelo NOME do cabeçalho (CSV_COL_NAMES). Se um nome
+    não for achado, cai no índice fixo de IDX como fallback e avisa no log."""
+    hlow = {h.strip().lower(): i for i, h in enumerate(header)}
+    origem = {}   # campo -> índice real no CSV
+    usou_fallback = []
+    for campo, idx_fixo in IDX.items():
+        nome = CSV_COL_NAMES.get(campo)
+        pos = hlow.get(nome.strip().lower()) if nome else None
+        if pos is None:
+            pos = idx_fixo          # fallback: posição fixa histórica
+            usou_fallback.append(campo)
+        origem[campo] = pos
+
+    # Log de diagnóstico — mostra de onde cada campo-chave foi lido
     campos_chave = ('abr_grp', 'anomes', 'qtd', 'pos_item', 'cod_esp', 'local', 'plano')
     for c in campos_chave:
-        idx = IDX[c]
-        hdr_val = header[idx] if idx < n_cols else f'(FORA: CSV tem só {n_cols} cols)'
-        row0_val = g(linhas[0], idx) if linhas else '—'
-        print(f"      IDX[{c:12s}]={idx:3d}  header={hdr_val!r:30s}  1ª linha={row0_val!r}")
+        pos = origem[c]
+        hdr = header[pos] if pos < len(header) else '(fora)'
+        val = g(linhas_raw[0], pos) if linhas_raw else '—'
+        marca = ' [POS.FIXA - nome nao encontrado!]' if c in usou_fallback else ''
+        print(f"      {c:12s} <- col[{pos:2d}] {hdr!r:24s} ex={val!r}{marca}")
+    if usou_fallback:
+        print(f"    *** AVISO: campos sem coluna no CSV (usando posição fixa): "
+              f"{', '.join(usou_fallback)} ***")
 
+    max_idx = max(IDX.values())
+    linhas = []
+    for row in linhas_raw:
+        nova = [''] * (max_idx + 1)
+        for campo, pos in origem.items():
+            if pos < len(row):
+                nova[IDX[campo]] = row[pos]
+        linhas.append(nova)
     return linhas
 
 
@@ -408,7 +457,6 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
     print(f"    Mês {mes_atual}: {total_mes:,} pares (MI+ME+ECOM) "
           f"| Grupo Mould: {canais_mes['GRUPO_MOULD']:,}")
     # Diagnóstico — mostra os anomes presentes para detectar incompatibilidade de formato
-    anomes_presentes = sorted({g(row, IDX['anomes']) for row in ([] if not hasattr(processar_vendas, '_linhas_diag') else [])})
     top_anomes = sorted(mensal.keys())[-6:]
     print(f"    anomes no CSV (últimos 6): {top_anomes} | esperado: {mes_atual}")
     if mes_atual not in mensal:
