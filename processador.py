@@ -648,6 +648,10 @@ def processar_programacao(linhas, output_dir='.'):
         if not any(p in abr for p in GRUPOS_OK): continue
         plano = g(row, IDX['plano'])
         if not plano or plano in ('Não se aplica','NÃ£o se aplica',''): continue
+        # Item cancelado não é produção — não conta na programação (mesma
+        # regra da carteira). Sem isto, semanas passadas ficam infladas em
+        # ~40-55% por pedidos que foram programados e depois cancelados.
+        if g(row, IDX['pos_item']).strip().upper() == 'CANCELADO': continue
         dt = parse_date(g(row, IDX['dt_plano']))
         if not dt: continue
         if dt.weekday() > 4: continue  # excluir fins de semana
