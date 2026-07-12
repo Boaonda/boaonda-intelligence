@@ -954,13 +954,28 @@ def resumir_estoque():
     }
 
 
+# Tetos de tamanho do contexto enviado à IA. A janela do modelo é 1M tokens
+# (~4M chars); mantemos MUITA folga para custo/latência e para nunca estourar
+# o limite conforme os dados crescem. ~4 chars por token.
+IA_CTX_MAX_CHARS_TOTAL   = 520_000   # ~130k tokens no total (todos os contextos)
+IA_CTX_MAX_CHARS_POR_CTX = 60_000    # ~15k tokens por contexto — cabe os 8 juntos
+
+
 def montar_contexto(contextos_list):
     """Lê os JSONs solicitados de DATA_DIR e devolve (texto_para_prompt,
-    lista_de_contextos_efetivamente_usados)."""
+    lista_de_contextos_efetivamente_usados).
+
+    Aplica um teto de tamanho: cada contexto é truncado a
+    IA_CTX_MAX_CHARS_POR_CTX e o total a IA_CTX_MAX_CHARS_TOTAL, para a
+    requisição nunca exceder a janela do modelo (causa do erro 400
+    'prompt is too long' quando os dados do 3YS crescem)."""
     if not contextos_list:
         contextos_list = ['portal']
     blocos, usados = [], []
+    total = 0
     for ctx in contextos_list:
+        if total >= IA_CTX_MAX_CHARS_TOTAL:
+            break
         if ctx == 'estoque':
             dados = resumir_estoque()
         else:
@@ -968,9 +983,23 @@ def montar_contexto(contextos_list):
             dados = _ia_carregar_json(arq) if arq else None
         if dados is None:
             continue
-        blocos.append(f"### {ctx.upper()}\n" +
-                      json.dumps(dados, ensure_ascii=False, separators=(',', ':')))
+        corpo = json.dumps(dados, ensure_ascii=False, separators=(',', ':'))
+        nota = ''
+        # Teto por contexto
+        if len(corpo) > IA_CTX_MAX_CHARS_POR_CTX:
+            corpo = corpo[:IA_CTX_MAX_CHARS_POR_CTX]
+            nota = ("\n[... dados truncados por tamanho — este contexto é maior "
+                    "que o limite; os primeiros registros estão acima ...]")
+        # Teto do total acumulado
+        restante = IA_CTX_MAX_CHARS_TOTAL - total
+        if len(corpo) > restante:
+            corpo = corpo[:restante]
+            nota = ("\n[... dados truncados por tamanho — limite total de "
+                    "contexto atingido ...]")
+        bloco = f"### {ctx.upper()}\n{corpo}{nota}"
+        blocos.append(bloco)
         usados.append(ctx)
+        total += len(bloco)
     if not usados:  # nada carregou — cai para o portal (resumo da home)
         dados = _ia_carregar_json('dados_portal.json')
         if dados is not None:
