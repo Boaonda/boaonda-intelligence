@@ -954,6 +954,103 @@ def resumir_estoque():
     }
 
 
+def _mes_de_data(dt):
+    """'01/06/2026' -> '2026-06' (para agrupar pedidos por mês)."""
+    if not dt or '/' not in dt:
+        return ''
+    p = dt.split('/')
+    return f"{p[2]}-{p[1]}" if len(p) == 3 else ''
+
+
+def resumir_carteira():
+    """Carteira compacta: totais + canais + etapas + entrada/entrega por mês +
+    os maiores pedidos (globais e o maior de cada mês de entrega). Evita enviar
+    a lista inteira de pedidos, que cresce com o volume."""
+    d = _ia_carregar_json('dados_carteira.json')
+    if not d:
+        return None
+    peds = d.get('pedidos', []) or []
+    top = sorted(peds, key=lambda x: (x.get('pares') or 0), reverse=True)[:50]
+    maior_por_mes = {}
+    for p in peds:
+        mes = _mes_de_data(p.get('dt_faturam'))
+        if not mes:
+            continue
+        atual = maior_por_mes.get(mes)
+        if not atual or (p.get('pares') or 0) > (atual.get('pares') or 0):
+            maior_por_mes[mes] = p
+    return {
+        'gerado_em': d.get('gerado_em'),
+        'total_pedidos': d.get('total_pedidos'),
+        'total_pares': d.get('total_pares'),
+        'canais': d.get('canais', {}),
+        'etapas': d.get('etapas', []),
+        'mes_entrada': d.get('mes_entrada', {}),
+        'mes_entrega': d.get('mes_entrega', {}),
+        'obs': (f"Carteira tem {len(peds)} pedidos. 'top_pedidos' = os 50 maiores "
+                "por pares; 'maior_pedido_por_mes_entrega' = o maior pedido de cada "
+                "mês (pelo mês de dt_faturam/entrega prevista)."),
+        'maior_pedido_por_mes_entrega': maior_por_mes,
+        'top_pedidos': top,
+    }
+
+
+def _top_refs(refs, n):
+    """{ref: qtd, ...} -> as n refs de maior qtd."""
+    if isinstance(refs, dict):
+        itens = sorted(refs.items(), key=lambda kv: (kv[1] or 0), reverse=True)[:n]
+        return dict(itens)
+    return refs
+
+
+def resumir_refs():
+    """Refs por período compactas: top refs de cada mês + das semanas recentes.
+    O JSON completo lista todas as refs de todas as semanas (cresce muito)."""
+    d = _ia_carregar_json('dados_refs_tabela.json')
+    if not d:
+        return None
+    meses = {k: {'label': v.get('label'), 'top_refs': _top_refs(v.get('refs', {}), 25)}
+             for k, v in (d.get('meses') or {}).items()}
+    sem = d.get('semanas') or {}
+    ult = sorted(sem)[-8:]
+    semanas = {k: {'label': sem[k].get('label'),
+                   'top_refs': _top_refs(sem[k].get('refs', {}), 20)}
+               for k in ult}
+    return {
+        'obs': "Top refs por período (todos os meses + as 8 semanas mais recentes).",
+        'meses': meses,
+        'semanas_recentes': semanas,
+    }
+
+
+def resumir_programacao():
+    """Programação compacta: meses (todos) + as 16 semanas mais recentes +
+    refs_top15. Descarta o histórico antigo de semanas (o JSON tem ~76)."""
+    d = _ia_carregar_json('dados_programacao.json')
+    if not d:
+        return None
+    sem = d.get('semanas') or {}
+    ult = sorted(sem)[-16:]
+    semanas = {k: sem[k] for k in ult}
+    return {
+        'gerado_em': d.get('gerado_em'),
+        'meses': d.get('meses', {}),
+        'refs_top15': d.get('refs_top15', []),
+        'obs': f"Mostrando as {len(semanas)} semanas mais recentes de {len(sem)} totais.",
+        'semanas_recentes': semanas,
+    }
+
+
+# Resumidores por contexto — reduzem o JSON cru a agregados + top-N antes de
+# enviar à IA. Contextos fora deste dict vão crus (limitados pelos tetos abaixo).
+IA_RESUMIDORES = {
+    'estoque':     resumir_estoque,
+    'carteira':    resumir_carteira,
+    'refs':        resumir_refs,
+    'programacao': resumir_programacao,
+}
+
+
 # Tetos de tamanho do contexto enviado à IA. A janela do modelo é 1M tokens
 # (~4M chars); mantemos MUITA folga para custo/latência e para nunca estourar
 # o limite conforme os dados crescem. ~4 chars por token.
@@ -976,8 +1073,9 @@ def montar_contexto(contextos_list):
     for ctx in contextos_list:
         if total >= IA_CTX_MAX_CHARS_TOTAL:
             break
-        if ctx == 'estoque':
-            dados = resumir_estoque()
+        resumidor = IA_RESUMIDORES.get(ctx)
+        if resumidor:
+            dados = resumidor()
         else:
             arq = IA_CONTEXTO_ARQUIVOS.get(ctx)
             dados = _ia_carregar_json(arq) if arq else None
