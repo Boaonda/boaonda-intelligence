@@ -1043,7 +1043,20 @@ def api_inteligencia():
                                 'aumente o tier de rate limit no Console da Anthropic.'}), 429
     except anthropic.APIStatusError as ex:
         traceback.print_exc()
-        return jsonify({'erro': f'Erro da API Anthropic ({ex.status_code}). Tente novamente.'}), 502
+        # Expõe a mensagem real da API (o motivo do 400 fica no corpo da resposta,
+        # não só no status). Sem isso, um 400 vira "tente novamente" sem diagnóstico.
+        detalhe = ''
+        try:
+            corpo = ex.body
+            if isinstance(corpo, dict):
+                detalhe = (corpo.get('error') or {}).get('message') or ''
+            detalhe = detalhe or getattr(ex, 'message', '') or str(ex)
+        except Exception:
+            detalhe = str(ex)
+        print(f"  [IA] API {ex.status_code}: {detalhe}", flush=True)
+        return jsonify({
+            'erro': f'Erro da API Anthropic ({ex.status_code}): {detalhe[:400]}'
+        }), 502
     except Exception as ex:
         traceback.print_exc()
         return jsonify({'erro': f'Falha ao consultar a IA: {ex}'}), 500
