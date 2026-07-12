@@ -71,7 +71,7 @@ IDX = {
     'marca':20,'linha':23,'vlr':26,'cod_esp':27,'abr_grp':29,
     'holding':16,'nomeholder':17,'plano':35,'dt_plano':77,
     'pos_item':40,'etapa':39,'local':72,'tipomontagem':85,'cfop':71,
-    'conta_contabil':81,
+    'conta_contabil':81,'vlr_total':86,
 }
 
 # Nome da coluna no cabeçalho do 3YS.csv para cada campo de IDX. Usado para
@@ -88,7 +88,7 @@ CSV_COL_NAMES = {
     'holding':'holding', 'nomeholder':'nomeholding', 'plano':'planoproducao',
     'dt_plano':'dt_plano', 'pos_item':'pos_item', 'etapa':'etapa_atual',
     'local':'LocalEstoque', 'tipomontagem':'CorPalmilha', 'cfop':'cfop',
-    'conta_contabil':'ContaContabil',
+    'conta_contabil':'ContaContabil', 'vlr_total':'valortotal',
 }
 
 # Query usada quando MYSQL_HOST está configurado (ver db_mysql.py) — substitui
@@ -117,7 +117,8 @@ SELECT
     cfop            AS cfop,
     {col_conta}     AS conta_contabil,
     marca           AS marca,
-    {col_valor}     AS vlr
+    {col_valor}     AS vlr,
+    {col_valor_total} AS vlr_total
 FROM mould.v_entradapedidos_extended v
 WHERE v.dt_entrada >= date_format(date_sub(current_date, interval 1 year), '%Y/01/01')
 """
@@ -285,7 +286,18 @@ def carregar_linhas_3ys(arquivo_3ys=None):
             print("    AVISO: coluna 'conta contábil' não encontrada na view "
                   "— faturamento por conta contábil ficará vazio")
             col_conta_sql = "''"
-        db_rows = db_mysql.consultar(QUERY_3YS.format(col_valor=col_valor_sql, col_conta=col_conta_sql))
+        # Valor total (bruto: com IPI/frete) — usado no faturamento p/ bater com
+        # a contabilidade. Se a view não tiver, o faturamento cai para o líquido.
+        col_valor_total = db_mysql.achar_coluna_valor_total()
+        if col_valor_total:
+            col_valor_total_sql = f'v.`{col_valor_total}`'
+        else:
+            print("    AVISO: coluna 'valor total' (bruto) não encontrada na view "
+                  "— faturamento usará o valor líquido")
+            col_valor_total_sql = '0'
+        db_rows = db_mysql.consultar(QUERY_3YS.format(
+            col_valor=col_valor_sql, col_conta=col_conta_sql,
+            col_valor_total=col_valor_total_sql))
         print(f"    {len(db_rows):,} linhas carregadas do MySQL")
         if len(db_rows) < MIN_LINHAS_3YS_MYSQL:
             raise RuntimeError(
@@ -364,7 +376,14 @@ def diagnostico_3ys():
     col_valor = db_mysql.achar_coluna_valor_liquido()
     info['coluna_valor_liquido'] = col_valor or '(NÃO encontrada na view)'
     col_valor_sql = f'v.`{col_valor}`' if col_valor else '0'
-    db_rows = db_mysql.consultar(QUERY_3YS.format(col_valor=col_valor_sql))
+    col_valor_total = db_mysql.achar_coluna_valor_total()
+    info['coluna_valor_total'] = col_valor_total or '(NÃO encontrada na view)'
+    col_valor_total_sql = f'v.`{col_valor_total}`' if col_valor_total else '0'
+    col_conta = db_mysql.achar_coluna_conta_contabil()
+    col_conta_sql = f'v.`{col_conta}`' if col_conta else "''"
+    db_rows = db_mysql.consultar(QUERY_3YS.format(
+        col_valor=col_valor_sql, col_conta=col_conta_sql,
+        col_valor_total=col_valor_total_sql))
     info['total_linhas'] = len(db_rows)
     linhas = [_linha_de_db_row(r) for r in db_rows]
     campos = ('qtd', 'pos_item', 'abr_grp', 'cod_esp', 'anomes', 'marca', 'ref', 'vlr')
@@ -1219,8 +1238,15 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         if qtd_raw <= 0: continue
         qtd = qtd_raw if canal == 'EVA' else int(qtd_raw)  # EVA é kg (float), demais são pares
 
-        try: vlr = float(g(row, IDX['vlr']).replace(',','.'))
+        # Faturamento usa o VALOR TOTAL (bruto: com IPI/frete), para bater com
+        # os valores contábeis (faturamento bruto). Se a coluna de valor total
+        # vier vazia/ausente (ex.: view MySQL sem 'valortotal'), cai para o
+        # valor líquido para não zerar o faturamento.
+        try: vlr = float(g(row, IDX['vlr_total']).replace(',','.'))
         except: vlr = 0.0
+        if vlr == 0.0:
+            try: vlr = float(g(row, IDX['vlr']).replace(',','.'))
+            except: vlr = 0.0
 
         # Mês de referência
         if status == 'fat':

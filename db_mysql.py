@@ -59,3 +59,16 @@ def achar_coluna_valor_liquido(tabela='mould.v_entradapedidos_extended'):
         if 'valor' in baixo and 'quido' in baixo:
             return nome
     return None
+
+
+def achar_coluna_valor_total(tabela='mould.v_entradapedidos_extended'):
+    """Localiza a coluna "valor total" (bruto: com IPI/frete) na view — usada
+    no faturamento para bater com os valores contábeis (faturamento bruto).
+    Casa com nomes contendo 'valor' e 'total' (case-insensitive). Retorna o
+    nome exato ou None (nesse caso o faturamento cai para o valor líquido)."""
+    for row in consultar(f"SHOW COLUMNS FROM {tabela}"):
+        nome = row.get('Field', '')
+        baixo = nome.lower()
+        if 'valor' in baixo and 'total' in baixo:
+            return nome
+    return None
