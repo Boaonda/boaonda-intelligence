@@ -1136,8 +1136,15 @@ def classifica_faturamento(cod, abr, marca=''):
     MI PROG  → cod=1   + (MERCADO INTERNO ou ISENTO em abr_grp)
     MI PE    → cod=22  + (MERCADO INTERNO ou ISENTO em abr_grp)
     MI MISTA → cod=31  + (MERCADO INTERNO ou ISENTO em abr_grp)
-    ME       → cod=17 OU 'EXPORTA' em abr_grp, sem 'MOULD'
+    ME       → 'EXPORTA' em abr_grp, sem 'MOULD' (só EXPORTACAO - CALCADOS)
     EC       → cod=32 OU 'ECOMMERCE'/'E-COMMERCE' em abr_grp
+
+    NÃO usa mais o gatilho cod=17 para ME: a espécie 17 aparece também em
+    outros segmentos do Grupo Mould (matrizes, solas, matrizaria) que não são
+    exportação de calçados Boaonda e inflavam o ME. ME agora é só o grupo de
+    cadastro de exportação de calçados (abr_grp com 'EXPORTA'). Linhas de
+    matriz/sola caem em None e ficam fora de todo o faturamento (grupo, CFOP,
+    conta contábil), conforme decisão do usuário (2026-07-13).
     """
     if is_composto_eva(marca):
         return 'EVA', 'EVA'
@@ -1147,7 +1154,7 @@ def classifica_faturamento(cod, abr, marca=''):
     is_mi_abr  = ('MERCADO INTERNO' in abr or 'ISENTO' in abr) and 'EXPORTA' not in abr
 
     if cod == '32' or is_ec_abr:        return 'EC', 'EC'
-    if cod == '17' or is_exporta:       return 'ME', 'ME'
+    if is_exporta:                      return 'ME', 'ME'
     if is_mi_abr:
         if cod == '1':  return 'MI', 'PROG'
         if cod == '22': return 'MI', 'PE'
