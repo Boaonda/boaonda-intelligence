@@ -98,24 +98,19 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .td-num{font-size:13px;font-weight:800;color:var(--txt)}
 .mbar{height:3px;border-radius:2px;opacity:.7}
 
-/* Vendas do dia */
-.dia-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:0;align-items:center}
-.dia-box{padding:6px 18px}
-.dia-box .dia-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:6px}
-.dia-box .dia-v{font-size:26px;font-weight:800;color:var(--txt)}
-.dia-box .dia-v.hoje{color:var(--coral)}
-.dia-sep{width:1px;height:44px;background:var(--line);margin:0 6px}
-.dia-delta{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:800;white-space:nowrap}
-.dia-delta.pos{background:rgba(108,156,55,.14);color:var(--verde)}
-.dia-delta.neg{background:rgba(237,104,66,.14);color:var(--coral)}
-.dia-delta.zero{background:var(--card2);color:var(--txt-m)}
-
 /* Clientes com compra */
 .link-carteira{font-size:10.5px;font-weight:700;color:var(--azul);text-decoration:none;white-space:nowrap}
 .link-carteira:hover{color:var(--coral)}
 .cl-search{background:var(--card2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;outline:none;min-width:200px}
 .cl-search:focus{border-color:var(--coral)}
 .cl-empty{padding:24px;text-align:center;color:var(--txt-m);font-size:12px}
+/* Altura padrão do quadro (~15 linhas) — o que exceder rola por dentro,
+   sem alterar o tamanho total do box; cabeçalho fica fixo ao rolar. */
+.cl-scroll{max-height:560px;overflow-y:auto;position:relative}
+.cl-scroll thead th{position:sticky;top:0;background:var(--card);z-index:1}
+th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+th.sortable:hover{color:var(--txt)}
+th.sortable .sort-arrow{margin-left:3px;color:var(--coral);opacity:.9}
 .tr-cliente{cursor:pointer}
 .tr-cliente:hover td{background:var(--card2)}
 .tr-cliente td.td-nome{font-weight:700;color:var(--txt)}
@@ -129,8 +124,9 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .cl-mini-row{cursor:pointer}
 .cl-mini-row:hover td{background:var(--card2)}
 .cl-mini-row.aberto td{color:var(--coral)}
+.td-sub{color:var(--txt-m);font-size:10px}
 
-@media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}.dia-grid{grid-template-columns:1fr}.dia-sep{display:none}}
+@media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}}
 </style>
 </head>
 <body>
@@ -252,9 +248,6 @@ tr:hover td{background:var(--card2);color:var(--txt)}
     </div>
   </div>
 
-  <div class="stitle">Vendas do dia <span class="ctitle-badge">curto prazo · respeita canal/tipo/visão</span></div>
-  <div class="tcard" id="dia-card" style="padding:16px 20px"></div>
-
   <div class="stitle" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <span>Clientes com compra <span class="ctitle-badge" id="cl-badge">período selecionado</span></span>
     <div style="display:flex;gap:10px;align-items:center">
@@ -269,10 +262,12 @@ tr:hover td{background:var(--card2);color:var(--txt)}
     </div>
   </div>
   <div class="tcard">
-    <table>
-      <thead><tr id="cl-thead"></tr></thead>
-      <tbody id="tb-clientes"></tbody>
-    </table>
+    <div class="cl-scroll">
+      <table>
+        <thead><tr id="cl-thead"></tr></thead>
+        <tbody id="tb-clientes"></tbody>
+      </table>
+    </div>
     <div id="cl-empty" class="cl-empty" style="display:none">Nenhum cliente encontrado para os filtros selecionados.</div>
   </div>
 
@@ -322,27 +317,10 @@ let DADOS={}, REFS_MI=[], REFS_ME=[], REFS_EC=[];
 let DADOS_VALOR={}, REFS_MI_VALOR=[], REFS_ME_VALOR=[], REFS_EC_VALOR=[];
 
 // dados_vendas_clientes.json — detalhe por holding/cliente (ano corrente),
-// usado pelos blocos "Vendas do dia" e "Clientes com compra". Carregado em
+// usado pelo quadro "Clientes com compra" (inclui a visão de curto prazo —
+// basta selecionar o período "Dia atual"/"Dia anterior"). Carregado em
 // paralelo ao arquivo mensal; ausência não quebra o resto do painel.
 let CLIENTES_DATA = null;
-let POR_DIA = {};   // POR_DIA[dd/mm/aa]['MI_PROG'|'ME_PROG'|'ECOM_ECOM'|...] = [pares,valor]
-
-function indexarPorDia(){
-  POR_DIA = {};
-  const holdings = (CLIENTES_DATA && CLIENTES_DATA.holdings) || {};
-  for(const h in holdings){
-    const refs = holdings[h];
-    for(const r in refs){
-      refs[r].forEach(linha=>{
-        const [,dt,canal,tipo,qtd,valor] = linha;
-        if(!POR_DIA[dt]) POR_DIA[dt]={};
-        const k = canal+'_'+tipo;
-        if(!POR_DIA[dt][k]) POR_DIA[dt][k]=[0,0];
-        POR_DIA[dt][k][0]+=qtd; POR_DIA[dt][k][1]+=valor;
-      });
-    }
-  }
-}
 
 // Carregar JSON externo — gerado pelo atualizar.py
 Promise.all([
@@ -350,7 +328,6 @@ Promise.all([
   fetch('dados_vendas_clientes.json?_='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
 ]).then(([d, dCli])=>{
     CLIENTES_DATA = dCli;
-    indexarPorDia();
     if(!d) { render(); return; } // usa dados vazios
     // Adapta o formato gerado pelo processador.py (chave "mensal", canais
     // MI/ME/ECOM com tipos PROG/PE/MISTA/ECOM) para a estrutura usada pelo
@@ -571,7 +548,6 @@ function render(){
 
   renderCharts(canais, tipos);
   renderRefs(canais, tipos, meses);
-  renderDiaCard(canais, tipos);
   renderClientes();
 }
 
@@ -579,46 +555,35 @@ function kpi(cls,label,val,sub){
   return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v '+cls+'">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';
 }
 
-// ── VENDAS DO DIA / DIA ANTERIOR ─────────────────────────────────────
-function dataStrDDMMAA(d){
-  const dd=String(d.getDate()).padStart(2,'0');
-  const mm=String(d.getMonth()+1).padStart(2,'0');
-  const aa=String(d.getFullYear()).slice(2);
-  return dd+'/'+mm+'/'+aa;
-}
-function totalDoDia(dataStr, canais, tipos){
-  const d=POR_DIA[dataStr]; if(!d) return 0;
-  const idx = estado.unidade==='valor' ? 1 : 0;
-  let tot=0;
-  for(const k in d){
-    const us=k.indexOf('_'); const canal=k.slice(0,us), tipo=k.slice(us+1);
-    if(canal==='MI'   && canais.has('MI') && tipos.has(tipo)) tot+=d[k][idx];
-    else if(canal==='ME'   && canais.has('ME')) tot+=d[k][idx];
-    else if(canal==='ECOM' && canais.has('EC')) tot+=d[k][idx];
-  }
-  return tot;
-}
-function renderDiaCard(canais, tipos){
-  const el=document.getElementById('dia-card');
-  if(!el) return;
-  const hoje=new Date(), ontem=new Date(hoje); ontem.setDate(hoje.getDate()-1);
-  const sHoje=dataStrDDMMAA(hoje), sOntem=dataStrDDMMAA(ontem);
-  const vHoje=totalDoDia(sHoje,canais,tipos), vOntem=totalDoDia(sOntem,canais,tipos);
-  const delta = vOntem ? Math.round((vHoje-vOntem)/vOntem*100) : (vHoje?100:0);
-  const deltaCls = delta>0?'pos':delta<0?'neg':'zero';
-  const deltaTxt = (delta>0?'+':'')+delta+'%';
-  const fmtDia=d=>{const dias=['dom','seg','ter','qua','qui','sex','sáb'];return dias[d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
-  el.innerHTML = `<div class="dia-grid">
-    <div class="dia-box"><div class="dia-l">Ontem · ${fmtDia(ontem)}</div><div class="dia-v">${fmtv(vOntem)}</div></div>
-    <div class="dia-box"><div class="dia-l">Hoje · ${fmtDia(hoje)}</div><div class="dia-v hoje">${fmtv(vHoje)}</div></div>
-    <div class="dia-delta ${deltaCls}">${deltaTxt} vs ontem</div>
-  </div>`;
-}
-
 // ── CLIENTES COM COMPRA (drilldown holding → ref → linha) ────────────
 let clPeriodo='dia_atual', clBusca='', clHoldingAberto=null, clRefAberto=null;
+let clSort={key:'total_pares', dir:'desc'};
 function clSetPeriodo(v){ clPeriodo=v; clHoldingAberto=null; clRefAberto=null; renderClientes(); }
 function clSetBusca(v){ clBusca=v.toLowerCase(); renderClientes(); }
+function clSetSort(key){
+  if(clSort.key===key){ clSort.dir = clSort.dir==='desc'?'asc':'desc'; }
+  else { clSort={key, dir: key==='nome'?'asc':'desc'}; }
+  renderClientes();
+}
+function sortArrow(key){
+  if(clSort.key!==key) return '';
+  return ' <span class="sort-arrow">'+(clSort.dir==='asc'?'▲':'▼')+'</span>';
+}
+function clCompare(a,b){
+  if(clSort.key==='nome'){
+    const c=a.h.toLowerCase().localeCompare(b.h.toLowerCase());
+    return clSort.dir==='asc' ? c : -c;
+  }
+  let av,bv;
+  if(clSort.key==='total_pares'){ av=a.total_pares; bv=b.total_pares; }
+  else if(clSort.key==='total_valor'){ av=a.total_valor; bv=b.total_valor; }
+  else{
+    const [colKey,tipo]=clSort.key.split('|');
+    const iv = tipo==='v' ? 1 : 0;
+    av=(a.cols[colKey]||[0,0])[iv]; bv=(b.cols[colKey]||[0,0])[iv];
+  }
+  return clSort.dir==='asc' ? av-bv : bv-av;
+}
 
 function clPassaPeriodo(dt){
   const p=dt.split('/'); if(p.length!==3) return false;
@@ -684,17 +649,28 @@ function renderClientes(){
   const emptyEl=document.getElementById('cl-empty');
   if(!thead||!tb) return;
   const canais=estado.canal, tipos=estado.tipo;
-  const idx = estado.unidade==='valor' ? 1 : 0;
   const cols = clColunasAtivas(canais, tipos);
   const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',ano:'ano corrente'}[clPeriodo];
   if(badge) badge.textContent=periodoLabel;
 
-  thead.innerHTML = '<th>Cliente / Holding</th>' + cols.map(c=>'<th>'+c.label+'</th>').join('') + '<th>Total</th>';
+  // Cabeçalho — colunas de pares e R$ separadas por modalidade + total, todas
+  // clicáveis para ordenar (item 4).
+  let theadHtml = '<th class="sortable" onclick="clSetSort(\'nome\')">Cliente / Holding'+sortArrow('nome')+'</th>';
+  cols.forEach(c=>{
+    theadHtml += '<th class="sortable" onclick="clSetSort(\''+c.k+'|p\')">'+c.label+' (par)'+sortArrow(c.k+'|p')+'</th>';
+    theadHtml += '<th class="sortable" onclick="clSetSort(\''+c.k+'|v\')">'+c.label+' (R$)'+sortArrow(c.k+'|v')+'</th>';
+  });
+  theadHtml += '<th class="sortable" onclick="clSetSort(\'total_pares\')">Total (par)'+sortArrow('total_pares')+'</th>';
+  theadHtml += '<th class="sortable" onclick="clSetSort(\'total_valor\')">Total (R$)'+sortArrow('total_valor')+'</th>';
+  thead.innerHTML = theadHtml;
 
   const agregado = clAgregar(canais, tipos);
-  let lista = Object.entries(agregado).map(([h,v])=>({h, cols:v.cols, refs:v.refs, total: clTotal(v.cols, idx)}));
+  let lista = Object.entries(agregado).map(([h,v])=>({
+    h, cols:v.cols, refs:v.refs,
+    total_pares: clTotal(v.cols,0), total_valor: clTotal(v.cols,1),
+  }));
   if(clBusca) lista = lista.filter(x=>x.h.toLowerCase().includes(clBusca));
-  lista.sort((a,b)=>b.total-a.total);
+  lista.sort(clCompare);
 
   tb.innerHTML='';
   emptyEl.style.display = lista.length ? 'none' : 'block';
@@ -703,30 +679,34 @@ function renderClientes(){
     tr.className='tr-cliente'+(clHoldingAberto===item.h?' aberto':'');
     tr.onclick=()=>{ clHoldingAberto = clHoldingAberto===item.h ? null : item.h; clRefAberto=null; renderClientes(); };
     const arrow = clHoldingAberto===item.h ? '▾' : '▸';
-    tr.innerHTML = '<td class="td-nome"><span class="cl-arrow">'+arrow+'</span>'+item.h+'</td>' +
-      cols.map(c=>'<td>'+(item.cols[c.k]?fmtvIdx(item.cols[c.k],idx):'–')+'</td>').join('') +
-      '<td class="td-num">'+fmtScalar(item.total,idx)+'</td>';
+    let cells = '<td class="td-nome"><span class="cl-arrow">'+arrow+'</span>'+item.h+'</td>';
+    cols.forEach(c=>{
+      const v=item.cols[c.k];
+      cells += '<td>'+(v?f(v[0]):'–')+'</td><td class="td-sub">'+(v?fmoeda(v[1]):'–')+'</td>';
+    });
+    cells += '<td class="td-num">'+f(item.total_pares)+'</td><td class="td-num td-sub">'+fmoeda(item.total_valor)+'</td>';
+    tr.innerHTML = cells;
     tb.appendChild(tr);
-    if(clHoldingAberto===item.h) tb.appendChild(clRowRefs(item, cols, idx));
+    if(clHoldingAberto===item.h) tb.appendChild(clRowRefs(item, cols));
   });
 }
-function fmtvIdx(arr, idx){ return idx===1 ? fmoeda(arr[1]) : f(arr[0]); }
-function fmtScalar(val, idx){ return idx===1 ? fmoeda(val) : f(val); }
 
-function clRowRefs(item, cols, idx){
+function clRowRefs(item, cols){
   const tr=document.createElement('tr'); tr.className='tr-sub';
-  const td=document.createElement('td'); td.colSpan = cols.length+2;
-  const refsList = Object.entries(item.refs).map(([r,v])=>({r, cols:v.cols, linhas:v.linhas, total: clTotal(v.cols, idx)}))
-    .sort((a,b)=>b.total-a.total);
+  const td=document.createElement('td'); td.colSpan = cols.length*2+3;
+  const refsList = Object.entries(item.refs).map(([r,v])=>({
+    r, cols:v.cols, linhas:v.linhas, total_pares: clTotal(v.cols,0), total_valor: clTotal(v.cols,1),
+  })).sort((a,b)=>b.total_pares-a.total_pares);
   let html = '<div class="tr-sub-inner"><table class="cl-mini-table"><thead><tr><th>Referência</th>'+
-    cols.map(c=>'<th>'+c.label+'</th>').join('')+'<th>Total</th></tr></thead><tbody>';
+    cols.map(c=>'<th>'+c.label+' (par)</th><th>'+c.label+' (R$)</th>').join('')+
+    '<th>Total (par)</th><th>Total (R$)</th></tr></thead><tbody>';
   refsList.forEach(rf=>{
     const aberto = clRefAberto===rf.r;
     html += `<tr class="cl-mini-row${aberto?' aberto':''}" onclick="clToggleRef(event,'${rf.r.replace(/'/g,"\\'")}')">`+
       '<td>'+(aberto?'▾ ':'▸ ')+rf.r+'</td>'+
-      cols.map(c=>'<td>'+(rf.cols[c.k]?fmtvIdx(rf.cols[c.k],idx):'–')+'</td>').join('')+
-      '<td class="td-num">'+fmtScalar(rf.total,idx)+'</td></tr>';
-    if(aberto) html += clLinhasHtml(rf.linhas, cols, idx);
+      cols.map(c=>{ const v=rf.cols[c.k]; return '<td>'+(v?f(v[0]):'–')+'</td><td class="td-sub">'+(v?fmoeda(v[1]):'–')+'</td>'; }).join('')+
+      '<td class="td-num">'+f(rf.total_pares)+'</td><td class="td-num td-sub">'+fmoeda(rf.total_valor)+'</td></tr>';
+    if(aberto) html += clLinhasHtml(rf.linhas, cols);
   });
   html += '</tbody></table></div>';
   td.innerHTML = html;
@@ -738,9 +718,9 @@ function clToggleRef(ev, ref){
   clRefAberto = clRefAberto===ref ? null : ref;
   renderClientes();
 }
-function clLinhasHtml(linhas, cols, idx){
+function clLinhasHtml(linhas, cols){
   const colLabel = k => (CL_COLS.find(c=>c.k===k)||{}).label || k;
-  let html = '<tr><td colspan="'+(cols.length+2)+'" style="padding:6px 8px 10px 24px">'+
+  let html = '<tr><td colspan="'+(cols.length*2+3)+'" style="padding:6px 8px 10px 24px">'+
     '<table class="cl-mini-table" style="background:var(--bg)"><thead><tr>'+
     '<th>Pedido</th><th>Data</th><th>Modalidade</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>';
   linhas.forEach(l=>{
