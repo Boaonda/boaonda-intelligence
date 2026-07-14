@@ -71,6 +71,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .resumo-titulo{font-size:14px;font-weight:800;color:var(--txt);letter-spacing:.04em}
 .resumo-mes-sel{background:var(--card2);border:1px solid var(--border);color:var(--txt);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
 .resumo-mes-sel:focus{border-color:var(--coral)}
+.btn-export-fat{margin-left:8px;background:transparent;border:1px solid var(--border);color:var(--txt-s,#b6b3ac);border-radius:6px;padding:2px 8px;font-size:9.5px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:all .15s}
+.btn-export-fat:hover{border-color:var(--coral);color:var(--coral)}
 .table-scroll{overflow-x:auto}
 
 /* Tabela resumo */
@@ -735,6 +737,15 @@ function popularSeletorMes() {
   });
 }
 
+function exportarDetalhe(ev, canal) {
+  ev.stopPropagation();   // não abrir/fechar o drilldown do grupo
+  const mes = document.getElementById('resumo-mes').value;
+  if (!mes) return;
+  // Baixa o Excel com as linhas que compõem o faturamento do canal neste mês.
+  window.location = '/api/faturamento/detalhe?canal=' + encodeURIComponent(canal) +
+                    '&mes=' + encodeURIComponent(mes);
+}
+
 function toggleDrillCliente(canal) {
   drillAberto = drillAberto === canal ? null : canal;
   pedidoAberto = null;
@@ -822,14 +833,17 @@ function renderResumo() {
     pQ: mprog.pQ+mpe.pQ+mmist.pQ, pV: mprog.pV+mpe.pV+mmist.pV,
   };
 
-  function rowGroup(label, d, fmtQ, canalDrill) {
+  function rowGroup(label, d, fmtQ, canalDrill, canalExport) {
     fmtQ = fmtQ || fPar;
     const tQ = d.rQ + d.pQ, tV = d.rV + d.pV;
     const dash = sp ? '' : '—';
     const drillCls = canalDrill ? ' tr-drill' + (drillAberto === canalDrill ? ' aberto' : '') : '';
     const onclick = canalDrill ? ` onclick="toggleDrillCliente('${canalDrill}')"` : '';
+    const btnExp = canalExport
+      ? ` <button class="btn-export-fat" title="Exportar detalhe deste faturamento (Excel)" onclick="exportarDetalhe(event,'${canalExport}')">⬇ detalhe</button>`
+      : '';
     return `<tr class="tr-group${drillCls}"${onclick}>
-      <td class="td-grupo">${label}</td>
+      <td class="td-grupo">${label}${btnExp}</td>
       <td class="td-sep"></td>
       <td class="td-r-q">${d.rQ ? fmtQ(d.rQ) : '–'}</td>
       <td class="td-r-v">${d.rV ? fBRL(d.rV) : '–'}</td>
@@ -1111,13 +1125,13 @@ function renderResumo() {
   }
 
   document.getElementById('resumo-tbody').innerHTML =
-    rowGroup('Faturamento MI', miTotal) +
+    rowGroup('Faturamento MI', miTotal, fPar, null, 'MI') +
     rowSub('MI Programado', mprog) +
     (mpe.rV || mpe.pV ? rowSubDrill('MI Pronta Entrega', mpe, 'PE') : rowSub('MI Pronta Entrega', mpe)) +
     (mmist.rV || mmist.pV ? rowSubDrill('MI Venda Mista', mmist, 'MISTA') : '') +
-    rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV, fPar, 'ME') +
-    rowGroup('Faturamento E-commerce', ecV) +
-    (evaV.rV || evaV.pV ? rowGroup('Faturamento Composto EVA', evaV, fKg1, 'EVA') : '');
+    rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV, fPar, 'ME', 'ME') +
+    rowGroup('Faturamento E-commerce', ecV, fPar, null, 'EC') +
+    (evaV.rV || evaV.pV ? rowGroup('Faturamento Composto EVA', evaV, fKg1, 'EVA', 'EVA') : '');
 
   const tQ = gt.rQ + gt.pQ, tV = gt.rV + gt.pV;
   const dash = sp ? '' : '—';

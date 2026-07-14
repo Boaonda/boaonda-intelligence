@@ -1,12 +1,13 @@
 from pathlib import Path
 from datetime import datetime
+import io
 import json
 import os
 import shutil
 import threading
 import traceback
 
-from flask import (Flask, request, jsonify, send_from_directory,
+from flask import (Flask, request, jsonify, send_from_directory, send_file,
                     session, redirect, url_for, render_template_string)
 
 import processador
@@ -828,6 +829,50 @@ def admin_diag():
     except Exception as ex:
         traceback.print_exc()
         return jsonify({'erro': str(ex)}), 500
+
+
+# Detalhe de faturamento por canal/mês — exporta um Excel com as linhas que
+# compõem o faturamento daquele canal no mês (para conferência). Lê o arquivo
+# de detalhe gerado pelo processador (dados_faturamento_det_AAAAMM.json).
+FAT_DET_COLS = [
+    ('pedido', 'Pedido'), ('cliente', 'Cliente'), ('ref', 'Referência'),
+    ('descr', 'Descrição'), ('especie', 'Espécie'), ('tipo', 'Tipo'),
+    ('cfop', 'CFOP'), ('conta', 'Conta contábil'), ('grupo', 'Grupo'),
+    ('qtd', 'Qtd (pares/kg)'), ('vlr_liq', 'Valor líquido'),
+    ('vlr_bruto', 'Valor bruto'), ('dt_ent', 'Dt entrada'),
+    ('dt_fat', 'Dt faturamento'), ('dt_plano', 'Dt plano'),
+    ('mes_ref', 'Mês ref'), ('status', 'Status'), ('nao_soma', 'Não soma'),
+]
+
+
+@app.route('/api/faturamento/detalhe')
+def api_faturamento_detalhe():
+    canal = (request.args.get('canal') or '').upper()
+    mes   = (request.args.get('mes') or '').strip()
+    if canal not in ('MI', 'ME', 'EC', 'EVA') or not (mes.isdigit() and len(mes) == 6):
+        return jsonify({'erro': 'Parâmetros inválidos (canal MI/ME/EC/EVA e mes AAAAMM).'}), 400
+    arq = DATA_DIR / f'dados_faturamento_det_{mes}.json'
+    if not arq.exists():
+        return jsonify({'erro': 'Detalhe indisponível para este mês. Reprocesse os dados '
+                                '(a exportação é gerada no processamento do faturamento).'}), 404
+    try:
+        with open(arq, encoding='utf-8') as f_:
+            dados = json.load(f_)
+        linhas = dados.get(canal, [])
+        from openpyxl import Workbook
+        wb = Workbook(); ws = wb.active; ws.title = f'{canal} {mes}'
+        ws.append([c[1] for c in FAT_DET_COLS])
+        for r in linhas:
+            ws.append([r.get(c[0], '') for c in FAT_DET_COLS])
+        bio = io.BytesIO(); wb.save(bio); bio.seek(0)
+        return send_file(
+            bio, as_attachment=True,
+            download_name=f'faturamento_{canal}_{mes}.xlsx',
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'erro': f'Falha ao gerar o detalhe: {ex}'}), 500
 
 
 # ─────────────────────────────────────────────

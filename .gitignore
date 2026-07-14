@@ -3,3 +3,7 @@ __pycache__/
 .env
 uploads/
 frontend/uploads/
+
+# Detalhe de faturamento por mes (grande, gerado no processamento; nao versionar)
+frontend/dados_faturamento_det_*.json
+dados_faturamento_det_*.json

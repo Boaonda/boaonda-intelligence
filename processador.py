@@ -18,7 +18,7 @@ Saídas (gravadas em output_dir):
     - boaonda_dados_completos.json
 """
 
-import csv, json, os, sys
+import csv, json, os, sys, glob
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 
@@ -1237,6 +1237,9 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 'pv': 0.0, 'pq': 0.0, 'planos': set(), 'dt_plano_max': None}
     dados_retro = defaultdict(lambda: defaultdict(lambda: defaultdict(_novo_pedido_retro)))
     sem_data_list = []   # [{ref, canal, especie, pares, valor}]
+    # Detalhe linha-a-linha por mês e canal, para exportação de conferência
+    # (botão "Exportar detalhe" no painel). detalhe[mes_ref][canal] = [linhas].
+    detalhe = defaultdict(lambda: defaultdict(list))
     total_fat = total_prev = sem_data_count = 0
 
     for row in linhas:
@@ -1297,6 +1300,31 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         # (132 = remessa de troca de e-commerce).
         eh_fora_geral = (cfop_code in CFOPS_FORA_DO_GERAL
                          or cod in ESPECIES_FORA_DO_GERAL)
+
+        # Detalhe para exportação de conferência (todas as linhas que compõem
+        # o faturamento do canal/mês, inclusive as "não soma", sinalizadas).
+        try: vlr_liq = round(float(g(row, IDX['vlr']).replace(',', '.')), 2)
+        except: vlr_liq = 0.0
+        detalhe[mes_ref][canal].append({
+            'pedido': g(row, IDX['pedido']),
+            'cliente': corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:60],
+            'ref': g(row, IDX['ref']),
+            'descr': corrigir_mojibake(g(row, IDX['descr'])),
+            'especie': cod,
+            'tipo': tipo,
+            'cfop': cfop_code,
+            'conta': g(row, IDX['conta_contabil']).strip(),
+            'grupo': g(row, IDX['abr_grp']),
+            'qtd': qtd,
+            'vlr_liq': vlr_liq,
+            'vlr_bruto': round(vlr, 2),
+            'dt_ent': g(row, IDX['dt_ent']),
+            'dt_fat': g(row, IDX['dt_fat']),
+            'dt_plano': g(row, IDX['dt_plano']),
+            'mes_ref': mes_ref,
+            'status': 'Realizado' if status == 'fat' else 'Previsto',
+            'nao_soma': 'Sim' if eh_fora_geral else 'Não',
+        })
 
         vi, qi = (0, 2) if status == 'fat' else (1, 3)
         if not eh_fora_geral:
@@ -1580,6 +1608,19 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     with open(os.path.join(output_dir,'dados_faturamento.json'),'w',encoding='utf-8') as f_:
         json.dump(result, f_, ensure_ascii=False, default=str)
     print(f"    ✓ dados_faturamento.json gerado ({len(dados_out)} meses)")
+
+    # Detalhe de conferência — 1 arquivo por mês (dados_faturamento_det_AAAAMM
+    # .json = {canal: [linhas]}). Grandes (~MB/mês) → NÃO commitados; ficam no
+    # volume e são lidos sob demanda pelo endpoint /api/faturamento/detalhe.
+    for antigo in glob.glob(os.path.join(output_dir, 'dados_faturamento_det_*.json')):
+        try: os.remove(antigo)
+        except OSError: pass
+    for mes, canais in detalhe.items():
+        with open(os.path.join(output_dir, f'dados_faturamento_det_{mes}.json'),
+                  'w', encoding='utf-8') as f_:
+            json.dump({c: linhas for c, linhas in canais.items()}, f_,
+                      ensure_ascii=False, separators=(',', ':'))
+    print(f"    ✓ detalhe de faturamento gerado ({len(detalhe)} meses)")
     return result
 
 # ─── JSON PORTAL ─────────────────────────────────────────────────────
