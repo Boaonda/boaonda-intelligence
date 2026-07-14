@@ -487,8 +487,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
   <div class="cfop-legenda">
     <strong>CFOPs excluídas do valor total de faturamento:</strong>
     as CFOPs <span class="cfop-cod">5910</span> (remessa de bonificação/doação),
-    <span class="cfop-cod">5916</span> e <span class="cfop-cod">6916</span> (conserto/reparo) e
-    <span class="cfop-cod">7949</span> (amostras grátis de exportação)
+    <span class="cfop-cod">5916</span> e <span class="cfop-cod">6916</span> (conserto/reparo),
+    <span class="cfop-cod">7949</span> (amostras grátis de exportação) e
+    <span class="cfop-cod">5949</span> e <span class="cfop-cod">6949</span> (outras saídas — bonificação/brinde/reposição)
     são exibidas nos resumos por CFOP e Conta Contábil com o marcador <strong>"não soma"</strong>,
     mas não compõem os totais de faturamento, o resumo por grupo nem as pendências retroativas.
   </div>
@@ -1322,6 +1323,7 @@ const CFOP_DESC = {
   '5916':'Saída de mercadorias ou bens recebidos de terceiros para conserto ou reparo',
   '6916':'Saída de mercadorias ou bens recebidos de terceiros para conserto ou reparo (outros estados)',
   '5949':'Outra saída de mercadoria ou prestação de serviço não especificada',
+  '6949':'Outra saída de mercadoria ou prestação de serviço não especificada (outros estados)',
   '6101':'Venda de produção — outros estados',
   '6102':'Venda de mercadoria — outros estados',
   '6105':'Venda de produtos industrializados ou produzidos pela própria empresa',
@@ -1420,7 +1422,7 @@ function renderCfop() {
       const rowCls = foraGeral ? ' class="tr-fora-geral"' : '';
       const pctR = foraGeral ? 'não soma' : (rV ? pct(rV, totR) : '–');
       const pctT = foraGeral ? 'não soma' : (tV ? pct(tV, totT) : '–');
-      return `<tr${rowCls}${foraGeral ? ' title="Conserto/reparo — não compõe o faturamento geral"' : ''}>
+      return `<tr${rowCls}${foraGeral ? ' title="Não compõe o faturamento geral (conserto/reparo, bonificação, outras saídas)"' : ''}>
         <td class="td-grupo">${cfopLabel(code)}${foraGeral ? ' <span class="badge-fora-geral">não soma</span>' : ''}</td>
         <td class="td-sep"></td>
         <td class="td-r-q">${rQ ? fmtQ(rQ) : '–'}</td>
@@ -1585,7 +1587,7 @@ function renderConta() {
             const cfopLabel2 = cfopLabel(cfop) + (foraGeral ? ' <span class="badge-fora-geral">não soma</span>' : '');
             const pctR2 = foraGeral ? 'não soma' : (crV ? pct(crV, rV) : '–');
             const pctT2 = foraGeral ? 'não soma' : (ctV ? pct(ctV, tV) : '–');
-            result.push(`<tr class="tr-conta-cfop${cfopRowCls}"${foraGeral ? ' title="Conserto/reparo — não compõe o total da conta"' : ''}>
+            result.push(`<tr class="tr-conta-cfop${cfopRowCls}"${foraGeral ? ' title="Não compõe o total da conta (conserto/reparo, bonificação, outras saídas)"' : ''}>
               <td class="td-grupo td-cfop-sub">${cfopLabel2}</td>
               <td class="td-sep"></td>
               <td class="td-r-q">${crQ ? fmtQ2(crQ) : '–'}</td>
