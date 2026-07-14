@@ -28,6 +28,7 @@ DATA_FILES = (
     'dados_estoque.json', 'dados_portal.json', 'dados_programacao.json',
     'dados_programacao_detalhe.json',
     'dados_refs_tabela.json', 'dados_vendas.json', 'dados_vendas_eva.json',
+    'dados_vendas_clientes.json', 'dados_vendas_carteira.json',
     'dados_carteira.json',
     'boaonda_dados_completos.json', 'config_producao.json',
     'dados_capacidade.json', 'dados_ocupacao_semanal.json',

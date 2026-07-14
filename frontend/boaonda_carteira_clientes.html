@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Análise da Carteira</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --line:#262b3a;--line2:#333a4d;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+
+.header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:19px;font-weight:800;color:var(--txt)}
+.h-sub{font-size:10.5px;color:var(--txt-m);margin-top:3px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.back-link{font-size:11px;font-weight:700;color:var(--azul);text-decoration:none}
+.back-link:hover{color:var(--coral)}
+
+.filtros{background:var(--card);border-bottom:1px solid var(--line);padding:12px 32px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sel{background:var(--card2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
+.sel:focus{border-color:var(--coral)}
+.filtro-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
+.filtro-hint{font-size:9.5px;color:var(--txt-m);margin-left:auto;font-style:italic}
+
+.main{padding:24px 32px;max-width:1400px;margin:0 auto}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin:28px 0 14px;display:flex;align-items:center;gap:12px}
+.stitle:first-child{margin-top:0}
+.stitle::after{content:'';flex:1;height:1px;background:var(--line)}
+.stitle-badge{font-size:9px;background:rgba(237,104,66,.1);color:var(--coral);padding:2px 8px;border-radius:4px;font-weight:700;text-transform:none;letter-spacing:0}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
+.kpi.verde{border-top-color:var(--verde)}
+.kpi.azul{border-top-color:var(--azul)}
+.kpi.cinza{border-top-color:var(--cinza)}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.kpi-v{font-size:1.6rem;font-weight:800;color:var(--coral)}
+.kpi-v.verde{color:var(--verde)}
+.kpi-v.azul{color:var(--azul)}
+.kpi-v.cinza{color:var(--cinza)}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px}
+
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:8px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line)}
+td{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--txt-s)}
+tr:last-child td{border:none}
+tr:hover td{background:var(--card2);color:var(--txt)}
+.td-nome{font-weight:700;color:var(--txt)}
+.td-num{font-weight:800;color:var(--txt)}
+.search-box{background:var(--card2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;outline:none;min-width:220px;margin-bottom:10px}
+.search-box:focus{border-color:var(--coral)}
+.bloco-empty{padding:20px;text-align:center;color:var(--txt-m);font-size:12px}
+.bloco-desc{font-size:11px;color:var(--txt-m);margin-bottom:12px;line-height:1.5}
+.pareto-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.main{padding:14px}.pareto-row{grid-template-columns:1fr}}
+.tag{display:inline-block;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase}
+.tag.novo{background:rgba(108,156,55,.14);color:var(--verde)}
+.tag.churn{background:rgba(237,104,66,.14);color:var(--coral)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="h-badge">Análise da Carteira</div>
+    <div class="h-title">Análise da Carteira de Clientes</div>
+    <div class="h-sub">Novos clientes · clientes que pararam de comprar · concentração · recência — para prospecção e tomada de decisão comercial</div>
+  </div>
+  <div style="text-align:right">
+    <a href="boaonda_vendas_catalogo.html" class="back-link">← Voltar para Vendas</a>
+    <div class="h-meta">Atualizado: <strong id="hdr-data">–</strong></div>
+  </div>
+</div>
+
+<div class="filtros">
+  <span class="filtro-label">Canal</span>
+  <select class="sel" id="f-canal" onchange="renderTudo()">
+    <option value="TODOS">Todos os canais</option>
+    <option value="MI">Mercado Interno</option>
+    <option value="ME">Mercado Externo</option>
+    <option value="ECOM">E-commerce</option>
+  </select>
+  <span class="filtro-label">Visão</span>
+  <select class="sel" id="f-visao" onchange="renderTudo()">
+    <option value="0">Pares</option>
+    <option value="1">Valor (R$)</option>
+  </select>
+  <span class="filtro-label">Cadência (novos/churn)</span>
+  <select class="sel" id="f-cadencia" onchange="renderTudo()">
+    <option value="mes">Mês vs mês anterior</option>
+    <option value="trimestre">Trimestre vs trimestre anterior</option>
+    <option value="ano" selected>Ano (YTD) vs ano anterior (mesmo período)</option>
+  </select>
+  <span class="filtro-hint" id="periodo-hint"></span>
+</div>
+
+<div class="main">
+
+  <!-- NOVOS CLIENTES -->
+  <div class="stitle">Novos clientes <span class="stitle-badge" id="novos-badge"></span></div>
+  <div class="kpi-row" id="novos-kpi"></div>
+  <input type="text" class="search-box" id="novos-busca" placeholder="Buscar cliente/holding..." oninput="renderNovos()">
+  <div class="tcard">
+    <table><thead><tr><th>Cliente / Holding</th><th>1ª compra em</th><th>Pares</th><th>Valor (R$)</th></tr></thead>
+    <tbody id="tb-novos"></tbody></table>
+    <div class="bloco-empty" id="novos-empty" style="display:none">Nenhum cliente novo no período.</div>
+  </div>
+
+  <!-- CLIENTES QUE PARARAM DE COMPRAR -->
+  <div class="stitle">Clientes que pararam de comprar <span class="stitle-badge" id="churn-badge"></span></div>
+  <div class="bloco-desc">Compraram no período anterior mas não no período atual — candidatos a reativação imediata.</div>
+  <div class="kpi-row" id="churn-kpi"></div>
+  <input type="text" class="search-box" id="churn-busca" placeholder="Buscar cliente/holding..." oninput="renderChurn()">
+  <div class="tcard">
+    <table><thead><tr><th>Cliente / Holding</th><th>Pares (período anterior)</th><th>Valor (período anterior)</th></tr></thead>
+    <tbody id="tb-churn"></tbody></table>
+    <div class="bloco-empty" id="churn-empty" style="display:none">Ninguém parou de comprar no critério selecionado.</div>
+  </div>
+
+  <!-- CONCENTRAÇÃO / PARETO -->
+  <div class="stitle">Concentração da carteira (Pareto) <span class="stitle-badge" id="pareto-badge"></span></div>
+  <div class="bloco-desc">Quanto do volume do período depende dos maiores clientes — mede o risco de concentração.</div>
+  <div class="kpi-row" id="pareto-kpi"></div>
+  <div class="pareto-row">
+    <div class="tcard"><div style="position:relative;height:260px"><canvas id="c-pareto"></canvas></div></div>
+    <div class="tcard" style="overflow-y:auto;max-height:300px">
+      <table><thead><tr><th>#</th><th>Cliente / Holding</th><th>Volume</th><th>% acum.</th></tr></thead>
+      <tbody id="tb-pareto"></tbody></table>
+    </div>
+  </div>
+
+  <!-- RECÊNCIA -->
+  <div class="stitle">Recência — quem não compra há mais tempo <span class="stitle-badge" id="recencia-badge"></span></div>
+  <div class="bloco-desc">Clientes com histórico de compra que não compram há pelo menos 1 mês (granularidade mensal) — alvos de reativação/prospecção.</div>
+  <input type="text" class="search-box" id="recencia-busca" placeholder="Buscar cliente/holding..." oninput="renderRecencia()">
+  <div class="tcard">
+    <table><thead><tr><th>Cliente / Holding</th><th>Última compra</th><th>Meses sem comprar</th><th>Histórico (pares)</th></tr></thead>
+    <tbody id="tb-recencia"></tbody></table>
+    <div class="bloco-empty" id="recencia-empty" style="display:none">Nenhum cliente inativo encontrado.</div>
+  </div>
+
+</div>
+
+<script>
+const f=n=>(Math.round(n)||0).toLocaleString('pt-BR');
+const fmoeda=n=>'R$ '+(Math.round(n)||0).toLocaleString('pt-BR');
+const fmtIdx=(v,idx)=> idx===1 ? fmoeda(v) : f(v);
+Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
+Chart.defaults.font.family="'Montserrat',sans-serif";
+
+let CARTEIRA = null; // {gerado_em, meses_disponiveis, holdings:{h:{mes:{canal_tipo:[pares,valor]}}}}
+let chartPareto=null;
+
+fetch('dados_vendas_carteira.json?_='+Date.now())
+  .then(r=>r.ok?r.json():null)
+  .then(d=>{
+    CARTEIRA = d;
+    const hdr=document.getElementById('hdr-data');
+    if(hdr && d) hdr.textContent = d.gerado_em || '–';
+    renderTudo();
+  })
+  .catch(()=>{});
+
+// ── PERÍODOS ──────────────────────────────────────────────────────────
+function ym(ano,mes){ return String(ano)+String(mes).padStart(2,'0'); }
+function mesLabelYYYYMM(m){
+  const mn=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return mn[parseInt(m.slice(4))-1]+'/'+m.slice(0,4);
+}
+// Quanto do período "atual" já passou — deixa explícito quando ele está em
+// andamento (mês/trimestre/ano ainda não fechou), já que isso infla o número
+// de "clientes que pararam de comprar" sem ser um sinal real de churn.
+function progressoPeriodo(cadencia){
+  const hoje=new Date();
+  const diaHoje=hoje.getDate();
+  if(cadencia==='mes'){
+    const diasNoMes=new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+    return diaHoje<diasNoMes ? `mês em andamento — dia ${diaHoje} de ${diasNoMes}` : 'mês fechado';
+  }
+  if(cadencia==='trimestre'){
+    const mesNoTri = (hoje.getMonth()%3)+1; // 1..3
+    const diasNoMes=new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+    const diaNoTri = (mesNoTri-1)*30 + diaHoje; // aproximado, só para dar noção de escala
+    return (mesNoTri<3 || diaHoje<diasNoMes) ? `trimestre em andamento — ${mesNoTri}º mês de 3` : 'trimestre fechado';
+  }
+  const diaDoAno = Math.ceil((hoje - new Date(hoje.getFullYear(),0,0))/864e5);
+  return diaDoAno<365 ? `ano em andamento — dia ${diaDoAno} de 365` : 'ano fechado';
+}
+
+function periodoAtualAnterior(cadencia){
+  const hoje=new Date();
+  const anoAtual=hoje.getFullYear(), mesAtual=hoje.getMonth()+1;
+  if(cadencia==='mes'){
+    const atual=[ym(anoAtual,mesAtual)];
+    let am=mesAtual-1, aa=anoAtual; if(am<1){am=12;aa--;}
+    return {atual, anterior:[ym(aa,am)], labelAtual:mesLabelYYYYMM(atual[0]), labelAnterior:mesLabelYYYYMM(ym(aa,am))};
+  }
+  if(cadencia==='trimestre'){
+    const tri=Math.floor((mesAtual-1)/3);
+    const mesesDoTri=(t,ano)=>{const arr=[];for(let i=0;i<3;i++)arr.push(ym(ano,t*3+i+1));return arr;};
+    const atual=mesesDoTri(tri,anoAtual);
+    let triAnt=tri-1, anoAnt=anoAtual; if(triAnt<0){triAnt=3;anoAnt--;}
+    const anterior=mesesDoTri(triAnt,anoAnt);
+    return {atual, anterior, labelAtual:'T'+(tri+1)+'/'+anoAtual, labelAnterior:'T'+(triAnt+1)+'/'+anoAnt};
+  }
+  // ano — YTD jan..mesAtual do ano corrente vs mesmo intervalo do ano anterior
+  const atual=[], anterior=[];
+  for(let m=1;m<=mesAtual;m++){ atual.push(ym(anoAtual,m)); anterior.push(ym(anoAtual-1,m)); }
+  return {atual, anterior, labelAtual:anoAtual+' (jan–'+mesLabelYYYYMM(atual[atual.length-1]).split('/')[0]+')',
+          labelAnterior:(anoAtual-1)+' (mesmo intervalo)'};
+}
+
+// ── AGREGAÇÃO ─────────────────────────────────────────────────────────
+function somaHolding(mesesObj, listaMeses, canalFiltro, idx){
+  let tot=0;
+  listaMeses.forEach(m=>{
+    const tipos=mesesObj[m]; if(!tipos) return;
+    for(const k in tipos){
+      const canal=k.split('_')[0];
+      if(canalFiltro!=='TODOS' && canal!==canalFiltro) continue;
+      tot+=tipos[k][idx];
+    }
+  });
+  return tot;
+}
+function primeiroMesCanal(mesesObj, canalFiltro){
+  let min=null;
+  for(const m in mesesObj){
+    const tipos=mesesObj[m];
+    let tem=false;
+    for(const k in tipos){ const canal=k.split('_')[0]; if(canalFiltro==='TODOS'||canal===canalFiltro){tem=true;break;} }
+    if(tem && (min===null || m<min)) min=m;
+  }
+  return min;
+}
+function ultimoMesCanal(mesesObj, canalFiltro){
+  let max=null;
+  for(const m in mesesObj){
+    const tipos=mesesObj[m];
+    let tem=false;
+    for(const k in tipos){ const canal=k.split('_')[0]; if(canalFiltro==='TODOS'||canal===canalFiltro){tem=true;break;} }
+    if(tem && (max===null || m>max)) max=m;
+  }
+  return max;
+}
+function diffMeses(m1,m2){ // m2 - m1, ambos 'YYYYMM'
+  const a1=+m1.slice(0,4), me1=+m1.slice(4), a2=+m2.slice(0,4), me2=+m2.slice(4);
+  return (a2-a1)*12 + (me2-me1);
+}
+
+// ── RENDER GERAL ──────────────────────────────────────────────────────
+function renderTudo(){
+  if(!CARTEIRA) return;
+  const cadencia=document.getElementById('f-cadencia').value;
+  const p=periodoAtualAnterior(cadencia);
+  document.getElementById('periodo-hint').textContent =
+    'Atual: '+p.labelAtual+' · Anterior: '+p.labelAnterior+' · '+progressoPeriodo(cadencia);
+  renderNovos();
+  renderChurn();
+  renderPareto();
+  renderRecencia();
+}
+
+function getFiltros(){
+  return {
+    canal: document.getElementById('f-canal').value,
+    idx: +document.getElementById('f-visao').value,
+    cadencia: document.getElementById('f-cadencia').value,
+  };
+}
+
+// ── NOVOS CLIENTES ──────────────────────────────────────────────────
+function renderNovos(){
+  const {canal, idx, cadencia} = getFiltros();
+  const p = periodoAtualAnterior(cadencia);
+  const busca = (document.getElementById('novos-busca').value||'').toLowerCase();
+  const holdings = CARTEIRA.holdings;
+  const atualSet = new Set(p.atual);
+  const lista=[];
+  for(const h in holdings){
+    const pm = primeiroMesCanal(holdings[h], canal);
+    if(pm && atualSet.has(pm)){
+      lista.push({h, pm, pares: somaHolding(holdings[h], p.atual, canal, 0), valor: somaHolding(holdings[h], p.atual, canal, 1)});
+    }
+  }
+  lista.sort((a,b)=> (idx===1?b.valor-a.valor:b.pares-a.pares));
+  const filtrada = busca ? lista.filter(x=>x.h.toLowerCase().includes(busca)) : lista;
+
+  document.getElementById('novos-badge').textContent = p.labelAtual+' · '+lista.length+' novos';
+  const totPares = lista.reduce((a,x)=>a+x.pares,0), totValor=lista.reduce((a,x)=>a+x.valor,0);
+  document.getElementById('novos-kpi').innerHTML =
+    kpi('','Novos clientes',f(lista.length),'no período '+p.labelAtual) +
+    kpi('verde','Volume gerado por eles',fmtIdx(idx===1?totValor:totPares,idx),'pares/valor somados');
+
+  const tb=document.getElementById('tb-novos'); tb.innerHTML='';
+  document.getElementById('novos-empty').style.display = filtrada.length ? 'none' : 'block';
+  filtrada.slice(0,300).forEach(x=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = '<td class="td-nome"><span class="tag novo">novo</span> '+x.h+'</td><td>'+mesLabelYYYYMM(x.pm)+'</td>'+
+      '<td class="td-num">'+f(x.pares)+'</td><td class="td-num">'+fmoeda(x.valor)+'</td>';
+    tb.appendChild(tr);
+  });
+}
+
+// ── CHURN ─────────────────────────────────────────────────────────────
+function renderChurn(){
+  const {canal, idx, cadencia} = getFiltros();
+  const p = periodoAtualAnterior(cadencia);
+  const busca = (document.getElementById('churn-busca').value||'').toLowerCase();
+  const holdings = CARTEIRA.holdings;
+  const lista=[];
+  for(const h in holdings){
+    const pAtual = somaHolding(holdings[h], p.atual, canal, 0);
+    const pAnterior = somaHolding(holdings[h], p.anterior, canal, 0);
+    if(pAnterior>0 && pAtual===0){
+      lista.push({h, pares: pAnterior, valor: somaHolding(holdings[h], p.anterior, canal, 1)});
+    }
+  }
+  lista.sort((a,b)=> (idx===1?b.valor-a.valor:b.pares-a.pares));
+  const filtrada = busca ? lista.filter(x=>x.h.toLowerCase().includes(busca)) : lista;
+
+  document.getElementById('churn-badge').textContent = p.labelAnterior+' → '+p.labelAtual+' · '+lista.length+' pararam';
+  const totPares=lista.reduce((a,x)=>a+x.pares,0), totValor=lista.reduce((a,x)=>a+x.valor,0);
+  document.getElementById('churn-kpi').innerHTML =
+    kpi('','Clientes que pararam',f(lista.length),'ativos em '+p.labelAnterior+', zerados em '+p.labelAtual) +
+    kpi('cinza','Volume que deixou de vir',fmtIdx(idx===1?totValor:totPares,idx),'pares/valor do período anterior');
+
+  const tb=document.getElementById('tb-churn'); tb.innerHTML='';
+  document.getElementById('churn-empty').style.display = filtrada.length ? 'none' : 'block';
+  filtrada.slice(0,300).forEach(x=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="td-nome"><span class="tag churn">parou</span> '+x.h+'</td>'+
+      '<td class="td-num">'+f(x.pares)+'</td><td class="td-num">'+fmoeda(x.valor)+'</td>';
+    tb.appendChild(tr);
+  });
+}
+
+// ── CONCENTRAÇÃO / PARETO ─────────────────────────────────────────────
+function renderPareto(){
+  const {canal, idx, cadencia} = getFiltros();
+  const p = periodoAtualAnterior(cadencia);
+  const holdings = CARTEIRA.holdings;
+  const lista=[];
+  for(const h in holdings){
+    const v = somaHolding(holdings[h], p.atual, canal, idx);
+    if(v>0) lista.push({h, v});
+  }
+  lista.sort((a,b)=>b.v-a.v);
+  const total = lista.reduce((a,x)=>a+x.v,0);
+  document.getElementById('pareto-badge').textContent = p.labelAtual+' · '+lista.length+' clientes ativos';
+
+  let acumulado=0;
+  const top10 = lista.slice(0,10).reduce((a,x)=>a+x.v,0);
+  const top20 = lista.slice(0,20).reduce((a,x)=>a+x.v,0);
+  const pctTop10 = total? Math.round(top10/total*100):0;
+  const pctTop20 = total? Math.round(top20/total*100):0;
+  document.getElementById('pareto-kpi').innerHTML =
+    kpi('','Clientes ativos no período',f(lista.length),'') +
+    kpi('coral','Top 10 concentram',pctTop10+'%','do volume total') +
+    kpi('azul','Top 20 concentram',pctTop20+'%','do volume total');
+
+  const tb=document.getElementById('tb-pareto'); tb.innerHTML='';
+  const top50 = lista.slice(0,50);
+  const cumData=[];
+  top50.forEach((x,i)=>{
+    acumulado+=x.v;
+    const pctAcum = total? Math.round(acumulado/total*100):0;
+    cumData.push(pctAcum);
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td style="color:var(--txt-m);font-size:10px">'+(i+1)+'</td><td class="td-nome">'+x.h+'</td>'+
+      '<td class="td-num">'+fmtIdx(x.v,idx)+'</td><td>'+pctAcum+'%</td>';
+    tb.appendChild(tr);
+  });
+
+  if(chartPareto){ chartPareto.destroy(); chartPareto=null; }
+  const labels = top50.map((x,i)=>i+1);
+  chartPareto = new Chart(document.getElementById('c-pareto'), {
+    data:{ labels, datasets:[
+      {type:'bar', label:'Volume', data:top50.map(x=>x.v), backgroundColor:'#ed684299', yAxisID:'y', order:2},
+      {type:'line', label:'% acumulado', data:cumData, borderColor:'#4994c7', backgroundColor:'#4994c7', yAxisID:'y1', tension:.2, pointRadius:0, order:1},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}}},
+      scales:{
+        x:{grid:{display:false},ticks:{maxTicksLimit:10,font:{size:9}}},
+        y:{position:'left',ticks:{callback:v=>fmtIdx(v,idx)}},
+        y1:{position:'right',min:0,max:100,grid:{display:false},ticks:{callback:v=>v+'%'}},
+      }}});
+}
+
+// ── RECÊNCIA ─────────────────────────────────────────────────────────
+function renderRecencia(){
+  const {canal, idx} = getFiltros();
+  const busca = (document.getElementById('recencia-busca').value||'').toLowerCase();
+  const holdings = CARTEIRA.holdings;
+  const mesAtualStr = ym(new Date().getFullYear(), new Date().getMonth()+1);
+  const lista=[];
+  for(const h in holdings){
+    const um = ultimoMesCanal(holdings[h], canal);
+    if(!um) continue;
+    const meses = diffMeses(um, mesAtualStr);
+    if(meses>=1){
+      const hist = somaHolding(holdings[h], Object.keys(holdings[h]), canal, 0);
+      lista.push({h, um, meses, hist});
+    }
+  }
+  lista.sort((a,b)=>b.meses-a.meses);
+  const filtrada = busca ? lista.filter(x=>x.h.toLowerCase().includes(busca)) : lista;
+
+  document.getElementById('recencia-badge').textContent = lista.length+' clientes inativos há 1+ mês';
+  const tb=document.getElementById('tb-recencia'); tb.innerHTML='';
+  document.getElementById('recencia-empty').style.display = filtrada.length ? 'none' : 'block';
+  filtrada.slice(0,300).forEach(x=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="td-nome">'+x.h+'</td><td>'+mesLabelYYYYMM(x.um)+'</td>'+
+      '<td class="td-num">'+x.meses+'</td><td>'+f(x.hist)+'</td>';
+    tb.appendChild(tr);
+  });
+}
+
+function kpi(cls,label,val,sub){
+  return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v '+cls+'">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';
+}
+</script>
+</body>
+</html>

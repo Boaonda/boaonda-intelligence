@@ -546,6 +546,112 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
         },
     }
 
+
+def _holding_de(row):
+    """Nome do cliente para agrupamento — holding se cadastrada, senão a
+    própria razão social vira um grupo de 1 (mesmo padrão já usado no
+    faturamento: nomeholding OR razao_social)."""
+    return corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:60]
+
+
+def gerar_dados_vendas_clientes(linhas, output_dir='.'):
+    """Detalhe linha-a-linha de vendas por holding/cliente, do ano-calendário
+    corrente (1º de janeiro até hoje). Alimenta o quadro 'Clientes com
+    compra' (drilldown holding → referência → linha) e os cards 'Vendas do
+    dia/dia anterior' do dashboard de Vendas — ambos calculados no navegador
+    filtrando este arquivo por data, sem chamada ao servidor.
+
+    Estrutura: {"campos": [...], "holdings": {holding: {ref: [[...]]}}}
+    Cada linha é um array compacto (não dict) para reduzir tamanho — a
+    ordem dos campos está em "campos".
+    """
+    print("\n  Gerando dados_vendas_clientes.json...")
+    ano_atual = datetime.now().strftime('%Y')
+    ano_ini = f'{ano_atual}01'
+    holdings = defaultdict(lambda: defaultdict(list))
+    n = 0
+    for row in linhas:
+        abr = g(row, IDX['abr_grp']).upper()
+        cod = g(row, IDX['cod_esp'])
+        pos_item = g(row, IDX['pos_item'])
+        canal, tipo = classifica_venda(abr, cod, pos_item)
+        if canal not in ('MI', 'ME', 'ECOM'): continue
+        anomes = g(row, IDX['anomes'])
+        if not anomes or anomes < ano_ini: continue
+        try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
+        except: qtd = 0
+        if qtd <= 0: continue
+        try: valor = round(float(g(row, IDX['vlr']).replace(',','.')), 2)
+        except: valor = 0.0
+        holding = _holding_de(row)
+        ref = g(row, IDX['ref']).strip() or '(sem referência)'
+        dt_ent = g(row, IDX['dt_ent'])
+        pedido = g(row, IDX['pedido'])
+        holdings[holding][ref].append([pedido, dt_ent, canal, tipo, qtd, valor])
+        n += 1
+
+    saida = {
+        'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        'periodo_desde': f'01/01/{ano_atual}',
+        'campos': ['pedido', 'dt_ent', 'canal', 'tipo', 'qtd', 'valor'],
+        'holdings': {h: dict(refs) for h, refs in holdings.items()},
+    }
+    with open(os.path.join(output_dir, 'dados_vendas_clientes.json'), 'w', encoding='utf-8') as f_:
+        json.dump(saida, f_, ensure_ascii=False, separators=(',', ':'))
+    print(f"    ✓ dados_vendas_clientes.json gerado ({n:,} linhas, "
+          f"{len(holdings):,} holdings, desde 01/01/{ano_atual})")
+
+
+def gerar_dados_vendas_carteira(linhas, output_dir='.'):
+    """Histórico mensal de vendas por holding/cliente (todo o histórico
+    disponível no 3YS, não só o ano corrente) — granularidade de mês, sem
+    detalhe de referência/linha. Alimenta a página 'Análise da Carteira'
+    (novos clientes, clientes que pararam de comprar, concentração/Pareto,
+    recência), que precisa comparar períodos passados (ex.: 1ª compra em
+    qualquer mês do histórico) — por isso não fica restrito ao ano corrente
+    como o dados_vendas_clientes.json.
+
+    Estrutura: {"holdings": {holding: {mes: {"MI_PROG":[pares,valor], ...}}}}
+    """
+    print("\n  Gerando dados_vendas_carteira.json...")
+    holdings = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0, 0.0])))
+    meses_presentes = set()
+    for row in linhas:
+        abr = g(row, IDX['abr_grp']).upper()
+        cod = g(row, IDX['cod_esp'])
+        pos_item = g(row, IDX['pos_item'])
+        canal, tipo = classifica_venda(abr, cod, pos_item)
+        if canal not in ('MI', 'ME', 'ECOM'): continue
+        anomes = g(row, IDX['anomes'])
+        if not anomes or len(anomes) != 6 or not anomes.isdigit(): continue
+        try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
+        except: qtd = 0
+        if qtd <= 0: continue
+        try: valor = float(g(row, IDX['vlr']).replace(',','.'))
+        except: valor = 0.0
+        holding = _holding_de(row)
+        chave = f'{canal}_{tipo}'
+        d = holdings[holding][anomes][chave]
+        d[0] += qtd; d[1] += valor
+        meses_presentes.add(anomes)
+
+    saida_holdings = {}
+    for h, meses in holdings.items():
+        saida_holdings[h] = {
+            m: {k: [q, round(v, 2)] for k, (q, v) in tipos.items()}
+            for m, tipos in meses.items()
+        }
+    saida = {
+        'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        'meses_disponiveis': sorted(meses_presentes),
+        'holdings': saida_holdings,
+    }
+    with open(os.path.join(output_dir, 'dados_vendas_carteira.json'), 'w', encoding='utf-8') as f_:
+        json.dump(saida, f_, ensure_ascii=False, separators=(',', ':'))
+    print(f"    ✓ dados_vendas_carteira.json gerado ({len(holdings):,} holdings, "
+          f"{len(meses_presentes)} meses de histórico)")
+
+
 # ─── VENDAS COMPOSTO EVA ─────────────────────────────────────────────
 def processar_vendas_eva(linhas, mes_atual, output_dir='.'):
     """Vendas de Composto de EVA — mercado separado de calçados (matéria-prima
@@ -1764,6 +1870,8 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         linhas = carregar_linhas_3ys(arquivo_3ys)
         vendas   = processar_vendas(linhas, mes_atual, output_dir)
         processar_vendas_eva(linhas, mes_atual, output_dir)
+        gerar_dados_vendas_clientes(linhas, output_dir)
+        gerar_dados_vendas_carteira(linhas, output_dir)
         prog     = processar_programacao(linhas, output_dir)
         carteira = processar_carteira(linhas, output_dir)
         fat      = processar_faturamento(linhas, output_dir)
@@ -1784,6 +1892,7 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         'diag_vendas': vendas.get('_diag', {}),
         'arquivos': ['dados_portal.json','dados_programacao.json','dados_programacao_detalhe.json',
                       'dados_refs_tabela.json','dados_vendas.json','dados_vendas_eva.json','dados_estoque.json',
+                      'dados_vendas_clientes.json','dados_vendas_carteira.json',
                       'dados_carteira.json','dados_faturamento.json','boaonda_dados_completos.json'],
     }
 

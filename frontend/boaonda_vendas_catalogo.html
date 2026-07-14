@@ -98,7 +98,39 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .td-num{font-size:13px;font-weight:800;color:var(--txt)}
 .mbar{height:3px;border-radius:2px;opacity:.7}
 
-@media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}}
+/* Vendas do dia */
+.dia-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:0;align-items:center}
+.dia-box{padding:6px 18px}
+.dia-box .dia-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);margin-bottom:6px}
+.dia-box .dia-v{font-size:26px;font-weight:800;color:var(--txt)}
+.dia-box .dia-v.hoje{color:var(--coral)}
+.dia-sep{width:1px;height:44px;background:var(--line);margin:0 6px}
+.dia-delta{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:800;white-space:nowrap}
+.dia-delta.pos{background:rgba(108,156,55,.14);color:var(--verde)}
+.dia-delta.neg{background:rgba(237,104,66,.14);color:var(--coral)}
+.dia-delta.zero{background:var(--card2);color:var(--txt-m)}
+
+/* Clientes com compra */
+.link-carteira{font-size:10.5px;font-weight:700;color:var(--azul);text-decoration:none;white-space:nowrap}
+.link-carteira:hover{color:var(--coral)}
+.cl-search{background:var(--card2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;outline:none;min-width:200px}
+.cl-search:focus{border-color:var(--coral)}
+.cl-empty{padding:24px;text-align:center;color:var(--txt-m);font-size:12px}
+.tr-cliente{cursor:pointer}
+.tr-cliente:hover td{background:var(--card2)}
+.tr-cliente td.td-nome{font-weight:700;color:var(--txt)}
+.tr-cliente .cl-arrow{display:inline-block;width:14px;color:var(--txt-m);font-size:9px}
+.tr-cliente.aberto td.td-nome{color:var(--coral)}
+.tr-sub td{background:rgba(255,255,255,.015)}
+.tr-sub-inner{padding:10px 8px 14px 30px}
+.cl-mini-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.cl-mini-table th{padding:5px 10px;font-size:8.5px}
+.cl-mini-table td{padding:5px 10px}
+.cl-mini-row{cursor:pointer}
+.cl-mini-row:hover td{background:var(--card2)}
+.cl-mini-row.aberto td{color:var(--coral)}
+
+@media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}.dia-grid{grid-template-columns:1fr}.dia-sep{display:none}}
 </style>
 </head>
 <body>
@@ -220,6 +252,30 @@ tr:hover td{background:var(--card2);color:var(--txt)}
     </div>
   </div>
 
+  <div class="stitle">Vendas do dia <span class="ctitle-badge">curto prazo · respeita canal/tipo/visão</span></div>
+  <div class="tcard" id="dia-card" style="padding:16px 20px"></div>
+
+  <div class="stitle" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <span>Clientes com compra <span class="ctitle-badge" id="cl-badge">período selecionado</span></span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="boaonda_carteira_clientes.html" target="_blank" class="link-carteira">Análise da carteira →</a>
+      <select class="resumo-mes-sel" id="cl-periodo" onchange="clSetPeriodo(this.value)">
+        <option value="dia_anterior">Dia anterior</option>
+        <option value="dia_atual" selected>Dia atual</option>
+        <option value="mes">Mês</option>
+        <option value="ano">Ano</option>
+      </select>
+      <input type="text" id="cl-busca" placeholder="Buscar cliente/holding..." class="cl-search" oninput="clSetBusca(this.value)">
+    </div>
+  </div>
+  <div class="tcard">
+    <table>
+      <thead><tr id="cl-thead"></tr></thead>
+      <tbody id="tb-clientes"></tbody>
+    </table>
+    <div id="cl-empty" class="cl-empty" style="display:none">Nenhum cliente encontrado para os filtros selecionados.</div>
+  </div>
+
   <div class="stitle">Top referências — <span id="stitle-refs" style="font-weight:400;text-transform:none;letter-spacing:0">período selecionado</span></div>
   <div class="tcard">
     <table>
@@ -265,11 +321,37 @@ let MESES_ALL=[];  // preenchido dinamicamente após fetch — nunca mais precis
 let DADOS={}, REFS_MI=[], REFS_ME=[], REFS_EC=[];
 let DADOS_VALOR={}, REFS_MI_VALOR=[], REFS_ME_VALOR=[], REFS_EC_VALOR=[];
 
+// dados_vendas_clientes.json — detalhe por holding/cliente (ano corrente),
+// usado pelos blocos "Vendas do dia" e "Clientes com compra". Carregado em
+// paralelo ao arquivo mensal; ausência não quebra o resto do painel.
+let CLIENTES_DATA = null;
+let POR_DIA = {};   // POR_DIA[dd/mm/aa]['MI_PROG'|'ME_PROG'|'ECOM_ECOM'|...] = [pares,valor]
+
+function indexarPorDia(){
+  POR_DIA = {};
+  const holdings = (CLIENTES_DATA && CLIENTES_DATA.holdings) || {};
+  for(const h in holdings){
+    const refs = holdings[h];
+    for(const r in refs){
+      refs[r].forEach(linha=>{
+        const [,dt,canal,tipo,qtd,valor] = linha;
+        if(!POR_DIA[dt]) POR_DIA[dt]={};
+        const k = canal+'_'+tipo;
+        if(!POR_DIA[dt][k]) POR_DIA[dt][k]=[0,0];
+        POR_DIA[dt][k][0]+=qtd; POR_DIA[dt][k][1]+=valor;
+      });
+    }
+  }
+}
+
 // Carregar JSON externo — gerado pelo atualizar.py
-fetch('dados_vendas.json?_='+Date.now())
-  .then(r=>r.ok?r.json():null)
-  .then(d=>{
-    if(!d) return; // usa dados vazios
+Promise.all([
+  fetch('dados_vendas.json?_='+Date.now()).then(r=>r.ok?r.json():null),
+  fetch('dados_vendas_clientes.json?_='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
+]).then(([d, dCli])=>{
+    CLIENTES_DATA = dCli;
+    indexarPorDia();
+    if(!d) { render(); return; } // usa dados vazios
     // Adapta o formato gerado pelo processador.py (chave "mensal", canais
     // MI/ME/ECOM com tipos PROG/PE/MISTA/ECOM) para a estrutura usada pelo
     // dashboard (MI.PROG/PE/MISTA, ME.ME, EC.EC)
@@ -489,10 +571,184 @@ function render(){
 
   renderCharts(canais, tipos);
   renderRefs(canais, tipos, meses);
+  renderDiaCard(canais, tipos);
+  renderClientes();
 }
 
 function kpi(cls,label,val,sub){
   return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v '+cls+'">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';
+}
+
+// ── VENDAS DO DIA / DIA ANTERIOR ─────────────────────────────────────
+function dataStrDDMMAA(d){
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const aa=String(d.getFullYear()).slice(2);
+  return dd+'/'+mm+'/'+aa;
+}
+function totalDoDia(dataStr, canais, tipos){
+  const d=POR_DIA[dataStr]; if(!d) return 0;
+  const idx = estado.unidade==='valor' ? 1 : 0;
+  let tot=0;
+  for(const k in d){
+    const us=k.indexOf('_'); const canal=k.slice(0,us), tipo=k.slice(us+1);
+    if(canal==='MI'   && canais.has('MI') && tipos.has(tipo)) tot+=d[k][idx];
+    else if(canal==='ME'   && canais.has('ME')) tot+=d[k][idx];
+    else if(canal==='ECOM' && canais.has('EC')) tot+=d[k][idx];
+  }
+  return tot;
+}
+function renderDiaCard(canais, tipos){
+  const el=document.getElementById('dia-card');
+  if(!el) return;
+  const hoje=new Date(), ontem=new Date(hoje); ontem.setDate(hoje.getDate()-1);
+  const sHoje=dataStrDDMMAA(hoje), sOntem=dataStrDDMMAA(ontem);
+  const vHoje=totalDoDia(sHoje,canais,tipos), vOntem=totalDoDia(sOntem,canais,tipos);
+  const delta = vOntem ? Math.round((vHoje-vOntem)/vOntem*100) : (vHoje?100:0);
+  const deltaCls = delta>0?'pos':delta<0?'neg':'zero';
+  const deltaTxt = (delta>0?'+':'')+delta+'%';
+  const fmtDia=d=>{const dias=['dom','seg','ter','qua','qui','sex','sáb'];return dias[d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
+  el.innerHTML = `<div class="dia-grid">
+    <div class="dia-box"><div class="dia-l">Ontem · ${fmtDia(ontem)}</div><div class="dia-v">${fmtv(vOntem)}</div></div>
+    <div class="dia-box"><div class="dia-l">Hoje · ${fmtDia(hoje)}</div><div class="dia-v hoje">${fmtv(vHoje)}</div></div>
+    <div class="dia-delta ${deltaCls}">${deltaTxt} vs ontem</div>
+  </div>`;
+}
+
+// ── CLIENTES COM COMPRA (drilldown holding → ref → linha) ────────────
+let clPeriodo='dia_atual', clBusca='', clHoldingAberto=null, clRefAberto=null;
+function clSetPeriodo(v){ clPeriodo=v; clHoldingAberto=null; clRefAberto=null; renderClientes(); }
+function clSetBusca(v){ clBusca=v.toLowerCase(); renderClientes(); }
+
+function clPassaPeriodo(dt){
+  const p=dt.split('/'); if(p.length!==3) return false;
+  const dd=+p[0], mm=+p[1], ano=2000+ +p[2];
+  const hoje=new Date();
+  if(clPeriodo==='dia_atual')
+    return dd===hoje.getDate() && mm===hoje.getMonth()+1 && ano===hoje.getFullYear();
+  if(clPeriodo==='dia_anterior'){
+    const ont=new Date(hoje); ont.setDate(hoje.getDate()-1);
+    return dd===ont.getDate() && mm===ont.getMonth()+1 && ano===ont.getFullYear();
+  }
+  if(clPeriodo==='mes')
+    return mm===hoje.getMonth()+1 && ano===hoje.getFullYear();
+  return true; // 'ano' — arquivo já é só do ano corrente
+}
+
+// Colunas na mesma ordem/nomenclatura já usada no resto do painel (MI Prog/PE/
+// Mista, ME, E-commerce) — reaproveita a "modalidade" já estabelecida aqui.
+const CL_COLS = [
+  {k:'MI_PROG', label:'MI Prog.'}, {k:'MI_PE', label:'MI PE'}, {k:'MI_MISTA', label:'MI Mista'},
+  {k:'ME_ME', label:'ME'}, {k:'ECOM_ECOM', label:'E-com'},
+];
+function clColKey(canal,tipo){ return canal==='ME' ? 'ME_ME' : canal==='ECOM' ? 'ECOM_ECOM' : canal+'_'+tipo; }
+function clColunasAtivas(canais, tipos){
+  return CL_COLS.filter(c=>{
+    if(c.k.startsWith('MI_')) return canais.has('MI') && tipos.has(c.k.slice(3));
+    if(c.k==='ME_ME') return canais.has('ME');
+    return canais.has('EC');
+  });
+}
+
+function clAgregar(canais, tipos){
+  const out={};
+  const holdings=(CLIENTES_DATA && CLIENTES_DATA.holdings) || {};
+  for(const h in holdings){
+    const refs=holdings[h];
+    for(const r in refs){
+      refs[r].forEach(linha=>{
+        const [pedido,dt,canal,tipo,qtd,valor]=linha;
+        if(!clPassaPeriodo(dt)) return;
+        if(canal==='MI'   && !(canais.has('MI') && tipos.has(tipo))) return;
+        if(canal==='ME'   && !canais.has('ME')) return;
+        if(canal==='ECOM' && !canais.has('EC')) return;
+        const ck=clColKey(canal,tipo);
+        if(!out[h]) out[h]={cols:{},refs:{}};
+        if(!out[h].cols[ck]) out[h].cols[ck]=[0,0];
+        out[h].cols[ck][0]+=qtd; out[h].cols[ck][1]+=valor;
+        if(!out[h].refs[r]) out[h].refs[r]={cols:{},linhas:[]};
+        if(!out[h].refs[r].cols[ck]) out[h].refs[r].cols[ck]=[0,0];
+        out[h].refs[r].cols[ck][0]+=qtd; out[h].refs[r].cols[ck][1]+=valor;
+        out[h].refs[r].linhas.push({pedido,dt,ck,qtd,valor});
+      });
+    }
+  }
+  return out;
+}
+function clTotal(cols, idx){ return Object.values(cols).reduce((a,v)=>a+v[idx],0); }
+
+function renderClientes(){
+  const thead=document.getElementById('cl-thead');
+  const tb=document.getElementById('tb-clientes');
+  const badge=document.getElementById('cl-badge');
+  const emptyEl=document.getElementById('cl-empty');
+  if(!thead||!tb) return;
+  const canais=estado.canal, tipos=estado.tipo;
+  const idx = estado.unidade==='valor' ? 1 : 0;
+  const cols = clColunasAtivas(canais, tipos);
+  const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',ano:'ano corrente'}[clPeriodo];
+  if(badge) badge.textContent=periodoLabel;
+
+  thead.innerHTML = '<th>Cliente / Holding</th>' + cols.map(c=>'<th>'+c.label+'</th>').join('') + '<th>Total</th>';
+
+  const agregado = clAgregar(canais, tipos);
+  let lista = Object.entries(agregado).map(([h,v])=>({h, cols:v.cols, refs:v.refs, total: clTotal(v.cols, idx)}));
+  if(clBusca) lista = lista.filter(x=>x.h.toLowerCase().includes(clBusca));
+  lista.sort((a,b)=>b.total-a.total);
+
+  tb.innerHTML='';
+  emptyEl.style.display = lista.length ? 'none' : 'block';
+  lista.forEach(item=>{
+    const tr=document.createElement('tr');
+    tr.className='tr-cliente'+(clHoldingAberto===item.h?' aberto':'');
+    tr.onclick=()=>{ clHoldingAberto = clHoldingAberto===item.h ? null : item.h; clRefAberto=null; renderClientes(); };
+    const arrow = clHoldingAberto===item.h ? '▾' : '▸';
+    tr.innerHTML = '<td class="td-nome"><span class="cl-arrow">'+arrow+'</span>'+item.h+'</td>' +
+      cols.map(c=>'<td>'+(item.cols[c.k]?fmtvIdx(item.cols[c.k],idx):'–')+'</td>').join('') +
+      '<td class="td-num">'+fmtScalar(item.total,idx)+'</td>';
+    tb.appendChild(tr);
+    if(clHoldingAberto===item.h) tb.appendChild(clRowRefs(item, cols, idx));
+  });
+}
+function fmtvIdx(arr, idx){ return idx===1 ? fmoeda(arr[1]) : f(arr[0]); }
+function fmtScalar(val, idx){ return idx===1 ? fmoeda(val) : f(val); }
+
+function clRowRefs(item, cols, idx){
+  const tr=document.createElement('tr'); tr.className='tr-sub';
+  const td=document.createElement('td'); td.colSpan = cols.length+2;
+  const refsList = Object.entries(item.refs).map(([r,v])=>({r, cols:v.cols, linhas:v.linhas, total: clTotal(v.cols, idx)}))
+    .sort((a,b)=>b.total-a.total);
+  let html = '<div class="tr-sub-inner"><table class="cl-mini-table"><thead><tr><th>Referência</th>'+
+    cols.map(c=>'<th>'+c.label+'</th>').join('')+'<th>Total</th></tr></thead><tbody>';
+  refsList.forEach(rf=>{
+    const aberto = clRefAberto===rf.r;
+    html += `<tr class="cl-mini-row${aberto?' aberto':''}" onclick="clToggleRef(event,'${rf.r.replace(/'/g,"\\'")}')">`+
+      '<td>'+(aberto?'▾ ':'▸ ')+rf.r+'</td>'+
+      cols.map(c=>'<td>'+(rf.cols[c.k]?fmtvIdx(rf.cols[c.k],idx):'–')+'</td>').join('')+
+      '<td class="td-num">'+fmtScalar(rf.total,idx)+'</td></tr>';
+    if(aberto) html += clLinhasHtml(rf.linhas, cols, idx);
+  });
+  html += '</tbody></table></div>';
+  td.innerHTML = html;
+  tr.appendChild(td);
+  return tr;
+}
+function clToggleRef(ev, ref){
+  ev.stopPropagation();
+  clRefAberto = clRefAberto===ref ? null : ref;
+  renderClientes();
+}
+function clLinhasHtml(linhas, cols, idx){
+  const colLabel = k => (CL_COLS.find(c=>c.k===k)||{}).label || k;
+  let html = '<tr><td colspan="'+(cols.length+2)+'" style="padding:6px 8px 10px 24px">'+
+    '<table class="cl-mini-table" style="background:var(--bg)"><thead><tr>'+
+    '<th>Pedido</th><th>Data</th><th>Modalidade</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>';
+  linhas.forEach(l=>{
+    html += '<tr><td>'+l.pedido+'</td><td>'+l.dt+'</td><td>'+colLabel(l.ck)+'</td>'+
+      '<td>'+f(l.qtd)+'</td><td>'+fmoeda(l.valor)+'</td></tr>';
+  });
+  html += '</tbody></table></td></tr>';
+  return html;
 }
 
 // ── CHARTS ──────────────────────────────────────────────────────────
