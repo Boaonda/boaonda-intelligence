@@ -1133,6 +1133,14 @@ ANOMESFATURA_COL = 19  # coluna anomesfatura no CSV 3YS (yyyymm da emissão NF)
 #                  (bonificação/brinde/reposição — sem conta contábil de venda)
 CFOPS_FORA_DO_GERAL = {'5910', '5916', '6916', '7949', '5949', '6949'}
 
+# Espécies (cod_esp_ent_sai) que também não compõem o faturamento geral —
+# mesmo tratamento dos CFOPS_FORA_DO_GERAL (fora do resumo por grupo, totais
+# e retroativo; visíveis nas abas CFOP/Conta com "não soma").
+#   132 — remessa de troca de e-commerce (não é venda; hoje sempre CFOP
+#         5949/6949, mas a regra por espécie garante a exclusão mesmo que
+#         apareça com outro CFOP no futuro).
+ESPECIES_FORA_DO_GERAL = {'132'}
+
 def classifica_faturamento(cod, abr, marca=''):
     """Retorna (canal, tipo) para a área de Faturamento.
 
@@ -1283,10 +1291,15 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             continue
 
         cfop_code = g(row, IDX['cfop'])
-        eh_conserto_reparo = cfop_code in CFOPS_FORA_DO_GERAL
+        # "Fora do geral": não compõe resumo por grupo/totais/retroativo (mas
+        # fica visível em CFOP/Conta com "não soma"). Vale por CFOP
+        # (conserto/reparo, bonificação, outras saídas) OU por espécie
+        # (132 = remessa de troca de e-commerce).
+        eh_fora_geral = (cfop_code in CFOPS_FORA_DO_GERAL
+                         or cod in ESPECIES_FORA_DO_GERAL)
 
         vi, qi = (0, 2) if status == 'fat' else (1, 3)
-        if not eh_conserto_reparo:
+        if not eh_fora_geral:
             m = dados[mes_ref]
             if canal == 'MI':
                 m['MI'][tipo][vi] += vlr; m['MI'][tipo][qi] += qtd
@@ -1343,8 +1356,9 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             dc[vi_c] += vlr
             dc[qi_c] += qtd
         # Retroativo: previsto de meses anteriores — painel de acompanhamento de pendências.
-        # Exclui conserto/reparo (não são faturamentos de produto).
-        if status == 'prev' and mes_ref < mes_atual_fat and not eh_conserto_reparo:
+        # Exclui itens fora do geral (conserto/reparo, bonificação, outras
+        # saídas, remessa de troca) — não são faturamentos de produto.
+        if status == 'prev' and mes_ref < mes_atual_fat and not eh_fora_geral:
             chave_retro = f'MI_{tipo}' if canal == 'MI' else canal
             pedido_r  = g(row, IDX['pedido']).strip() or '(sem pedido)'
             cliente_r = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
