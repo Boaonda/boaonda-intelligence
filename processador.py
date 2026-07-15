@@ -121,7 +121,8 @@ SELECT
     {col_valor}     AS vlr,
     {col_valor_total} AS vlr_total,
     {col_uf}        AS uf,
-    {col_representante} AS representante
+    {col_representante} AS representante,
+    {col_combinacao} AS forma
 FROM mould.v_entradapedidos_extended v
 WHERE v.dt_entrada >= date_format(date_sub(current_date, interval 1 year), '%Y/01/01')
 """
@@ -304,10 +305,13 @@ def carregar_linhas_3ys(arquivo_3ys=None):
         col_uf_sql = f'v.`{col_uf}`' if col_uf else "''"
         col_representante = db_mysql.achar_coluna_representante()
         col_representante_sql = f'v.`{col_representante}`' if col_representante else "''"
+        col_combinacao = db_mysql.achar_coluna_combinacao()
+        col_combinacao_sql = f'v.`{col_combinacao}`' if col_combinacao else "''"
         db_rows = db_mysql.consultar(QUERY_3YS.format(
             col_valor=col_valor_sql, col_conta=col_conta_sql,
             col_valor_total=col_valor_total_sql,
-            col_uf=col_uf_sql, col_representante=col_representante_sql))
+            col_uf=col_uf_sql, col_representante=col_representante_sql,
+            col_combinacao=col_combinacao_sql))
         print(f"    {len(db_rows):,} linhas carregadas do MySQL")
         if len(db_rows) < MIN_LINHAS_3YS_MYSQL:
             raise RuntimeError(
@@ -397,10 +401,14 @@ def diagnostico_3ys():
     col_representante = db_mysql.achar_coluna_representante()
     info['coluna_representante'] = col_representante or '(NÃO encontrada na view)'
     col_representante_sql = f'v.`{col_representante}`' if col_representante else "''"
+    col_combinacao = db_mysql.achar_coluna_combinacao()
+    info['coluna_combinacao'] = col_combinacao or '(NÃO encontrada na view)'
+    col_combinacao_sql = f'v.`{col_combinacao}`' if col_combinacao else "''"
     db_rows = db_mysql.consultar(QUERY_3YS.format(
         col_valor=col_valor_sql, col_conta=col_conta_sql,
         col_valor_total=col_valor_total_sql,
-        col_uf=col_uf_sql, col_representante=col_representante_sql))
+        col_uf=col_uf_sql, col_representante=col_representante_sql,
+        col_combinacao=col_combinacao_sql))
     info['total_linhas'] = len(db_rows)
     linhas = [_linha_de_db_row(r) for r in db_rows]
     campos = ('qtd', 'pos_item', 'abr_grp', 'cod_esp', 'anomes', 'marca', 'ref', 'vlr')
@@ -576,11 +584,16 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
     corrente (1º de janeiro até hoje). Alimenta o quadro 'Clientes com
     compra' (drilldown holding → referência → linha) e os cards 'Vendas do
     dia/dia anterior' do dashboard de Vendas — ambos calculados no navegador
-    filtrando este arquivo por data, sem chamada ao servidor.
+    filtrando este arquivo por data, sem chamada ao servidor. Também alimenta
+    o quadro 'Mix de produto' (referência → linha/cor), que reaproveita os
+    mesmos filtros de canal/tipo/período já usados em 'Clientes com compra'.
 
     Estrutura: {"campos": [...], "holdings": {holding: {ref: [[...]]}}}
     Cada linha é um array compacto (não dict) para reduzir tamanho — a
-    ordem dos campos está em "campos".
+    ordem dos campos está em "campos". `linha` é a linha de produto
+    normalizada (CLASSIC/EVA/WORKS/FIT/DAY BY DAY/OUTROS, mesma regra do
+    resumo de vendas); `cor` vem da coluna Combinacao do 3YS (ex.:
+    "001 (PRETO/GRAFITE)").
     """
     print("\n  Gerando dados_vendas_clientes.json...")
     ano_atual = datetime.now().strftime('%Y')
@@ -604,13 +617,16 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
         ref = g(row, IDX['ref']).strip() or '(sem referência)'
         dt_ent = g(row, IDX['dt_ent'])
         pedido = g(row, IDX['pedido'])
-        holdings[holding][ref].append([pedido, dt_ent, canal, tipo, qtd, valor])
+        linha_prod = g(row, IDX['linha'])
+        linha_norm = linha_prod if linha_prod in ('CLASSIC','EVA','WORKS','FIT','DAY BY DAY') else 'OUTROS'
+        cor = corrigir_mojibake(g(row, IDX['forma'])) or '(sem cor)'
+        holdings[holding][ref].append([pedido, dt_ent, canal, tipo, qtd, valor, linha_norm, cor])
         n += 1
 
     saida = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
         'periodo_desde': f'01/01/{ano_atual}',
-        'campos': ['pedido', 'dt_ent', 'canal', 'tipo', 'qtd', 'valor'],
+        'campos': ['pedido', 'dt_ent', 'canal', 'tipo', 'qtd', 'valor', 'linha', 'cor'],
         'holdings': {h: dict(refs) for h, refs in holdings.items()},
     }
     with open(os.path.join(output_dir, 'dados_vendas_clientes.json'), 'w', encoding='utf-8') as f_:

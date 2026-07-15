@@ -275,12 +275,27 @@ th.sortable .sort-arrow{margin-left:3px;color:var(--coral);opacity:.9}
     <div id="cl-empty" class="cl-empty" style="display:none">Nenhum cliente encontrado para os filtros selecionados.</div>
   </div>
 
-  <div class="stitle">Top referências — <span id="stitle-refs" style="font-weight:400;text-transform:none;letter-spacing:0">período selecionado</span></div>
+  <div class="stitle" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <span>Mix de produto — referências <span class="ctitle-badge" id="refs-badge">período selecionado</span></span>
+    <input type="text" id="refs-busca" placeholder="Buscar referência..." class="cl-search" oninput="refsSetBusca(this.value)">
+  </div>
+  <div class="bloco-desc" style="font-size:11px;color:var(--txt-m);margin-bottom:12px">
+    Mesmos filtros de canal/tipo/período do quadro acima — clique numa referência para ver o detalhe por linha e cor.
+  </div>
   <div class="tcard">
-    <table>
-      <thead><tr><th>#</th><th>Referência</th><th id="th-unidade">Pares</th><th>Volume</th></tr></thead>
-      <tbody id="tb-refs"></tbody>
-    </table>
+    <div class="cl-scroll">
+      <table>
+        <thead><tr>
+          <th>#</th>
+          <th class="sortable" onclick="refsSetSort('r')">Referência<span id="arrow-refs-r"></span></th>
+          <th class="sortable" onclick="refsSetSort('pares')">Pares<span id="arrow-refs-pares"></span></th>
+          <th class="sortable" onclick="refsSetSort('valor')">Valor (R$)<span id="arrow-refs-valor"></span></th>
+          <th class="sortable" onclick="refsSetSort('clientes')">Clientes com compra<span id="arrow-refs-clientes"></span></th>
+        </tr></thead>
+        <tbody id="tb-refs"></tbody>
+      </table>
+    </div>
+    <div id="refs-empty" class="cl-empty" style="display:none">Nenhuma referência encontrada para os filtros selecionados.</div>
   </div>
 </div>
 
@@ -317,8 +332,7 @@ const totalLabelsPlugin={
 
 // ── DADOS ──────────────────────────────────────────────────────────
 let MESES_ALL=[];  // preenchido dinamicamente após fetch — nunca mais precisará de atualização manual
-let DADOS={}, REFS_MI=[], REFS_ME=[], REFS_EC=[];
-let DADOS_VALOR={}, REFS_MI_VALOR=[], REFS_ME_VALOR=[], REFS_EC_VALOR=[];
+let DADOS={}, DADOS_VALOR={};
 
 // dados_vendas_clientes.json — detalhe por holding/cliente (ano corrente),
 // usado pelo quadro "Clientes com compra" (inclui a visão de curto prazo —
@@ -355,10 +369,6 @@ Promise.all([
       const sub = document.getElementById('h-sub');
       if (sub) sub.textContent = `Base: 3YS · ${mesLabel(MESES_ALL[0])}–${mesLabel(MESES_ALL[MESES_ALL.length-1])} · Gráfico de evolução respeita canal · KPIs e tabela respeitam todos os filtros`;
     }
-    REFS_MI = d.refs_top20?.MI || [];
-    REFS_ME = d.refs_top20?.ME || [];
-    REFS_EC = d.refs_top20?.EC || [];
-
     // Visão em valor (R$) — mesma adaptação, a partir de "mensal_valor"
     DADOS_VALOR = {};
     const mensalValor = d.mensal_valor || {};
@@ -370,9 +380,6 @@ Promise.all([
         EC: {EC: soma(v.ECOM)}
       };
     }
-    REFS_MI_VALOR = d.refs_top20_valor?.MI || [];
-    REFS_ME_VALOR = d.refs_top20_valor?.ME || [];
-    REFS_EC_VALOR = d.refs_top20_valor?.EC || [];
     // Atualizar header
     const hdr=document.getElementById('hdr-data');
     if(hdr) hdr.textContent=d.gerado_em||'–';
@@ -390,18 +397,12 @@ const estado = {
 };
 
 function dadosAtual(){ return estado.unidade==='valor'?DADOS_VALOR:DADOS; }
-function refsAtual(canal){
-  if(estado.unidade==='valor')
-    return canal==='MI'?REFS_MI_VALOR:canal==='ME'?REFS_ME_VALOR:REFS_EC_VALOR;
-  return canal==='MI'?REFS_MI:canal==='ME'?REFS_ME:REFS_EC;
-}
 
 function selecionarUnidade(val){
   estado.unidade=val;
   document.getElementById('cb-unidade-pares').classList.toggle('checked',val==='pares');
   document.getElementById('cb-unidade-valor').classList.toggle('checked',val==='valor');
   document.getElementById('dd-unidade-txt').textContent=val==='valor'?'Valor (R$)':'Pares';
-  document.getElementById('th-unidade').textContent=val==='valor'?'Valor (R$)':'Pares';
   toggleDD('unidade');
   render();
 }
@@ -548,11 +549,10 @@ function render(){
   const tNomesShort={PROG:'Prog',PE:'PE',MISTA:'Mista'};
   const cDesc=[...canais].map(c=>cNomes[c]).join('+') + (canais.has('MI')&&tipos.size<TIPOS_ALL.length?' ('+[...tipos].map(t=>tNomesShort[t]).join('/')+')':'');
   document.getElementById('stitle-desc').textContent=cDesc+' · '+meses.size+' meses';
-  document.getElementById('stitle-refs').textContent=cDesc+' · '+meses.size+' meses';
 
   renderCharts(canais, tipos);
-  renderRefs(canais, tipos, meses);
   renderClientes();
+  renderRefsMix();
 }
 
 function kpi(cls,label,val,sub){
@@ -562,7 +562,7 @@ function kpi(cls,label,val,sub){
 // ── CLIENTES COM COMPRA (drilldown holding → ref → linha) ────────────
 let clPeriodo='dia_atual', clBusca='', clHoldingAberto=null, clRefAberto=null;
 let clSort={key:'total_pares', dir:'desc'};
-function clSetPeriodo(v){ clPeriodo=v; clHoldingAberto=null; clRefAberto=null; renderClientes(); }
+function clSetPeriodo(v){ clPeriodo=v; clHoldingAberto=null; clRefAberto=null; renderClientes(); renderRefsMix(); }
 function clSetBusca(v){ clBusca=v.toLowerCase(); renderClientes(); }
 function clSetSort(key){
   if(clSort.key===key){ clSort.dir = clSort.dir==='desc'?'asc':'desc'; }
@@ -807,24 +807,111 @@ function renderCharts(canais, tipos){
         tooltip:{callbacks:{label:ctx=>ctx.label+': '+fmtv(ctx.raw)+' ('+pct(ctx.raw,mixTotal)+'%)'}}}}});
 }
 
-// ── REFS ─────────────────────────────────────────────────────────────
-function renderRefs(canais, tipos, meses){
-  const all={};
-  if(canais.has('MI')) refsAtual('MI').forEach(([r,q])=>all[r]=(all[r]||0)+q);
-  if(canais.has('ME')) refsAtual('ME').forEach(([r,q])=>all[r]=(all[r]||0)+q);
-  if(canais.has('EC')) refsAtual('EC').forEach(([r,q])=>all[r]=(all[r]||0)+q);
-  const refs=Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,15);
-  const mx=refs.length?refs[0][1]:1;
+// ── MIX DE PRODUTO (referência → linha/cor como drilldown) ───────────
+// Reaproveita a MESMA fonte e os MESMOS filtros do quadro "Clientes com
+// compra" (canal/tipo do cabeçalho + período dia atual/dia anterior/mês/ano
+// de clPeriodo) — assim o mix de produto reflete exatamente as compras
+// mostradas naquele quadro, não um "top histórico" independente.
+let refsBusca='', refsAberta=null;
+let refsSort={key:'pares', dir:'desc'};
+function refsSetBusca(v){ refsBusca=v.toLowerCase(); renderRefsMix(); }
+function refsSetSort(key){
+  if(refsSort.key===key){ refsSort.dir = refsSort.dir==='desc'?'asc':'desc'; }
+  else { refsSort={key, dir: key==='r'?'asc':'desc'}; }
+  renderRefsMix();
+}
+function refsSortArrow(key){
+  if(refsSort.key!==key) return '';
+  return ' <span class="sort-arrow">'+(refsSort.dir==='asc'?'▲':'▼')+'</span>';
+}
+function refsToggle(ref){
+  refsAberta = refsAberta===ref ? null : ref;
+  renderRefsMix();
+}
+
+function refsAgregarPorReferencia(canais, tipos){
+  const out={};
+  const holdings=(CLIENTES_DATA && CLIENTES_DATA.holdings) || {};
+  for(const h in holdings){
+    const refs=holdings[h];
+    for(const r in refs){
+      refs[r].forEach(linha=>{
+        const [pedido,dt,canal,tipo,qtd,valor,ln,cor]=linha;
+        if(!clPassaPeriodo(dt)) return;
+        if(canal==='MI'   && !(canais.has('MI') && tipos.has(tipo))) return;
+        if(canal==='ME'   && !canais.has('ME')) return;
+        if(canal==='ECOM' && !canais.has('EC')) return;
+        if(!out[r]) out[r]={pares:0, valor:0, clientes:new Set(), combos:{}};
+        const o=out[r];
+        o.pares+=qtd; o.valor+=valor; o.clientes.add(h);
+        const ck=(ln||'OUTROS')+'|||'+(cor||'(sem cor)');
+        if(!o.combos[ck]) o.combos[ck]={linha:ln||'OUTROS', cor:cor||'(sem cor)', pares:0, valor:0};
+        o.combos[ck].pares+=qtd; o.combos[ck].valor+=valor;
+      });
+    }
+  }
+  return out;
+}
+
+function renderRefsMix(){
   const tb=document.getElementById('tb-refs');
-  tb.innerHTML='';
-  refs.forEach(([ref,qtd],i)=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML='<td style="color:var(--txt-m);font-size:10px">'+(i+1)+'</td>'+
-      '<td class="td-ref">'+ref+'</td>'+
-      '<td class="td-num">'+fmtv(qtd)+'</td>'+
-      '<td style="min-width:100px"><div class="mbar" style="width:'+Math.round(qtd/mx*100)+'%;background:'+(i<3?'var(--coral)':'var(--azul)')+'"></div></td>';
-    tb.appendChild(tr);
+  const emptyEl=document.getElementById('refs-empty');
+  const badge=document.getElementById('refs-badge');
+  if(!tb) return;
+  const canais=estado.canal, tipos=estado.tipo;
+  const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',ano:'ano corrente'}[clPeriodo];
+  if(badge) badge.textContent=periodoLabel;
+
+  ['r','pares','valor','clientes'].forEach(k=>{
+    const el=document.getElementById('arrow-refs-'+k);
+    if(el) el.innerHTML=refsSortArrow(k);
   });
+
+  const agg = refsAgregarPorReferencia(canais, tipos);
+  let lista = Object.entries(agg).map(([r,v])=>({
+    r, pares:v.pares, valor:v.valor, clientes:v.clientes.size, combos:v.combos,
+  }));
+  if(refsBusca) lista = lista.filter(x=>x.r.toLowerCase().includes(refsBusca));
+  lista.sort((a,b)=>{
+    if(refsSort.key==='r'){
+      const c=a.r.toLowerCase().localeCompare(b.r.toLowerCase());
+      return refsSort.dir==='asc' ? c : -c;
+    }
+    const av=a[refsSort.key], bv=b[refsSort.key];
+    return refsSort.dir==='asc' ? av-bv : bv-av;
+  });
+
+  tb.innerHTML='';
+  emptyEl.style.display = lista.length ? 'none' : 'block';
+  lista.slice(0,300).forEach((item,i)=>{
+    const tr=document.createElement('tr');
+    tr.className='tr-cliente'+(refsAberta===item.r?' aberto':'');
+    tr.onclick=()=>refsToggle(item.r);
+    const arrow = refsAberta===item.r ? '▾' : '▸';
+    tr.innerHTML='<td style="color:var(--txt-m);font-size:10px">'+(i+1)+'</td>'+
+      '<td class="td-nome"><span class="cl-arrow">'+arrow+'</span>'+item.r+'</td>'+
+      '<td class="td-num">'+f(item.pares)+'</td>'+
+      '<td class="td-num td-sub">'+fmoeda(item.valor)+'</td>'+
+      '<td class="td-num">'+f(item.clientes)+'</td>';
+    tb.appendChild(tr);
+    if(refsAberta===item.r) tb.appendChild(refsDrillRow(item));
+  });
+}
+
+function refsDrillRow(item){
+  const tr=document.createElement('tr'); tr.className='tr-sub';
+  const td=document.createElement('td'); td.colSpan=5;
+  const combos = Object.values(item.combos).sort((a,b)=>b.pares-a.pares);
+  let html = '<div class="tr-sub-inner"><table class="cl-mini-table"><thead><tr>'+
+    '<th>Linha</th><th>Cor</th><th>Pares</th><th>Valor (R$)</th></tr></thead><tbody>';
+  combos.forEach(c=>{
+    html += '<tr><td>'+c.linha+'</td><td>'+c.cor+'</td>'+
+      '<td>'+f(c.pares)+'</td><td class="td-sub">'+fmoeda(c.valor)+'</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  td.innerHTML = html;
+  tr.appendChild(td);
+  return tr;
 }
 
 // INIT

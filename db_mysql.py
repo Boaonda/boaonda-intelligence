@@ -94,3 +94,15 @@ def achar_coluna_representante(tabela='mould.v_entradapedidos_extended'):
         if 'represent' in nome.lower():
             candidatos.append(nome)
     return candidatos[0] if candidatos else None
+
+
+def achar_coluna_combinacao(tabela='mould.v_entradapedidos_extended'):
+    """Localiza a coluna de combinação de cor (equivalente a 'Combinacao' do
+    3YS.csv) na view — usada no drilldown por cor do quadro 'Mix de produto'
+    em Vendas. Retorna o nome exato ou None (cor fica vazia, sem quebrar o
+    restante do pipeline)."""
+    for row in consultar(f"SHOW COLUMNS FROM {tabela}"):
+        nome = row.get('Field', '')
+        if 'combina' in nome.lower():
+            return nome
+    return None
