@@ -99,6 +99,98 @@ def _seed_usuarios_iniciais():
 
 _seed_usuarios_iniciais()
 
+# ── Módulos (dashboards) — controle de acesso granular por usuário comum ──────
+# Cada módulo mapeia os arquivos HTML do dashboard, os JSONs de dados que ele
+# usa (só os que NÃO são públicos — dados_estoque.json/dados_fotos.json/
+# dados_home.json continuam públicos para o catálogo, então não entram aqui)
+# e os contextos de IA equivalentes (ver IA_CONTEXTO_ARQUIVOS/IA_RESUMIDORES
+# mais abaixo, na seção de Inteligência).
+MODULOS = {
+    'vendas': {
+        'label': 'Vendas Calçados',
+        'htmls': ['boaonda_vendas_catalogo.html', 'boaonda_carteira_clientes.html'],
+        'jsons': ['dados_vendas.json', 'dados_vendas_clientes.json', 'dados_vendas_carteira.json'],
+        'ia': ['vendas'],
+    },
+    'vendas_eva': {
+        'label': 'Vendas Composto EVA',
+        'htmls': ['boaonda_vendas_eva.html'],
+        'jsons': ['dados_vendas_eva.json'],
+        'ia': ['vendas_eva'],
+    },
+    'carteira': {
+        'label': 'Pedido em Carteira',
+        'htmls': ['boaonda_carteira.html'],
+        'jsons': ['dados_carteira.json'],
+        'ia': ['carteira'],
+    },
+    'programacao': {
+        'label': 'Programação',
+        'htmls': ['boaonda_programacao_v3.html'],
+        'jsons': ['dados_programacao.json', 'dados_programacao_detalhe.json',
+                  'dados_ocupacao_semanal.json', 'dados_refs_tabela.json'],
+        'ia': ['programacao', 'ocupacao', 'refs'],
+    },
+    'capacidade': {
+        'label': 'Capacidade Fabril',
+        'htmls': ['boaonda_capacidade_fabril.html'],
+        'jsons': ['dados_capacidade.json'],
+        'ia': ['capacidade'],
+    },
+    'estoque': {
+        'label': 'Estoque',
+        'htmls': ['boaonda_estoque.html'],
+        # dados_estoque.json é público (alimenta o catálogo sem login) — não
+        # dá para restringir o arquivo em si, só a tela do dashboard interno.
+        'jsons': [],
+        'ia': ['estoque'],
+    },
+    'faturamento': {
+        'label': 'Faturamento',
+        'htmls': ['boaonda_faturamento.html'],
+        'jsons': ['dados_faturamento.json'],
+        'ia': ['faturamento'],
+    },
+}
+MODULOS_KEYS = list(MODULOS.keys())
+
+# Reverse lookups, construídos uma vez a partir de MODULOS acima.
+_ARQUIVO_PARA_MODULO = {}
+_IA_CONTEXTO_PARA_MODULO = {}
+for _mk, _mv in MODULOS.items():
+    for _f in _mv['htmls'] + _mv['jsons']:
+        _ARQUIVO_PARA_MODULO[_f] = _mk
+    for _ctx in _mv['ia']:
+        _IA_CONTEXTO_PARA_MODULO[_ctx] = _mk
+
+
+def _modulos_do_usuario(usuario):
+    """Conjunto de módulos que o usuário pode acessar. Admin sempre tem
+    acesso total; usuário comum sem o campo 'modulos' definido (criado antes
+    desta funcionalidade existir) também tem acesso total, por
+    compatibilidade — a restrição é opt-out, não opt-in."""
+    if not usuario:
+        return set()
+    if usuario.get('role') == 'admin':
+        return set(MODULOS_KEYS)
+    modulos = usuario.get('modulos')
+    if modulos is None:
+        return set(MODULOS_KEYS)
+    return set(modulos) & set(MODULOS_KEYS)
+
+
+def _exige_modulo(modulo_key):
+    """Retorna uma resposta 403 se o usuário logado não tem acesso ao módulo
+    indicado, ou None se pode prosseguir. Usado em rotas de API (export etc)
+    que não passam pelo gate de arquivo estático do serve_file()."""
+    usuario = _achar_usuario(session.get('username'))
+    if modulo_key not in _modulos_do_usuario(usuario):
+        return jsonify({'erro': f'Você não tem acesso ao módulo '
+                                 f'"{MODULOS[modulo_key]["label"]}". '
+                                 f'Fale com um administrador.'}), 403
+    return None
+
+
 # ─────────────────────────────────────────────
 #  AUTENTICAÇÃO
 # ─────────────────────────────────────────────
@@ -211,11 +303,14 @@ def login():
 @app.route('/api/whoami')
 def api_whoami():
     """Usado pelo portal (index.html) para mostrar/ocultar links admin-only
-    (Atualizar dados, Gerenciar usuários) via JS, sem duplicar a lógica de
-    permissão no HTML estático."""
+    (Atualizar dados, Gerenciar usuários) e travar os módulos/dashboards que
+    o usuário não tem acesso, via JS, sem duplicar a lógica de permissão no
+    HTML estático."""
+    usuario = _achar_usuario(session.get('username'))
     return jsonify({
         'username': session.get('username'),
         'role': session.get('role', 'comum'),
+        'modulos': sorted(_modulos_do_usuario(usuario)),
     })
 
 
@@ -241,6 +336,16 @@ def catalogo():
 
 @app.route('/<path:filename>')
 def serve_file(filename):
+    # Bloqueia o HTML do dashboard e os JSONs de dados de módulos que o
+    # usuário não tem permissão de ver — mesmo que ele digite a URL direto
+    # (a trava não é só visual no portal, ver aplicarRestricoesModulos no JS).
+    modulo_key = _ARQUIVO_PARA_MODULO.get(filename)
+    if modulo_key:
+        usuario = _achar_usuario(session.get('username'))
+        if modulo_key not in _modulos_do_usuario(usuario):
+            return jsonify({'erro': f'Você não tem acesso ao módulo '
+                                     f'"{MODULOS[modulo_key]["label"]}". '
+                                     f'Fale com um administrador.'}), 403
     # JSONs gerados pelo /upload vivem em DATA_DIR (volume persistente);
     # o restante (HTML/CSS/JS dos dashboards) vem do código versionado.
     if filename in DATA_FILES:
@@ -536,13 +641,19 @@ tr:last-child td{border-bottom:none}
 .row-actions form{display:flex;gap:6px;align-items:center;margin:0}
 .row-actions input[type=password]{width:130px;padding:6px 10px;font-size:11px}
 .row-actions select{width:auto;padding:6px 8px;font-size:11px}
+.modulos-row td{border-bottom:1px solid var(--line);padding-top:0}
+.modulos-form{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;background:#f8f5f1;border-radius:8px;padding:10px 12px}
+.modulos-form .lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-m)}
+.chk{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--verde-dark);margin:0}
+.chk input{width:auto}
+.modulos-criar{display:flex;flex-wrap:wrap;gap:10px 16px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="brand">BOAONDA <span>· Intelligence</span></div>
   <h1>Gerenciar usuários</h1>
-  <p class="sub">Cadastre e administre quem acessa o portal. Perfil "Admin" tem acesso total (inclui atualizar dados, fotos e esta tela); perfil "Comum" só vê os dashboards.</p>
+  <p class="sub">Cadastre e administre quem acessa o portal. Perfil "Admin" tem acesso total (inclui atualizar dados, fotos e esta tela); perfil "Comum" só vê os dashboards liberados abaixo, módulo por módulo.</p>
 
   {% if message %}
   <div class="msg {{ 'ok' if ok else 'err' }}">{{ message }}</div>
@@ -580,6 +691,23 @@ tr:last-child td{border-bottom:none}
             </div>
           </td>
         </tr>
+        {% if u.role == 'admin' %}
+        <tr class="modulos-row"><td colspan="4"><span class="hint">Admin — acesso total a todos os módulos.</span></td></tr>
+        {% else %}
+        <tr class="modulos-row">
+          <td colspan="4">
+            <form method="post" action="/admin/usuarios/modulos" class="modulos-form">
+              <input type="hidden" name="username" value="{{ u.username }}">
+              <span class="lbl">Módulos liberados:</span>
+              {% for mk, mv in modulos_registro.items() %}
+              <label class="chk"><input type="checkbox" name="modulos" value="{{ mk }}"
+                {{ 'checked' if mk in u.modulos_efetivos else '' }}> {{ mv.label }}</label>
+              {% endfor %}
+              <button class="btn btn-sm" type="submit">Salvar módulos</button>
+            </form>
+          </td>
+        </tr>
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>
@@ -598,10 +726,19 @@ tr:last-child td{border-bottom:none}
     </div>
     <div class="field">
       <label>Perfil</label>
-      <select name="role">
+      <select name="role" id="novo-role" onchange="document.getElementById('novo-modulos').style.display=this.value==='admin'?'none':'block'">
         <option value="comum">Comum — só acessa os dashboards</option>
         <option value="admin">Admin — acesso total (dados, fotos, usuários)</option>
       </select>
+    </div>
+    <div class="field" id="novo-modulos">
+      <label>Módulos liberados (perfil Comum)</label>
+      <div class="modulos-criar">
+        {% for mk, mv in modulos_registro.items() %}
+        <label class="chk"><input type="checkbox" name="modulos" value="{{ mk }}" checked> {{ mv.label }}</label>
+        {% endfor %}
+      </div>
+      <div class="hint">Desmarque os módulos que este usuário não deve acessar. Ignorado se o perfil for Admin.</div>
     </div>
     <button class="btn" type="submit">Criar usuário</button>
   </form>
@@ -621,8 +758,10 @@ def admin_usuarios():
     msg = request.args.get('msg')
     ok = request.args.get('ok', '1') == '1'
     usuarios = sorted(_ler_usuarios(), key=lambda u: u['username'].lower())
+    for u in usuarios:
+        u['modulos_efetivos'] = sorted(_modulos_do_usuario(u))
     return render_template_string(_USUARIOS_HTML, usuarios=usuarios, message=msg, ok=ok,
-                                   usuario_atual=session.get('username'))
+                                   usuario_atual=session.get('username'), modulos_registro=MODULOS)
 
 
 @app.route('/admin/usuarios/criar', methods=['POST'])
@@ -632,6 +771,7 @@ def admin_usuarios_criar():
     role = request.form.get('role', 'comum')
     if role not in ('admin', 'comum'):
         role = 'comum'
+    modulos = [m for m in request.form.getlist('modulos') if m in MODULOS_KEYS]
     if not username or len(senha) < 6:
         return _redirect_usuarios('Informe um usuário e uma senha com pelo menos 6 caracteres.', ok=False)
     usuarios = _ler_usuarios()
@@ -641,6 +781,7 @@ def admin_usuarios_criar():
         'username': username,
         'senha_hash': generate_password_hash(senha),
         'role': role,
+        'modulos': modulos,
         'criado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
     })
     _salvar_usuarios(usuarios)
@@ -678,6 +819,22 @@ def admin_usuarios_role():
     usuario['role'] = nova_role
     _salvar_usuarios(usuarios)
     return _redirect_usuarios(f'Perfil de "{username}" atualizado para {"Admin" if nova_role == "admin" else "Comum"}.')
+
+
+@app.route('/admin/usuarios/modulos', methods=['POST'])
+def admin_usuarios_modulos():
+    username = request.form.get('username', '').strip()
+    modulos = [m for m in request.form.getlist('modulos') if m in MODULOS_KEYS]
+    usuarios = _ler_usuarios()
+    usuario = next((u for u in usuarios if u['username'] == username), None)
+    if not usuario:
+        return _redirect_usuarios('Usuário não encontrado.', ok=False)
+    if usuario.get('role') == 'admin':
+        return _redirect_usuarios('Administradores sempre têm acesso a todos os módulos.', ok=False)
+    usuario['modulos'] = modulos
+    _salvar_usuarios(usuarios)
+    labels = ', '.join(MODULOS[m]['label'] for m in modulos) if modulos else 'nenhum módulo'
+    return _redirect_usuarios(f'Módulos de "{username}" atualizados: {labels}.')
 
 
 @app.route('/admin/usuarios/remover', methods=['POST'])
@@ -1109,6 +1266,9 @@ def recarregar():
 
 @app.route('/api/capacidade/exportar')
 def capacidade_exportar():
+    bloqueio = _exige_modulo('capacidade')
+    if bloqueio:
+        return bloqueio
     from processador_capacidade import exportar_capacidade_excel
     from flask import send_file
     dados_path = DATA_DIR / 'dados_capacidade.json'
@@ -1191,6 +1351,9 @@ FAT_DET_COLS = [
 
 @app.route('/api/faturamento/detalhe')
 def api_faturamento_detalhe():
+    bloqueio = _exige_modulo('faturamento')
+    if bloqueio:
+        return bloqueio
     canal = (request.args.get('canal') or '').upper()
     mes   = (request.args.get('mes') or '').strip()
     if canal not in ('MI', 'ME', 'EC', 'EVA') or not (mes.isdigit() and len(mes) == 6):
@@ -1501,6 +1664,16 @@ def api_inteligencia():
     pergunta  = (payload.get('pergunta') or '').strip()
     contextos = payload.get('contextos') or []
     historico = payload.get('historico') or []   # [{role, content}, ...]
+
+    # Filtra os contextos pelos módulos que o usuário tem acesso — a IA não
+    # pode vazar dado de um módulo restrito só porque o cliente pediu no
+    # payload. Contextos sem módulo associado (ex.: 'portal', o resumo da
+    # home) continuam liberados para qualquer usuário logado.
+    usuario_ia = _achar_usuario(session.get('username'))
+    modulos_permitidos = _modulos_do_usuario(usuario_ia)
+    contextos = [c for c in contextos
+                 if _IA_CONTEXTO_PARA_MODULO.get(c) is None
+                 or _IA_CONTEXTO_PARA_MODULO.get(c) in modulos_permitidos]
 
     if not pergunta:
         return jsonify({'erro': 'Pergunta vazia.'}), 400

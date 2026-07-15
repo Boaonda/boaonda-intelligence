@@ -540,12 +540,32 @@ function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
 
 // Mostra os links admin-only (Atualizar dados, Usuários) só para quem tem
 // perfil admin — dashboards continuam abertos a qualquer usuário logado.
+// Também trava visualmente os nós de módulo que o usuário não tem acesso —
+// a trava de verdade é no servidor (serve_file), isso aqui é só UX (evita a
+// pessoa clicar e cair numa tela de erro).
 fetch('/api/whoami').then(r=>r.json()).then(d=>{
   if(d.role==='admin'){
     const nu=document.getElementById('nav-upload'); if(nu) nu.style.display='';
     const nus=document.getElementById('nav-usuarios'); if(nus) nus.style.display='';
   }
+  aplicarRestricoesModulos(d.modulos||[]);
 }).catch(()=>{});
+
+function aplicarRestricoesModulos(modulosPermitidos){
+  document.querySelectorAll('[onclick^="abrirModulo("]').forEach(el=>{
+    const m = el.getAttribute('onclick').match(/abrirModulo\('([^']+)'\)/);
+    if(!m) return;
+    const key = m[1];
+    if(key==='inteligencia' || key==='equilibrio') return; // sem restrição própria de tela
+    if(modulosPermitidos.includes(key)) return;
+    el.onclick = e=>{ e.stopPropagation();
+      alert('Você não tem acesso a este módulo. Fale com um administrador.'); };
+    el.style.opacity = '.35';
+    el.style.filter = 'grayscale(1)';
+    el.style.cursor = 'not-allowed';
+    el.title = 'Sem acesso a este módulo';
+  });
+}
 
 // Carregar JSON
 fetch('dados_portal.json?_='+Date.now())
