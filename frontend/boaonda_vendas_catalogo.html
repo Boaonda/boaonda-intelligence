@@ -107,7 +107,10 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 /* Altura padrão do quadro (~15 linhas) — o que exceder rola por dentro,
    sem alterar o tamanho total do box; cabeçalho fica fixo ao rolar. */
 .cl-scroll{max-height:560px;overflow-y:auto;position:relative}
-.cl-scroll thead th{position:sticky;top:0;background:var(--card);z-index:1}
+.cl-scroll thead th{position:sticky;top:0;background:var(--card);z-index:2}
+.cl-scroll tfoot td{position:sticky;bottom:-1px;background:var(--card);z-index:2;
+  border-top:2px solid var(--line2);border-bottom:none;font-weight:800;color:var(--txt)}
+.cl-scroll tfoot .td-nome{color:var(--coral)}
 th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
 th.sortable:hover{color:var(--txt)}
 th.sortable .sort-arrow{margin-left:3px;color:var(--coral);opacity:.9}
@@ -266,6 +269,7 @@ th.sortable .sort-arrow{margin-left:3px;color:var(--coral);opacity:.9}
       <table>
         <thead><tr id="cl-thead"></tr></thead>
         <tbody id="tb-clientes"></tbody>
+        <tfoot><tr id="cl-tfoot"></tr></tfoot>
       </table>
     </div>
     <div id="cl-empty" class="cl-empty" style="display:none">Nenhum cliente encontrado para os filtros selecionados.</div>
@@ -689,6 +693,21 @@ function renderClientes(){
     tb.appendChild(tr);
     if(clHoldingAberto===item.h) tb.appendChild(clRowRefs(item, cols));
   });
+
+  // Totalizadores — soma de TODOS os clientes filtrados (não só os visíveis
+  // na janela de scroll), fixos no rodapé do quadro.
+  const tfoot=document.getElementById('cl-tfoot');
+  if(tfoot){
+    const somaCol = k => lista.reduce((a,x)=>a+((x.cols[k]||[0,0])[0]),0);
+    const somaColV = k => lista.reduce((a,x)=>a+((x.cols[k]||[0,0])[1]),0);
+    let footHtml = '<td class="td-nome">Total ('+lista.length+' cliente'+(lista.length===1?'':'s')+')</td>';
+    cols.forEach(c=>{
+      footHtml += '<td>'+f(somaCol(c.k))+'</td><td class="td-sub">'+fmoeda(somaColV(c.k))+'</td>';
+    });
+    const totPares = lista.reduce((a,x)=>a+x.total_pares,0), totValor = lista.reduce((a,x)=>a+x.total_valor,0);
+    footHtml += '<td>'+f(totPares)+'</td><td class="td-sub">'+fmoeda(totValor)+'</td>';
+    tfoot.innerHTML = footHtml;
+  }
 }
 
 function clRowRefs(item, cols){
