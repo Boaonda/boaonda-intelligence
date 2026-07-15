@@ -844,8 +844,8 @@ function refsAgregarPorReferencia(canais, tipos){
         if(!out[r]) out[r]={pares:0, valor:0, clientes:new Set(), combos:{}};
         const o=out[r];
         o.pares+=qtd; o.valor+=valor; o.clientes.add(h);
-        const ck=(ln||'OUTROS')+'|||'+(cor||'(sem cor)');
-        if(!o.combos[ck]) o.combos[ck]={linha:ln||'OUTROS', cor:cor||'(sem cor)', pares:0, valor:0};
+        const ck=(ln||'(sem linha)')+'|||'+(cor||'(sem cor)');
+        if(!o.combos[ck]) o.combos[ck]={linha:ln||'(sem linha)', cor:cor||'(sem cor)', pares:0, valor:0};
         o.combos[ck].pares+=qtd; o.combos[ck].valor+=valor;
       });
     }

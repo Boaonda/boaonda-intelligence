@@ -18,7 +18,7 @@ Saídas (gravadas em output_dir):
     - boaonda_dados_completos.json
 """
 
-import csv, json, os, sys, glob
+import csv, json, os, re, sys, glob
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 
@@ -579,6 +579,25 @@ def _holding_de(row):
     return corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:60]
 
 
+def _extrair_num_linha(descricao):
+    """Número de grade/linha entre parênteses na coluna Descricao do 3YS
+    (ex.: "SANDALIA FEM TR (200)" -> "200"). Retorna '' se não encontrar
+    (ex.: itens de matéria-prima como "PALM PU SEMIAC (BO)")."""
+    m = re.search(r'\((\d+)\)', descricao or '')
+    return m.group(1) if m else ''
+
+
+def _extrair_cor(combinacao):
+    """Texto de cor entre parênteses da coluna Combinacao do 3YS, sem o
+    prefixo "[FL]" nem o código numérico (ex.: "[FL] 002 (ACAI/ALOHA)" ->
+    "ACAI/ALOHA"). Retorna a string original (sem parênteses) se não achar
+    o padrão esperado."""
+    if not combinacao:
+        return ''
+    m = re.search(r'\(([^)]+)\)', combinacao)
+    return m.group(1) if m else combinacao.strip()
+
+
 def gerar_dados_vendas_clientes(linhas, output_dir='.'):
     """Detalhe linha-a-linha de vendas por holding/cliente, do ano-calendário
     corrente (1º de janeiro até hoje). Alimenta o quadro 'Clientes com
@@ -590,10 +609,11 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
 
     Estrutura: {"campos": [...], "holdings": {holding: {ref: [[...]]}}}
     Cada linha é um array compacto (não dict) para reduzir tamanho — a
-    ordem dos campos está em "campos". `linha` é a linha de produto
-    normalizada (CLASSIC/EVA/WORKS/FIT/DAY BY DAY/OUTROS, mesma regra do
-    resumo de vendas); `cor` vem da coluna Combinacao do 3YS (ex.:
-    "001 (PRETO/GRAFITE)").
+    ordem dos campos está em "campos". `linha` é o número de grade/linha
+    entre parênteses na coluna Descricao do 3YS (ex.: "SANDALIA FEM TR
+    (200)" -> "200"); `cor` é o texto de cor entre parênteses da coluna
+    Combinacao, sem o prefixo "[FL]" nem o código numérico (ex.:
+    "[FL] 002 (ACAI/ALOHA)" -> "ACAI/ALOHA").
     """
     print("\n  Gerando dados_vendas_clientes.json...")
     ano_atual = datetime.now().strftime('%Y')
@@ -617,10 +637,9 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
         ref = g(row, IDX['ref']).strip() or '(sem referência)'
         dt_ent = g(row, IDX['dt_ent'])
         pedido = g(row, IDX['pedido'])
-        linha_prod = g(row, IDX['linha'])
-        linha_norm = linha_prod if linha_prod in ('CLASSIC','EVA','WORKS','FIT','DAY BY DAY') else 'OUTROS'
-        cor = corrigir_mojibake(g(row, IDX['forma'])) or '(sem cor)'
-        holdings[holding][ref].append([pedido, dt_ent, canal, tipo, qtd, valor, linha_norm, cor])
+        num_linha = _extrair_num_linha(g(row, IDX['descr'])) or '(sem linha)'
+        cor = _extrair_cor(corrigir_mojibake(g(row, IDX['forma']))) or '(sem cor)'
+        holdings[holding][ref].append([pedido, dt_ent, canal, tipo, qtd, valor, num_linha, cor])
         n += 1
 
     saida = {
