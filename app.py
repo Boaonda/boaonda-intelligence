@@ -9,6 +9,7 @@ import traceback
 
 from flask import (Flask, request, jsonify, send_from_directory, send_file,
                     session, redirect, url_for, render_template_string)
+from werkzeug.security import generate_password_hash, check_password_hash
 
 import processador
 
@@ -50,10 +51,53 @@ app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-local-key-change-in-prod')
 app.config['MAX_CONTENT_LENGTH'] = 250 * 1024 * 1024  # 250MB — 3YS.csv pode ter ~130MB
 
-# ── Credenciais (definir via variáveis de ambiente no Railway) ─────────────────
-AUTH_USERS = {
-    os.environ.get('AUTH_USERNAME', 'admin'): os.environ.get('AUTH_PASSWORD', 'analytics2024'),
-}
+# ── Usuários (armazenados em DATA_DIR/usuarios.json, senha sempre hasheada) ────
+USUARIOS_FILE = DATA_DIR / 'usuarios.json'
+
+# Rotas restritas a usuários com role 'admin' — gestão de usuários, atualização
+# de dados/fotos/home do catálogo e configurações. Dashboards e o catálogo
+# público continuam abertos a qualquer usuário logado (ou sem login, no caso
+# do catálogo). Checado por prefixo de path em require_login().
+ADMIN_ONLY_PREFIXES = ('/admin/', '/upload', '/config')
+ADMIN_ONLY_EXATOS = {'/api/capacidade/importar'}
+
+
+def _ler_usuarios():
+    try:
+        return json.loads(USUARIOS_FILE.read_text(encoding='utf-8')).get('usuarios', [])
+    except Exception:
+        return []
+
+
+def _salvar_usuarios(lista):
+    USUARIOS_FILE.write_text(
+        json.dumps({'usuarios': lista}, ensure_ascii=False, indent=2), encoding='utf-8')
+
+
+def _achar_usuario(username):
+    if not username:
+        return None
+    return next((u for u in _ler_usuarios() if u['username'] == username), None)
+
+
+def _seed_usuarios_iniciais():
+    """Primeira execução (usuarios.json ainda não existe): cria o admin a
+    partir das variáveis de ambiente legadas (AUTH_USERNAME/AUTH_PASSWORD),
+    preservando o acesso de quem já usava o login único antes desta tela
+    de gestão de usuários existir."""
+    if USUARIOS_FILE.exists():
+        return
+    username = os.environ.get('AUTH_USERNAME', 'admin')
+    password = os.environ.get('AUTH_PASSWORD', 'analytics2024')
+    _salvar_usuarios([{
+        'username': username,
+        'senha_hash': generate_password_hash(password),
+        'role': 'admin',
+        'criado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+    }])
+
+
+_seed_usuarios_iniciais()
 
 # ─────────────────────────────────────────────
 #  AUTENTICAÇÃO
@@ -124,7 +168,9 @@ input:focus{border-color:#ed6842}
 
 @app.before_request
 def require_login():
-    """Bloqueia todas as rotas exceto /login, /logout e o catálogo público."""
+    """Bloqueia todas as rotas exceto /login, /logout e o catálogo público.
+    Também bloqueia rotas admin-only (ADMIN_ONLY_PREFIXES/EXATOS) para
+    usuários com role != 'admin'."""
     public_endpoints = {'login', 'logout', 'catalogo', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx'}
     if request.endpoint in public_endpoints:
         return None
@@ -133,6 +179,17 @@ def require_login():
         return None
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+    # Revalida o usuário a cada request (não confia em role cacheada na sessão)
+    # — se o usuário foi removido ou teve a role alterada, o efeito é imediato.
+    usuario = _achar_usuario(session.get('username'))
+    if not usuario:
+        session.clear()
+        return redirect(url_for('login'))
+    session['role'] = usuario.get('role', 'comum')
+    path = request.path
+    eh_admin_only = path.startswith(ADMIN_ONLY_PREFIXES) or path in ADMIN_ONLY_EXATOS
+    if eh_admin_only and usuario.get('role') != 'admin':
+        return jsonify({'erro': 'Acesso restrito a administradores.'}), 403
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -141,12 +198,25 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        if AUTH_USERS.get(username) == password:
+        usuario = _achar_usuario(username)
+        if usuario and check_password_hash(usuario['senha_hash'], password):
             session['logged_in'] = True
             session['username']  = username
+            session['role']      = usuario.get('role', 'comum')
             return redirect(url_for('index'))
         error = 'Usuário ou senha incorretos.'
     return render_template_string(_LOGIN_HTML, error=error)
+
+
+@app.route('/api/whoami')
+def api_whoami():
+    """Usado pelo portal (index.html) para mostrar/ocultar links admin-only
+    (Atualizar dados, Gerenciar usuários) via JS, sem duplicar a lógica de
+    permissão no HTML estático."""
+    return jsonify({
+        'username': session.get('username'),
+        'role': session.get('role', 'comum'),
+    })
 
 
 @app.route('/logout')
@@ -244,6 +314,8 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
   <a class="back" href="/admin/fotos">Atualizar fotos do catálogo →</a>
   &nbsp;·&nbsp;
   <a class="back" href="/admin/home">Editar home do catálogo →</a>
+  &nbsp;·&nbsp;
+  <a class="back" href="/admin/usuarios">Gerenciar usuários →</a>
 </div>
 </body>
 </html>'''
@@ -418,6 +490,212 @@ def config():
             message = f'Configuração salva: prazo {prazo} dias · limite IA US$ {ia_limite:.2f}/mês.'
 
     return render_template_string(_CONFIG_HTML, message=message, ok=ok, prazo=prazo, ia_limite=ia_limite)
+
+
+# ─────────────────────────────────────────────
+#  GESTÃO DE USUÁRIOS (admin-only)
+# ─────────────────────────────────────────────
+_USUARIOS_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Boaonda Intelligence — Usuários</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--coral:#ed6842;--verde:#6c9c37;--verde-dark:#26361e;--bg:#f8f5f1;--card:#fff;--line:#e2ddd8;--txt-s:#71706f;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
+body{background:var(--bg);color:var(--verde-dark);min-height:100vh;padding:32px}
+.wrap{max-width:760px;margin:0 auto}
+.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px;margin-bottom:4px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
+h1{font-size:16px;font-weight:700;margin:24px 0 8px}
+h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-s);margin:28px 0 12px}
+p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:16px}
+.field{margin-bottom:16px}
+label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-s);margin-bottom:8px}
+input[type=text],input[type=password],select{width:100%;background:#f3f0eb;border:1px solid var(--line);border-radius:8px;padding:10px 14px;color:var(--verde-dark);font-size:13px;outline:none;font-family:'Montserrat',sans-serif}
+input:focus,select:focus{border-color:var(--coral)}
+.hint{font-size:11px;color:var(--txt-m);margin-top:4px}
+.btn{background:var(--coral);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:700;cursor:pointer}
+.btn:hover{background:#dd7051}
+.btn-sm{padding:7px 12px;font-size:11px}
+.btn-danger{background:transparent;color:#c0392b;border:1px solid rgba(192,57,43,.35)}
+.btn-danger:hover{background:rgba(192,57,43,.08)}
+.msg{border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:16px}
+.msg.ok{background:rgba(108,156,55,.1);color:var(--verde);border:1px solid rgba(108,156,55,.25)}
+.msg.err{background:rgba(239,68,68,.08);color:#c0392b;border:1px solid rgba(239,68,68,.25)}
+.back{display:inline-block;margin-top:8px;font-size:12px;color:var(--txt-s);text-decoration:none}
+.back:hover{color:var(--coral)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-m);padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:10px;border-bottom:1px solid var(--line);font-size:12px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.you{font-size:9px;color:var(--coral);font-weight:700;margin-left:6px}
+.row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.row-actions form{display:flex;gap:6px;align-items:center;margin:0}
+.row-actions input[type=password]{width:130px;padding:6px 10px;font-size:11px}
+.row-actions select{width:auto;padding:6px 8px;font-size:11px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">BOAONDA <span>· Intelligence</span></div>
+  <h1>Gerenciar usuários</h1>
+  <p class="sub">Cadastre e administre quem acessa o portal. Perfil "Admin" tem acesso total (inclui atualizar dados, fotos e esta tela); perfil "Comum" só vê os dashboards.</p>
+
+  {% if message %}
+  <div class="msg {{ 'ok' if ok else 'err' }}">{{ message }}</div>
+  {% endif %}
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Usuário</th><th>Perfil</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td>{{ u.username }}{% if u.username == usuario_atual %}<span class="you">você</span>{% endif %}</td>
+          <td>{{ 'Admin' if u.role == 'admin' else 'Comum' }}</td>
+          <td>{{ u.criado_em or '–' }}</td>
+          <td>
+            <div class="row-actions">
+              <form method="post" action="/admin/usuarios/role">
+                <input type="hidden" name="username" value="{{ u.username }}">
+                <select name="role">
+                  <option value="comum" {{ 'selected' if u.role != 'admin' else '' }}>Comum</option>
+                  <option value="admin" {{ 'selected' if u.role == 'admin' else '' }}>Admin</option>
+                </select>
+                <button class="btn btn-sm" type="submit">Salvar</button>
+              </form>
+              <form method="post" action="/admin/usuarios/senha">
+                <input type="hidden" name="username" value="{{ u.username }}">
+                <input type="password" name="nova_senha" placeholder="Nova senha" minlength="6" required>
+                <button class="btn btn-sm" type="submit">Trocar</button>
+              </form>
+              <form method="post" action="/admin/usuarios/remover"
+                    onsubmit="return confirm('Remover o usuário {{ u.username }}? Essa ação não pode ser desfeita.')">
+                <input type="hidden" name="username" value="{{ u.username }}">
+                <button class="btn btn-sm btn-danger" type="submit">Remover</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Novo usuário</h2>
+  <form class="card" method="post" action="/admin/usuarios/criar">
+    <div class="field">
+      <label>Usuário</label>
+      <input type="text" name="username" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" required>
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" name="senha" minlength="6" required>
+      <div class="hint">Mínimo 6 caracteres.</div>
+    </div>
+    <div class="field">
+      <label>Perfil</label>
+      <select name="role">
+        <option value="comum">Comum — só acessa os dashboards</option>
+        <option value="admin">Admin — acesso total (dados, fotos, usuários)</option>
+      </select>
+    </div>
+    <button class="btn" type="submit">Criar usuário</button>
+  </form>
+
+  <a class="back" href="/">← Voltar ao portal</a>
+</div>
+</body>
+</html>'''
+
+
+def _redirect_usuarios(msg, ok=True):
+    return redirect(url_for('admin_usuarios', msg=msg, ok='1' if ok else '0'))
+
+
+@app.route('/admin/usuarios')
+def admin_usuarios():
+    msg = request.args.get('msg')
+    ok = request.args.get('ok', '1') == '1'
+    usuarios = sorted(_ler_usuarios(), key=lambda u: u['username'].lower())
+    return render_template_string(_USUARIOS_HTML, usuarios=usuarios, message=msg, ok=ok,
+                                   usuario_atual=session.get('username'))
+
+
+@app.route('/admin/usuarios/criar', methods=['POST'])
+def admin_usuarios_criar():
+    username = request.form.get('username', '').strip()
+    senha = request.form.get('senha', '')
+    role = request.form.get('role', 'comum')
+    if role not in ('admin', 'comum'):
+        role = 'comum'
+    if not username or len(senha) < 6:
+        return _redirect_usuarios('Informe um usuário e uma senha com pelo menos 6 caracteres.', ok=False)
+    usuarios = _ler_usuarios()
+    if any(u['username'].lower() == username.lower() for u in usuarios):
+        return _redirect_usuarios(f'Já existe um usuário "{username}".', ok=False)
+    usuarios.append({
+        'username': username,
+        'senha_hash': generate_password_hash(senha),
+        'role': role,
+        'criado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+    })
+    _salvar_usuarios(usuarios)
+    return _redirect_usuarios(f'Usuário "{username}" criado com sucesso.')
+
+
+@app.route('/admin/usuarios/senha', methods=['POST'])
+def admin_usuarios_senha():
+    username = request.form.get('username', '').strip()
+    nova_senha = request.form.get('nova_senha', '')
+    if len(nova_senha) < 6:
+        return _redirect_usuarios('A nova senha precisa ter pelo menos 6 caracteres.', ok=False)
+    usuarios = _ler_usuarios()
+    usuario = next((u for u in usuarios if u['username'] == username), None)
+    if not usuario:
+        return _redirect_usuarios('Usuário não encontrado.', ok=False)
+    usuario['senha_hash'] = generate_password_hash(nova_senha)
+    _salvar_usuarios(usuarios)
+    return _redirect_usuarios(f'Senha de "{username}" atualizada.')
+
+
+@app.route('/admin/usuarios/role', methods=['POST'])
+def admin_usuarios_role():
+    username = request.form.get('username', '').strip()
+    nova_role = request.form.get('role', '')
+    if nova_role not in ('admin', 'comum'):
+        return _redirect_usuarios('Perfil inválido.', ok=False)
+    usuarios = _ler_usuarios()
+    usuario = next((u for u in usuarios if u['username'] == username), None)
+    if not usuario:
+        return _redirect_usuarios('Usuário não encontrado.', ok=False)
+    admins_restantes = [u for u in usuarios if u.get('role') == 'admin' and u['username'] != username]
+    if usuario.get('role') == 'admin' and nova_role != 'admin' and not admins_restantes:
+        return _redirect_usuarios('Não é possível rebaixar o último administrador do sistema.', ok=False)
+    usuario['role'] = nova_role
+    _salvar_usuarios(usuarios)
+    return _redirect_usuarios(f'Perfil de "{username}" atualizado para {"Admin" if nova_role == "admin" else "Comum"}.')
+
+
+@app.route('/admin/usuarios/remover', methods=['POST'])
+def admin_usuarios_remover():
+    username = request.form.get('username', '').strip()
+    usuarios = _ler_usuarios()
+    usuario = next((u for u in usuarios if u['username'] == username), None)
+    if not usuario:
+        return _redirect_usuarios('Usuário não encontrado.', ok=False)
+    admins_restantes = [u for u in usuarios if u.get('role') == 'admin' and u['username'] != username]
+    if usuario.get('role') == 'admin' and not admins_restantes:
+        return _redirect_usuarios('Não é possível remover o último administrador do sistema.', ok=False)
+    usuarios = [u for u in usuarios if u['username'] != username]
+    _salvar_usuarios(usuarios)
+    if session.get('username') == username:
+        session.clear()
+        return redirect(url_for('login'))
+    return _redirect_usuarios(f'Usuário "{username}" removido.')
 
 
 _RECARREGAR_HTML = '''<!DOCTYPE html>

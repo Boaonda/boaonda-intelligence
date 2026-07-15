@@ -11,3 +11,7 @@ dados_faturamento_det_*.json
 # Lista de itens sem foto (gerada a cada "Buscar fotos", artefato transiente; nao versionar)
 frontend/dados_fotos_faltantes.json
 dados_fotos_faltantes.json
+
+# Cadastro de usuarios/senhas (hash) - credenciais, nunca versionar
+frontend/usuarios.json
+usuarios.json

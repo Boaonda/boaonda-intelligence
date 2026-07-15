@@ -257,7 +257,8 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   </div>
   <div style="display:flex;align-items:center;gap:12px">
     <button class="btn-back" id="btn-back" onclick="goHome()">← Início</button>
-    <a href="/upload" style="font-size:11px;color:var(--txt-s);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:6px 10px" title="Atualizar dados (3YS/ESQT)">⟳ Atualizar dados</a>
+    <a href="/admin/usuarios" id="nav-usuarios" style="display:none;font-size:11px;color:var(--txt-s);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:6px 10px" title="Gerenciar usuários">👤 Usuários</a>
+    <a href="/upload" id="nav-upload" style="display:none;font-size:11px;color:var(--txt-s);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:6px 10px" title="Atualizar dados (3YS/ESQT)">⟳ Atualizar dados</a>
     <div class="hright">Base: 3YS · ESQT<br>Atualizado: <strong id="hdr-data">–</strong></div>
   </div>
 </div>
@@ -536,6 +537,15 @@ const MODS={
   equilibrio:{file:null,label:'Equilíbrio'},
 };
 function f(n){return Math.round(n||0).toLocaleString('pt-BR')}
+
+// Mostra os links admin-only (Atualizar dados, Usuários) só para quem tem
+// perfil admin — dashboards continuam abertos a qualquer usuário logado.
+fetch('/api/whoami').then(r=>r.json()).then(d=>{
+  if(d.role==='admin'){
+    const nu=document.getElementById('nav-upload'); if(nu) nu.style.display='';
+    const nus=document.getElementById('nav-usuarios'); if(nus) nus.style.display='';
+  }
+}).catch(()=>{});
 
 // Carregar JSON
 fetch('dados_portal.json?_='+Date.now())
