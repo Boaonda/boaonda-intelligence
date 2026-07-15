@@ -71,7 +71,7 @@ IDX = {
     'marca':20,'linha':23,'vlr':26,'cod_esp':27,'abr_grp':29,
     'holding':16,'nomeholder':17,'plano':35,'dt_plano':77,
     'pos_item':40,'etapa':39,'local':72,'tipomontagem':85,'cfop':71,
-    'conta_contabil':81,'vlr_total':86,
+    'conta_contabil':81,'vlr_total':86,'uf':87,'representante':88,
 }
 
 # Nome da coluna no cabeçalho do 3YS.csv para cada campo de IDX. Usado para
@@ -89,6 +89,7 @@ CSV_COL_NAMES = {
     'dt_plano':'dt_plano', 'pos_item':'pos_item', 'etapa':'etapa_atual',
     'local':'LocalEstoque', 'tipomontagem':'CorPalmilha', 'cfop':'cfop',
     'conta_contabil':'ContaContabil', 'vlr_total':'valortotal',
+    'uf':'uf', 'representante':'representante',
 }
 
 # Query usada quando MYSQL_HOST está configurado (ver db_mysql.py) — substitui
@@ -118,7 +119,9 @@ SELECT
     {col_conta}     AS conta_contabil,
     marca           AS marca,
     {col_valor}     AS vlr,
-    {col_valor_total} AS vlr_total
+    {col_valor_total} AS vlr_total,
+    {col_uf}        AS uf,
+    {col_representante} AS representante
 FROM mould.v_entradapedidos_extended v
 WHERE v.dt_entrada >= date_format(date_sub(current_date, interval 1 year), '%Y/01/01')
 """
@@ -295,9 +298,16 @@ def carregar_linhas_3ys(arquivo_3ys=None):
             print("    AVISO: coluna 'valor total' (bruto) não encontrada na view "
                   "— faturamento usará o valor líquido")
             col_valor_total_sql = '0'
+        # UF e Representante — usados nos filtros de Análise da Carteira. Se a
+        # view não tiver, os filtros ficam vazios (sem quebrar o resto).
+        col_uf = db_mysql.achar_coluna_uf()
+        col_uf_sql = f'v.`{col_uf}`' if col_uf else "''"
+        col_representante = db_mysql.achar_coluna_representante()
+        col_representante_sql = f'v.`{col_representante}`' if col_representante else "''"
         db_rows = db_mysql.consultar(QUERY_3YS.format(
             col_valor=col_valor_sql, col_conta=col_conta_sql,
-            col_valor_total=col_valor_total_sql))
+            col_valor_total=col_valor_total_sql,
+            col_uf=col_uf_sql, col_representante=col_representante_sql))
         print(f"    {len(db_rows):,} linhas carregadas do MySQL")
         if len(db_rows) < MIN_LINHAS_3YS_MYSQL:
             raise RuntimeError(
@@ -381,9 +391,16 @@ def diagnostico_3ys():
     col_valor_total_sql = f'v.`{col_valor_total}`' if col_valor_total else '0'
     col_conta = db_mysql.achar_coluna_conta_contabil()
     col_conta_sql = f'v.`{col_conta}`' if col_conta else "''"
+    col_uf = db_mysql.achar_coluna_uf()
+    info['coluna_uf'] = col_uf or '(NÃO encontrada na view)'
+    col_uf_sql = f'v.`{col_uf}`' if col_uf else "''"
+    col_representante = db_mysql.achar_coluna_representante()
+    info['coluna_representante'] = col_representante or '(NÃO encontrada na view)'
+    col_representante_sql = f'v.`{col_representante}`' if col_representante else "''"
     db_rows = db_mysql.consultar(QUERY_3YS.format(
         col_valor=col_valor_sql, col_conta=col_conta_sql,
-        col_valor_total=col_valor_total_sql))
+        col_valor_total=col_valor_total_sql,
+        col_uf=col_uf_sql, col_representante=col_representante_sql))
     info['total_linhas'] = len(db_rows)
     linhas = [_linha_de_db_row(r) for r in db_rows]
     campos = ('qtd', 'pos_item', 'abr_grp', 'cod_esp', 'anomes', 'marca', 'ref', 'vlr')
@@ -611,11 +628,18 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
     qualquer mês do histórico) — por isso não fica restrito ao ano corrente
     como o dados_vendas_clientes.json.
 
-    Estrutura: {"holdings": {holding: {mes: {"MI_PROG":[pares,valor], ...}}}}
+    Estrutura: {"holdings": {holding: {mes: {"MI_PROG":[pares,valor], ...}}},
+    "meta": {holding: {"uf": "RS", "representantes": {"MI": "Fulano", ...}}}}
+    — meta.uf é a UF mais frequente do holding; meta.representantes traz o
+    representante mais frequente POR CANAL (o mesmo holding pode ter reps
+    diferentes por canal, ex.: e-commerce sempre cai no rep "ECOMMERCE").
+    Alimenta os filtros de UF e Representante da Análise da Carteira.
     """
     print("\n  Gerando dados_vendas_carteira.json...")
     holdings = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0, 0.0])))
     meses_presentes = set()
+    holding_uf = defaultdict(Counter)
+    holding_rep = defaultdict(lambda: defaultdict(Counter))
     for row in linhas:
         abr = g(row, IDX['abr_grp']).upper()
         cod = g(row, IDX['cod_esp'])
@@ -634,6 +658,10 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
         d = holdings[holding][anomes][chave]
         d[0] += qtd; d[1] += valor
         meses_presentes.add(anomes)
+        uf_val = g(row, IDX['uf']).strip()
+        rep_val = g(row, IDX['representante']).strip()
+        if uf_val: holding_uf[holding][uf_val] += 1
+        if rep_val: holding_rep[holding][canal][rep_val] += 1
 
     saida_holdings = {}
     for h, meses in holdings.items():
@@ -641,10 +669,16 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
             m: {k: [q, round(v, 2)] for k, (q, v) in tipos.items()}
             for m, tipos in meses.items()
         }
+    meta = {}
+    for h in holdings:
+        uf_top = holding_uf[h].most_common(1)
+        reps = {c: cnt.most_common(1)[0][0] for c, cnt in holding_rep[h].items() if cnt}
+        meta[h] = {'uf': uf_top[0][0] if uf_top else '', 'representantes': reps}
     saida = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
         'meses_disponiveis': sorted(meses_presentes),
         'holdings': saida_holdings,
+        'meta': meta,
     }
     with open(os.path.join(output_dir, 'dados_vendas_carteira.json'), 'w', encoding='utf-8') as f_:
         json.dump(saida, f_, ensure_ascii=False, separators=(',', ':'))

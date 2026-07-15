@@ -72,3 +72,25 @@ def achar_coluna_valor_total(tabela='mould.v_entradapedidos_extended'):
         if 'valor' in baixo and 'total' in baixo:
             return nome
     return None
+
+
+def achar_coluna_uf(tabela='mould.v_entradapedidos_extended'):
+    """Localiza a coluna de UF do cliente na view — usada nos filtros de
+    Análise da Carteira. Retorna o nome exato ou None (filtro fica vazio,
+    sem quebrar o restante do pipeline)."""
+    for row in consultar(f"SHOW COLUMNS FROM {tabela}"):
+        nome = row.get('Field', '')
+        if nome.lower() == 'uf':
+            return nome
+    return None
+
+
+def achar_coluna_representante(tabela='mould.v_entradapedidos_extended'):
+    """Localiza a coluna de representante/vendedor na view — usada no filtro
+    de Representante da Análise da Carteira. Retorna o nome exato ou None."""
+    candidatos = []
+    for row in consultar(f"SHOW COLUMNS FROM {tabela}"):
+        nome = row.get('Field', '')
+        if 'represent' in nome.lower():
+            candidatos.append(nome)
+    return candidatos[0] if candidatos else None

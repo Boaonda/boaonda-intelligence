@@ -84,11 +84,19 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 
 <div class="filtros">
   <span class="filtro-label">Canal</span>
-  <select class="sel" id="f-canal" onchange="renderTudo()">
+  <select class="sel" id="f-canal" onchange="onCanalChange()">
     <option value="TODOS">Todos os canais</option>
     <option value="MI">Mercado Interno</option>
     <option value="ME">Mercado Externo</option>
     <option value="ECOM">E-commerce</option>
+  </select>
+  <span class="filtro-label">UF</span>
+  <select class="sel" id="f-uf" onchange="renderTudo()">
+    <option value="TODOS">Todas as UFs</option>
+  </select>
+  <span class="filtro-label">Representante</span>
+  <select class="sel" id="f-representante" onchange="renderTudo()">
+    <option value="TODOS">Todos os representantes</option>
   </select>
   <span class="filtro-label">Visão</span>
   <select class="sel" id="f-visao" onchange="renderTudo()">
@@ -167,9 +175,67 @@ fetch('dados_vendas_carteira.json?_='+Date.now())
     CARTEIRA = d;
     const hdr=document.getElementById('hdr-data');
     if(hdr && d) hdr.textContent = d.gerado_em || '–';
+    popularFiltrosExtra();
     renderTudo();
   })
   .catch(()=>{});
+
+// ── FILTROS UF / REPRESENTANTE ─────────────────────────────────────────
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function distinctUFs(){
+  const set=new Set();
+  const meta=(CARTEIRA&&CARTEIRA.meta)||{};
+  for(const h in meta){ if(meta[h].uf) set.add(meta[h].uf); }
+  return Array.from(set).sort();
+}
+function distinctRepresentantes(canal){
+  const set=new Set();
+  const meta=(CARTEIRA&&CARTEIRA.meta)||{};
+  for(const h in meta){
+    const reps=meta[h].representantes||{};
+    if(canal==='TODOS'){ for(const c in reps) set.add(reps[c]); }
+    else if(reps[canal]) set.add(reps[canal]);
+  }
+  return Array.from(set).sort();
+}
+function popularFiltrosExtra(){
+  const selUf=document.getElementById('f-uf');
+  const ufs=distinctUFs();
+  selUf.innerHTML='<option value="TODOS">Todas as UFs</option>'+
+    ufs.map(u=>'<option value="'+u+'">'+u+'</option>').join('');
+  atualizarRepresentantes();
+}
+function atualizarRepresentantes(){
+  const canal=document.getElementById('f-canal').value;
+  const selRep=document.getElementById('f-representante');
+  const valorAnterior=selRep.value;
+  const reps=distinctRepresentantes(canal);
+  selRep.innerHTML='<option value="TODOS">Todos os representantes</option>'+
+    reps.map(r=>'<option value="'+escapeHtml(r)+'">'+escapeHtml(r)+'</option>').join('');
+  if(reps.includes(valorAnterior)) selRep.value=valorAnterior;
+}
+function onCanalChange(){
+  atualizarRepresentantes();
+  renderTudo();
+}
+function passaFiltrosExtra(h){
+  const uf=document.getElementById('f-uf').value;
+  const rep=document.getElementById('f-representante').value;
+  if(uf==='TODOS' && rep==='TODOS') return true;
+  const meta=(CARTEIRA.meta||{})[h];
+  if(!meta) return false;
+  if(uf!=='TODOS' && meta.uf!==uf) return false;
+  if(rep!=='TODOS'){
+    const reps=meta.representantes||{};
+    const canal=document.getElementById('f-canal').value;
+    if(canal==='TODOS'){
+      if(!Object.values(reps).includes(rep)) return false;
+    } else if(reps[canal]!==rep) return false;
+  }
+  return true;
+}
 
 // ── PERÍODOS ──────────────────────────────────────────────────────────
 function ym(ano,mes){ return String(ano)+String(mes).padStart(2,'0'); }
@@ -288,6 +354,7 @@ function renderNovos(){
   const atualSet = new Set(p.atual);
   const lista=[];
   for(const h in holdings){
+    if(!passaFiltrosExtra(h)) continue;
     const pm = primeiroMesCanal(holdings[h], canal);
     if(pm && atualSet.has(pm)){
       lista.push({h, pm, pares: somaHolding(holdings[h], p.atual, canal, 0), valor: somaHolding(holdings[h], p.atual, canal, 1)});
@@ -320,6 +387,7 @@ function renderChurn(){
   const holdings = CARTEIRA.holdings;
   const lista=[];
   for(const h in holdings){
+    if(!passaFiltrosExtra(h)) continue;
     const pAtual = somaHolding(holdings[h], p.atual, canal, 0);
     const pAnterior = somaHolding(holdings[h], p.anterior, canal, 0);
     if(pAnterior>0 && pAtual===0){
@@ -352,6 +420,7 @@ function renderPareto(){
   const holdings = CARTEIRA.holdings;
   const lista=[];
   for(const h in holdings){
+    if(!passaFiltrosExtra(h)) continue;
     const v = somaHolding(holdings[h], p.atual, canal, idx);
     if(v>0) lista.push({h, v});
   }
@@ -406,6 +475,7 @@ function renderRecencia(){
   const mesAtualStr = ym(new Date().getFullYear(), new Date().getMonth()+1);
   const lista=[];
   for(const h in holdings){
+    if(!passaFiltrosExtra(h)) continue;
     const um = ultimoMesCanal(holdings[h], canal);
     if(!um) continue;
     const meses = diffMeses(um, mesAtualStr);
