@@ -359,6 +359,88 @@ def serve_file(filename):
     return send_from_directory(FRONTEND_DIR, filename)
 
 
+# ─────────────────────────────────────────────
+#  PAINEL DE CONFIGURAÇÕES — hub com sidebar fixa (admin-only)
+# ─────────────────────────────────────────────
+# Cada seção é uma página que já existe e já funciona sozinha (upload,
+# fotos, home do catálogo, config de produção, usuários, diagnóstico,
+# recarregar) — o painel só empresta uma casca comum (sidebar + iframe),
+# sem reescrever a lógica de nenhuma delas.
+CONFIG_SECOES = [
+    {'id': 'upload',     'icone': '⟳',  'label': 'Atualizar dados',              'url': '/upload'},
+    {'id': 'fotos',      'icone': '🖼', 'label': 'Atualizar fotos do catálogo',   'url': '/admin/fotos'},
+    {'id': 'home',       'icone': '🏠', 'label': 'Editar home do catálogo',       'url': '/admin/home'},
+    {'id': 'usuarios',   'icone': '👤', 'label': 'Gerenciar usuários',            'url': '/admin/usuarios'},
+    {'id': 'producao',   'icone': '⚙',  'label': 'Configurações de produção',     'url': '/config'},
+    {'id': 'diag',       'icone': '🩺', 'label': 'Diagnóstico da fonte de dados', 'url': '/admin/diag'},
+    {'id': 'recarregar', 'icone': '🔄', 'label': 'Recarregar dados no servidor',  'url': '/admin/recarregar'},
+]
+
+_CONFIGURACOES_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Boaonda Intelligence — Configurações</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--coral:#ed6842;--verde-dark:#26361e;--bg:#f8f5f1;--card:#fff;--line:#e2ddd8;--txt-s:#71706f;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
+html,body{height:100%}
+body{background:var(--bg);color:var(--verde-dark);display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--card);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.brand{font-size:16px;font-weight:800;color:var(--coral);letter-spacing:1.5px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:12px;margin-left:6px;letter-spacing:1px}
+.back{font-size:11px;color:var(--txt-s);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:6px 12px}
+.back:hover{color:var(--coral);border-color:var(--coral)}
+.layout{flex:1;display:flex;min-height:0}
+.sidebar{width:250px;flex-shrink:0;background:var(--card);border-right:1px solid var(--line);overflow-y:auto;padding:16px 0}
+.side-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m);padding:0 20px 10px}
+.side-item{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:12.5px;font-weight:600;color:var(--verde-dark);cursor:pointer;border-left:3px solid transparent;transition:.12s}
+.side-item:hover{background:rgba(237,104,66,.06)}
+.side-item.active{background:rgba(237,104,66,.1);border-left-color:var(--coral);color:var(--coral)}
+.side-icon{font-size:15px;width:20px;text-align:center}
+.content{flex:1;min-width:0;position:relative}
+.content iframe{width:100%;height:100%;border:none;display:block}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">BOAONDA <span>· Configurações</span></div>
+  <a class="back" href="/" target="_top">← Voltar ao portal</a>
+</div>
+<div class="layout">
+  <div class="sidebar">
+    <div class="side-title">Configurações</div>
+    {% for s in secoes %}
+    <div class="side-item" data-id="{{ s.id }}" onclick="abrirSecao('{{ s.id }}')">
+      <span class="side-icon">{{ s.icone }}</span><span>{{ s.label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="content">
+    <iframe id="cfg-iframe" src=""></iframe>
+  </div>
+</div>
+<script>
+const SECOES = {{ secoes|tojson }};
+function abrirSecao(id){
+  const sec = SECOES.find(s=>s.id===id);
+  if(!sec) return;
+  document.getElementById('cfg-iframe').src = sec.url;
+  document.querySelectorAll('.side-item').forEach(el=>el.classList.toggle('active', el.dataset.id===id));
+  history.replaceState(null, '', '/admin/configuracoes?secao='+id);
+}
+abrirSecao(new URLSearchParams(location.search).get('secao') || 'upload');
+</script>
+</body>
+</html>'''
+
+
+@app.route('/admin/configuracoes')
+def admin_configuracoes():
+    return render_template_string(_CONFIGURACOES_HTML, secoes=CONFIG_SECOES)
+
+
 _UPLOAD_HTML = '''<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -414,13 +496,9 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
     <button class="btn" id="btn" type="submit">Processar e atualizar dashboards</button>
   </form>
 
-  <a class="back" href="/">← Voltar ao portal</a>
+  <a class="back" href="/" target="_top">← Voltar ao portal</a>
   &nbsp;·&nbsp;
-  <a class="back" href="/admin/fotos">Atualizar fotos do catálogo →</a>
-  &nbsp;·&nbsp;
-  <a class="back" href="/admin/home">Editar home do catálogo →</a>
-  &nbsp;·&nbsp;
-  <a class="back" href="/admin/usuarios">Gerenciar usuários →</a>
+  <a class="back" href="/admin/configuracoes" target="_top">← Voltar às Configurações</a>
 </div>
 </body>
 </html>'''
@@ -556,7 +634,7 @@ input[type=number]:focus{border-color:var(--coral)}
     <button class="btn" type="submit">Salvar</button>
   </form>
 
-  <a class="back" href="/">← Voltar ao portal</a>
+  <a class="back" href="/" target="_top">← Voltar ao portal</a>
 </div>
 </body>
 </html>'''
@@ -743,7 +821,7 @@ tr:last-child td{border-bottom:none}
     <button class="btn" type="submit">Criar usuário</button>
   </form>
 
-  <a class="back" href="/">← Voltar ao portal</a>
+  <a class="back" href="/" target="_top">← Voltar ao portal</a>
 </div>
 </body>
 </html>'''
@@ -897,7 +975,7 @@ p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
     <button class="btn" type="submit" {{ 'disabled' if disabled else '' }}>Recarregar agora</button>
   </form>
 
-  <a class="back" href="/">← Voltar ao portal</a>
+  <a class="back" href="/" target="_top">← Voltar ao portal</a>
 </div>
 </body>
 </html>'''
@@ -950,7 +1028,7 @@ p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
     <div class="progress-bar" id="pbar" style="display:none"><div class="progress-fill" id="pfill"></div></div>
   </div>
 
-  <a class="back" href="/upload">← Voltar para Atualizar dados</a>
+  <a class="back" href="/admin/configuracoes" target="_top">← Voltar às Configurações</a>
   &nbsp;·&nbsp;
   <a class="back" href="/catalogo" target="_blank">Ver catálogo público ↗</a>
 </div>
