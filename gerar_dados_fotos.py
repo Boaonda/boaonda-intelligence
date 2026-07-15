@@ -120,17 +120,26 @@ def buscar_wp(session, query: str) -> list:
 
 
 def slug_de(item: dict) -> str:
-    """Retorna o slug do media item para comparação.
-    Prioriza o campo 'slug' do WordPress — mais confiável que o filename,
-    que pode conter sufixos automáticos como -scaled ou -rotated.
+    """Retorna a chave de comparação do media item.
+
+    Prioriza o TÍTULO do WordPress, não o slug. Toda vez que a mesma foto é
+    reenviada com o mesmo nome de arquivo, o WordPress mantém o post antigo
+    na biblioteca e cola um sufixo automático `-2`, `-3`, `-4`... no SLUG
+    (post_name) para evitar colisão — mas o campo Título permanece limpo,
+    idêntico em todas as versões. Comparar pelo slug faz a busca falhar
+    sempre que a foto já foi reenviada ao menos uma vez (comum: mesma
+    referência com várias versões ao longo dos anos). Se não houver título,
+    cai para o slug/nome de arquivo com o sufixo numérico removido.
     """
-    slug  = item.get("slug", "")
-    src   = item.get("source_url", "")
-    title = (item.get("title") or {}).get("rendered", "")
+    title = ((item.get("title") or {}).get("rendered") or "").strip()
+    if title:
+        return title.lower()
+    slug = item.get("slug", "")
     if slug:
-        return slug.lower()
+        return re.sub(r'-\d+$', '', slug).lower()
+    src = item.get("source_url", "")
     fname = src.rsplit("/", 1)[-1].rsplit(".", 1)[0]
-    return (fname or title).lower()
+    return re.sub(r'-\d+$', '', fname).lower()
 
 
 def fotos_por_prefixo(session, prefixo: str) -> dict:
@@ -138,30 +147,36 @@ def fotos_por_prefixo(session, prefixo: str) -> dict:
     Retorna {angulo: url} para um prefixo como '1317_185_001'.
 
     Ângulos esperados:
-        principal → arquivo cujo slug == prefixo (sem sufixo de ângulo)
-        lateral   → slug == prefixo + '_lateral'
-        topo      → slug == prefixo + '_topo'
-        solado    → slug == prefixo + '_solado'
+        principal → item cuja chave (slug_de) == prefixo (sem sufixo de ângulo)
+        lateral   → chave == prefixo + '_lateral'
+        topo      → chave == prefixo + '_topo'
+        solado    → chave == prefixo + '_solado'
+
+    Quando a mesma foto tem várias versões reenviadas (ids diferentes, mesma
+    chave), fica com o ID mais alto — a versão mais recente.
     """
     items = buscar_wp(session, prefixo)
     time.sleep(DELAY_S)
 
-    fotos = {}
+    melhor = {}  # angulo -> (id, url)
     pref_low = prefixo.lower()
+    angulo_por_chave = {
+        pref_low: "principal",
+        f"{pref_low}_lateral": "lateral",
+        f"{pref_low}_topo": "topo",
+        f"{pref_low}_solado": "solado",
+    }
     for item in items:
-        s = slug_de(item)
+        chave = slug_de(item)
         src = item.get("source_url", "")
-        if not s or not src:
+        angulo = angulo_por_chave.get(chave)
+        if not angulo or not src:
             continue
-        if s == pref_low:
-            fotos["principal"] = src
-        elif s == f"{pref_low}_lateral":
-            fotos["lateral"] = src
-        elif s == f"{pref_low}_topo":
-            fotos["topo"] = src
-        elif s == f"{pref_low}_solado":
-            fotos["solado"] = src
-    return fotos
+        item_id = item.get("id", 0)
+        atual = melhor.get(angulo)
+        if atual is None or item_id > atual[0]:
+            melhor[angulo] = (item_id, src)
+    return {a: v[1] for a, v in melhor.items()}
 
 
 # ─── Função chamável pelo Flask ───────────────────────────────────────────────

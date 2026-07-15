@@ -7,3 +7,7 @@ frontend/uploads/
 # Detalhe de faturamento por mes (grande, gerado no processamento; nao versionar)
 frontend/dados_faturamento_det_*.json
 dados_faturamento_det_*.json
+
+# Lista de itens sem foto (gerada a cada "Buscar fotos", artefato transiente; nao versionar)
+frontend/dados_fotos_faltantes.json
+dados_fotos_faltantes.json
