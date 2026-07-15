@@ -1,5 +1,5 @@
 {
-  "gerado_em": "15/07/2026 14:36",
+  "gerado_em": "15/07/2026 15:04",
   "inside_base": "https://inside.boaonda.com.br",
   "refs": {
     "1317 NELLIE": {
@@ -85,10 +85,10 @@
       },
       "[FL] 015 (BRANCO/BRANCO)": {
         "principal": null,
-        "lateral": null,
-        "topo": null,
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2026/02/1317_123_015_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2026/02/1317_123_015_topo-1.jpg",
         "solado": null,
-        "cor_nome": "[FL] 015 (BRANCO/BRANCO)",
+        "cor_nome": "BRANCO/BRANCO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "031 (CARAMELO/CARAMELO)": {
@@ -276,27 +276,27 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (ACAI/GLOOVE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (ACAI/GLOOVE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_002_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_002_solado-3.jpg",
+        "cor_nome": "ACAI/GLOOVE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (ROSE NUDE/GLOOVE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (ROSE NUDE/GLOOVE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_003_solado-1.jpg",
+        "cor_nome": "ROSE NUDE/GLOOVE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/GLOOVE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/GLOOVE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_001-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_001_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_001_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1317_182_001_solado-1.jpg",
+        "cor_nome": "PRETO/GLOOVE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "001 (PRETO/OUNCE)": {
@@ -340,67 +340,67 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (ROSE NUDE/LIKE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (ROSE NUDE/LIKE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_003-scaled.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_003_lateral-scaled.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_003_topo-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_003_solado.jpg",
+        "cor_nome": "ROSE NUDE/LIKE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/LIKE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/LIKE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_001-scaled.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_001_lateral-scaled.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_001_topo-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_001_solado.jpg",
+        "cor_nome": "PRETO/LIKE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (GOIABA/LIKE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (GOIABA/LIKE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_002-scaled.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_002_lateral-scaled.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_002_topo.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/1317_168_002_solado.jpg",
+        "cor_nome": "GOIABA/LIKE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (GOIABA/JARDIM)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (GOIABA/JARDIM)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1317_163_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1317_163_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1317_163_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1317_163_003_solado-1.jpg",
+        "cor_nome": "GOIABA/JARDIM",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/GOLD)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/GOLD)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/1317_157_001-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/1317_157_001_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/1317_157_001_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/1317_157_001_solado-1.jpg",
+        "cor_nome": "PRETO/GOLD",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (GOIABA/GOLD)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (GOIABA/GOLD)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/1317_157_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/1317_157_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/1317_157_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/1317_157_003_solado-1.jpg",
+        "cor_nome": "GOIABA/GOLD",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (AMORA/SIGNOS)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (AMORA/SIGNOS)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/1317_173_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/1317_173_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/1317_173_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/1317_173_003_solado-1.jpg",
+        "cor_nome": "AMORA/SIGNOS",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (ROSE NUDE/MOSAICO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (ROSE NUDE/MOSAICO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1317_169_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1317_169_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1317_169_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1317_169_003_solado-1.jpg",
+        "cor_nome": "ROSE NUDE/MOSAICO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
@@ -550,11 +550,11 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 004 (GOIABA/PAC-MAN)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 004 (GOIABA/PAC-MAN)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/07/1319_267_004-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/07/1319_267_004_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/07/1319_267_004_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/07/1319_267_004_solado-1.jpg",
+        "cor_nome": "GOIABA/PAC-MAN",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "001 (PRETO/BRASILIDADE)": {
@@ -702,19 +702,19 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/CREPE BRASIL)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/CREPE BRASIL)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1319_261_001-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1319_261_001_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1319_261_001_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1319_261_001_solado-1.jpg",
+        "cor_nome": "PRETO/CREPE BRASIL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (CLAS. BLUE/CREPE BR)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (CLAS. BLUE/CREPE BR)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1319_261_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1319_261_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1319_261_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1319_261_003_solado-1.jpg",
+        "cor_nome": "CLAS. BLUE/CREPE BR",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "002 (CANELA/ARRANJO TROPICAL)": {
@@ -742,27 +742,27 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (CLASS. BLUE/PITANGA)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (CLASS. BLUE/PITANGA)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1319_1001_003.png",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1319_1001_003_lateral.png",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1319_1001_003_topo.png",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1319_1001_003_solado.png",
+        "cor_nome": "CLASS. BLUE/PITANGA",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/GRAFITE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/GRAFITE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1319_1001_001.png",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1319_1001_001_lateral.png",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1319_1001_001_topo.png",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1319_1001_001_solado.png",
+        "cor_nome": "PRETO/GRAFITE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (CL.BLUE/PTO.CASUAL)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (CL.BLUE/PTO.CASUAL)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1319_254_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1319_254_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1319_254_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1319_254_003_solado-1.jpg",
+        "cor_nome": "CL.BLUE/PTO.CASUAL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "003 (CANELA/FLORAL GOLD)": {
@@ -992,11 +992,11 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (BRANCO/GOOD VIBES)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (BRANCO/GOOD VIBES)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2402_122_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2402_122_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/2402_122_002_topo-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/2402_122_002_solado.jpg",
+        "cor_nome": "BRANCO/GOOD VIBES",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "001 (PRETO/COFFEE)": {
@@ -1114,75 +1114,75 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 004 (ROSE NUDE/LIKE)": {
-        "principal": null,
-        "lateral": null,
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_004-scaled.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_004_lateral-scaled.jpg",
         "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 004 (ROSE NUDE/LIKE)",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_004_solado-scaled.jpg",
+        "cor_nome": "ROSE NUDE/LIKE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (GOIABA/LIKE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (GOIABA/LIKE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_003-scaled.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_003_lateral-scaled.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_003_topo.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_003_solado.jpg",
+        "cor_nome": "GOIABA/LIKE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/LIKE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/LIKE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_001-scaled.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_001_lateral-scaled.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_001_topo.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2225_113_001_solado.jpg",
+        "cor_nome": "PRETO/LIKE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (ROSE NUDE/JARDIM)": {
-        "principal": null,
-        "lateral": null,
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_106_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_106_002_lateral-3.jpg",
         "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (ROSE NUDE/JARDIM)",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_106_002_solado-1.jpg",
+        "cor_nome": "ROSE NUDE/JARDIM",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (ACAI/JARDIM)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (ACAI/JARDIM)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_106_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_106_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_106_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_106_003_solado-1.jpg",
+        "cor_nome": "ACAI/JARDIM",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 004 (GOIABA/BRILHO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 004 (GOIABA/BRILHO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_004-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_004_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_004_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_004_solado-1.jpg",
+        "cor_nome": "GOIABA/BRILHO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/BRILHO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/BRILHO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_001-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_001_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_001_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_001_solado.jpg",
+        "cor_nome": "PRETO/BRILHO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (ACAI/BRILHO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (ACAI/BRILHO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_003_solado.jpg",
+        "cor_nome": "ACAI/BRILHO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (ROSE NUDE/BRILHO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (ROSE NUDE/BRILHO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_002_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2225_112_002_solado.jpg",
+        "cor_nome": "ROSE NUDE/BRILHO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
@@ -1220,11 +1220,11 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 005 (CREPE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 005 (CREPE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2502_100_005-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2502_100_005_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2502_100_005_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2502_100_005_solado-1.jpg",
+        "cor_nome": "CREPE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "003 (GOIABA/PAC-MAN)": {
@@ -1318,19 +1318,19 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (BRANCO/GEO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (BRANCO/GEO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2445_111_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2445_111_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2445_111_003_topo-1-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2445_111_003_solado-1.jpg",
+        "cor_nome": "BRANCO/GEO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/GEO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/GEO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2445_111_001-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2445_111_001_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2445_111_001_topo-1-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2445_111_001_solado-1.jpg",
+        "cor_nome": "PRETO/GEO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "001 (PRETO/DOURADO)": {
@@ -1800,11 +1800,11 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 115 (CLASSIC BLUE/NIMBUS)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 115 (CLASSIC BLUE/NIMBUS)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2140_131_115-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2140_131_115_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2140_131_115_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2140_131_115_solado-1.jpg",
+        "cor_nome": "CLASSIC BLUE/NIMBUS",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "119 (CAFE ART/CREPE)": {
@@ -1890,11 +1890,11 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 006 (BAUNILHA/BAUNILHA)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 006 (BAUNILHA/BAUNILHA)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/1913_102_006-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/1913_102_006_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/1913_102_006_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/1913_102_006_solado-1.jpg",
+        "cor_nome": "BAUNILHA/BAUNILHA",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "001 (PRETO/GRAFITE)": {
@@ -1930,11 +1930,11 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 008 (SKY/ROSE NUDE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 008 (SKY/ROSE NUDE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1913_101_008-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1913_101_008_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1913_101_008_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1913_101_008_solado-1.jpg",
+        "cor_nome": "SKY/ROSE NUDE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "001 (PRETO/PAC-MAN)": {
@@ -1963,10 +1963,10 @@
       },
       "[FL] 004 (GOIABA/PAC-MAN)": {
         "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 004 (GOIABA/PAC-MAN)",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/07/1913_106_004_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/07/1913_106_004_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/07/1913_106_004_solado-1.jpg",
+        "cor_nome": "GOIABA/PAC-MAN",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
@@ -2036,19 +2036,19 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (BRANCO/TANGERINA)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (BRANCO/TANGERINA)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2402_213_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2402_213_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2402_213_002_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/11/2402_213_002_solado-1.jpg",
+        "cor_nome": "BRANCO/TANGERINA",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (BRANCO/GOOD VIBES)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (BRANCO/GOOD VIBES)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2402_122_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/11/2402_122_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/2402_122_002_topo-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/2402_122_002_solado.jpg",
+        "cor_nome": "BRANCO/GOOD VIBES",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "002 (ROSE NUDE/CUTE)": {
@@ -2166,11 +2166,11 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 010 (PRETO/ARGILA)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 010 (PRETO/ARGILA)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1944_208_010-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1944_208_010_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1944_208_010_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1944_208_010_solado-1.jpg",
+        "cor_nome": "PRETO/ARGILA",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "001 (PRETO/PRETO)": {
@@ -2238,19 +2238,19 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (NIMBUS-GRAFITE/TROP)": {
-        "principal": null,
-        "lateral": null,
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1944_217_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1944_217_002_lateral-1.jpg",
         "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (NIMBUS-GRAFITE/TROP)",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/1944_217_002_solado-1.jpg",
+        "cor_nome": "NIMBUS-GRAFITE/TROP",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (SELVA/CREPE BRASIL)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (SELVA/CREPE BRASIL)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1944_218_001-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1944_218_001_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1944_218_001_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/03/1944_218_001_solado-1.jpg",
+        "cor_nome": "SELVA/CREPE BRASIL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
@@ -2380,27 +2380,27 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (BRANCO/CAMUFL.PRETO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (BRANCO/CAMUFL.PRETO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/08/2243_103_002.png",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/08/2243_103_002_lateral.png",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/08/2243_103_002_topo.png",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/2243_103_002_solado-1.jpg",
+        "cor_nome": "BRANCO/CAMUFL.PRETO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (BRANCO/FUTEBOL)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (BRANCO/FUTEBOL)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/2243_104_003-3.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/2243_104_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/2243_104_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/2243_104_003_solado-1.jpg",
+        "cor_nome": "BRANCO/FUTEBOL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (CLASS.BLUE/BASEBALL)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (CLASS.BLUE/BASEBALL)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/2243_104_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/2243_104_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/2243_104_002_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/2243_104_002_solado-1.jpg",
+        "cor_nome": "CLASS.BLUE/BASEBALL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
@@ -2522,11 +2522,11 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 005 (CARAMELO/CREPE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 005 (CARAMELO/CREPE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2026/03/2520_200_005-2.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2026/03/2520_200_005_lateral-2.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2026/03/2520_200_005_topo-2.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2026/03/2520_200_005_solado-2.jpg",
+        "cor_nome": "CARAMELO/CREPE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "001 (PRETO/CREPE)": {
@@ -2780,11 +2780,11 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 013 (AMORA/BAUNILHA)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 013 (AMORA/BAUNILHA)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/2160_200_013.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/2160_200_013_lateral.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/2160_200_013_topo.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/2160_200_013_solado.jpg",
+        "cor_nome": "AMORA/BAUNILHA",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "002 (CANELA/GOLD)": {
@@ -2880,154 +2880,154 @@
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (ROSE NUDE/GARDEN)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (ROSE NUDE/GARDEN)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1949_111_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1949_111_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1949_111_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/11/1949_111_003_solado-1.jpg",
+        "cor_nome": "ROSE NUDE/GARDEN",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
     "1336 KELLY": {
       "[FL] 003 (ACAI)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (ACAI)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1336_103_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1336_103_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1336_103_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1336_103_003_solado-1.jpg",
+        "cor_nome": "ACAI",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1336_103_001-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1336_103_001_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1336_103_001_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1336_103_001_solado-1.jpg",
+        "cor_nome": "PRETO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
     "1950 SHIFT": {
       "[FL] 002 (SELVA/LISTRAS BO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (SELVA/LISTRAS BO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/1950_110_002.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/1950_110_002_lateral.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/1950_110_002_topo-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/1950_110_002_solado.jpg",
+        "cor_nome": "SELVA/LISTRAS BO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/LISTRAS BO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/LISTRAS BO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/1950_110_001.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/1950_110_001_lateral.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/1950_110_001_topo.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/09/1950_110_001_solado.jpg",
+        "cor_nome": "PRETO/LISTRAS BO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
     "2518 LUNA": {
       "[FL] 004 (GOIABA)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 004 (GOIABA)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_004-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_004_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_004_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_004_solado-1.jpg",
+        "cor_nome": "GOIABA",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (TANGERINA)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (TANGERINA)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_003-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_003_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_003_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_003_solado-1.jpg",
+        "cor_nome": "TANGERINA",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_001-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_001_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_001_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_001_solado-1.jpg",
+        "cor_nome": "PRETO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (ROSE NUDE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (ROSE NUDE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_002_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_101_002_solado-1.jpg",
+        "cor_nome": "ROSE NUDE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 002 (ROSE NUDE/TROPICAL)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (ROSE NUDE/TROPICAL)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_002_topo-1-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_002_solado-1.jpg",
+        "cor_nome": "ROSE NUDE/TROPICAL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 001 (PRETO/TROPICAL)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/TROPICAL)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_001-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_001_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_001_topo-1-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_001_solado-1.jpg",
+        "cor_nome": "PRETO/TROPICAL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 004 (GOIABA/TROPICAL)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 004 (GOIABA/TROPICAL)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_004-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_004_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_004_topo-1-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2025/05/2518_102_004_solado-1.jpg",
+        "cor_nome": "GOIABA/TROPICAL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
     "1716 JOHN": {
       "[FL] 012 (BRANCO/CELESTE-CEL)": {
         "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 012 (BRANCO/CELESTE-CEL)",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1716_100_012_lateral-2.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1716_100_012_topo-2.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1716_100_012_solado-2.jpg",
+        "cor_nome": "BRANCO/CELESTE-CEL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
     "2140 FLOW (V)": {
       "[FL]002 (PRETO/BRANCO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL]002 (PRETO/BRANCO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/01/2140_120_002.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/01/2140_120_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/01/2140_120_002_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/01/2140_120_002_solado-1.jpg",
+        "cor_nome": "PRETO/BRANCO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
     "2401 BIA": {
       "[FL] 004 (ROSE NUDE/ROSE NUDE)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 004 (ROSE NUDE/ROSE NUDE)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2401_100_004-1.png",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2401_100_004_lateral.png",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2401_100_004_topo-1-scaled.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2024/05/2401_100_004_solado.png",
+        "cor_nome": "ROSE NUDE/ROSE NUDE",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
     "1808 NOAH": {
       "[FL] 002 (BRANCO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 002 (BRANCO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/04/1808_901_002-1.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/04/1808_901_002_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/04/1808_901_002_topo-1.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/04/1808_901_002_solado-1.jpg",
+        "cor_nome": "BRANCO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
     "1402 FANTASY": {
       "[FL] 395/395 (CLASSIC BL/CL.BL": {
         "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1402_100_395_lateral-3.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1402_100_395_topo-3.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/03/1402_100_395_solado-3.jpg",
         "cor_nome": "[FL] 395/395 (CLASSIC BL/CL.BL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
@@ -3050,29 +3050,29 @@
     },
     "1709 CAPRI": {
       "[FL] 001 (PRETO/CASUAL)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 001 (PRETO/CASUAL)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/08/1709_123_001.png",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/08/1709_123_001_lateral.png",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/08/1709_123_001_topo.png",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/08/1709_123_001_solado.png",
+        "cor_nome": "PRETO/CASUAL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
     "2176 ZEN": {
       "[FL] 006 (BRANCO)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 006 (BRANCO)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/2176_110_006-3.jpg",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/2176_110_006_lateral-1.jpg",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/2176_110_006_topo-2.jpg",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/2176_110_006_solado-2.jpg",
+        "cor_nome": "BRANCO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[FL] 003 (ACAI)": {
-        "principal": null,
-        "lateral": null,
-        "topo": null,
-        "solado": null,
-        "cor_nome": "[FL] 003 (ACAI)",
+        "principal": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/2176_110_003-1.png",
+        "lateral": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/2176_110_003_lateral.png",
+        "topo": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/2176_110_003_topo-1.png",
+        "solado": "https://inside.boaonda.com.br/wp-content/uploads/2023/05/2176_110_003_solado-1.png",
+        "cor_nome": "ACAI",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
@@ -3082,7 +3082,7 @@
         "lateral": null,
         "topo": null,
         "solado": null,
-        "cor_nome": "[PL] 001 (FUM�? TRANSL)",
+        "cor_nome": "FUM�? TRANSL",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[PL] 001 (IVORY)": {
@@ -3090,7 +3090,7 @@
         "lateral": null,
         "topo": null,
         "solado": null,
-        "cor_nome": "[PL] 001 (IVORY)",
+        "cor_nome": "IVORY",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[PL] 001 (PRETO/PRETO)": {
@@ -3098,7 +3098,7 @@
         "lateral": null,
         "topo": null,
         "solado": null,
-        "cor_nome": "[PL] 001 (PRETO/PRETO)",
+        "cor_nome": "PRETO/PRETO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[PL] 001 (CANELA)": {
@@ -3106,7 +3106,7 @@
         "lateral": null,
         "topo": null,
         "solado": null,
-        "cor_nome": "[PL] 001 (CANELA)",
+        "cor_nome": "CANELA",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },
@@ -3116,7 +3116,7 @@
         "lateral": null,
         "topo": null,
         "solado": null,
-        "cor_nome": "[PL] 001 (PRETO)",
+        "cor_nome": "PRETO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[PL] 001 (CAPUCCINO)": {
@@ -3124,7 +3124,7 @@
         "lateral": null,
         "topo": null,
         "solado": null,
-        "cor_nome": "[PL] 001 (CAPUCCINO)",
+        "cor_nome": "CAPUCCINO",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       },
       "[PL] 001 (ACAI)": {
@@ -3132,7 +3132,7 @@
         "lateral": null,
         "topo": null,
         "solado": null,
-        "cor_nome": "[PL] 001 (ACAI)",
+        "cor_nome": "ACAI",
         "placeholder": "https://via.placeholder.com/600x600/26361e/ed6842?text=Boaonda"
       }
     },

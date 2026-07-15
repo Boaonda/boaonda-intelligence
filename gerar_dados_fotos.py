@@ -89,13 +89,21 @@ def extrair_linha_code(linha_descr: str) -> str | None:
 
 
 def extrair_cor_code(comb_key: str) -> str:
-    """'001 (PRETO/PRETO)' → '001'"""
-    return comb_key.strip().split()[0]
+    """'001 (PRETO/PRETO)' → '001'   |   '[FL] 004 (GOIABA)' → '004'
+
+    Combinações "Fora de Linha" vêm com o prefixo "[FL] " antes do código
+    (ex.: "[FL] 004 (GOIABA)") — usar `.split()[0]` pegava o texto "[FL]"
+    em vez do código numérico, quebrando o prefixo de busca no Inside
+    (virava "REF_LINHA_[FL]" em vez de "REF_LINHA_004"). Busca o primeiro
+    número logo antes do parêntese de abertura, ignorando qualquer prefixo.
+    """
+    m = re.search(r'(\d+)\s*\(', comb_key.strip())
+    return m.group(1) if m else comb_key.strip().split()[0]
 
 
 def extrair_cor_nome(comb_key: str) -> str:
-    """'001 (PRETO/PRETO)' → 'PRETO/PRETO'"""
-    m = re.match(r'^\w+\s*\((.+)\)', comb_key.strip())
+    """'001 (PRETO/PRETO)' → 'PRETO/PRETO'   |   '[FL] 004 (GOIABA)' → 'GOIABA'"""
+    m = re.search(r'\(([^)]+)\)', comb_key.strip())
     return m.group(1).strip() if m else comb_key
 
 
