@@ -66,6 +66,8 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .tag{display:inline-block;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase}
 .tag.novo{background:rgba(108,156,55,.14);color:var(--verde)}
 .tag.churn{background:rgba(237,104,66,.14);color:var(--coral)}
+.th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.th-sort:hover{color:var(--txt)}
 </style>
 </head>
 <body>
@@ -120,7 +122,12 @@ tr:hover td{background:var(--card2);color:var(--txt)}
   <div class="kpi-row" id="novos-kpi"></div>
   <input type="text" class="search-box" id="novos-busca" placeholder="Buscar cliente/holding..." oninput="renderNovos()">
   <div class="tcard">
-    <table><thead><tr><th>Cliente / Holding</th><th>1ª compra em</th><th>Pares</th><th>Valor (R$)</th></tr></thead>
+    <table><thead><tr>
+      <th id="th-novos-h" class="th-sort" onclick="sortNovosBy('h')">Cliente / Holding</th>
+      <th id="th-novos-pm" class="th-sort" onclick="sortNovosBy('pm')">1ª compra em</th>
+      <th id="th-novos-pares" class="th-sort" onclick="sortNovosBy('pares')">Pares</th>
+      <th id="th-novos-valor" class="th-sort" onclick="sortNovosBy('valor')">Valor (R$)</th>
+    </tr></thead>
     <tbody id="tb-novos"></tbody></table>
     <div class="bloco-empty" id="novos-empty" style="display:none">Nenhum cliente novo no período.</div>
   </div>
@@ -131,7 +138,11 @@ tr:hover td{background:var(--card2);color:var(--txt)}
   <div class="kpi-row" id="churn-kpi"></div>
   <input type="text" class="search-box" id="churn-busca" placeholder="Buscar cliente/holding..." oninput="renderChurn()">
   <div class="tcard">
-    <table><thead><tr><th>Cliente / Holding</th><th>Pares (período anterior)</th><th>Valor (período anterior)</th></tr></thead>
+    <table><thead><tr>
+      <th id="th-churn-h" class="th-sort" onclick="sortChurnBy('h')">Cliente / Holding</th>
+      <th id="th-churn-pares" class="th-sort" onclick="sortChurnBy('pares')">Pares (período anterior)</th>
+      <th id="th-churn-valor" class="th-sort" onclick="sortChurnBy('valor')">Valor (período anterior)</th>
+    </tr></thead>
     <tbody id="tb-churn"></tbody></table>
     <div class="bloco-empty" id="churn-empty" style="display:none">Ninguém parou de comprar no critério selecionado.</div>
   </div>
@@ -153,7 +164,12 @@ tr:hover td{background:var(--card2);color:var(--txt)}
   <div class="bloco-desc">Clientes com histórico de compra que não compram há pelo menos 6 meses (base: data da última atualização dos dados) — alvos de reativação/prospecção.</div>
   <input type="text" class="search-box" id="recencia-busca" placeholder="Buscar cliente/holding..." oninput="renderRecencia()">
   <div class="tcard">
-    <table><thead><tr><th>Cliente / Holding</th><th>Última compra</th><th>Meses sem comprar</th><th>Histórico (pares)</th></tr></thead>
+    <table><thead><tr>
+      <th id="th-recencia-h" class="th-sort" onclick="sortRecenciaBy('h')">Cliente / Holding</th>
+      <th id="th-recencia-um" class="th-sort" onclick="sortRecenciaBy('um')">Última compra</th>
+      <th id="th-recencia-meses" class="th-sort" onclick="sortRecenciaBy('meses')">Meses sem comprar</th>
+      <th id="th-recencia-hist" class="th-sort" onclick="sortRecenciaBy('hist')">Histórico (pares)</th>
+    </tr></thead>
     <tbody id="tb-recencia"></tbody></table>
     <div class="bloco-empty" id="recencia-empty" style="display:none">Nenhum cliente inativo encontrado.</div>
   </div>
@@ -350,6 +366,37 @@ function mesReferenciaAtualizacao(){
   return ym(hoje.getFullYear(), hoje.getMonth()+1);
 }
 
+// ── ORDENAÇÃO DAS TABELAS (Novos/Churn/Recência) ───────────────────────
+let sortNovos={key:'pares', dir:-1};
+let sortChurn={key:'pares', dir:-1};
+let sortRecencia={key:'meses', dir:-1};
+
+function toggleSort(state, key){
+  if(state.key===key) state.dir=-state.dir;
+  else { state.key=key; state.dir = (key==='h')?1:-1; } // texto começa A→Z, número começa maior→menor
+}
+function sortNovosBy(key){ toggleSort(sortNovos,key); renderNovos(); }
+function sortChurnBy(key){ toggleSort(sortChurn,key); renderChurn(); }
+function sortRecenciaBy(key){ toggleSort(sortRecencia,key); renderRecencia(); }
+
+function aplicarSort(lista, state){
+  const {key, dir} = state;
+  lista.sort((a,b)=>{
+    const va=a[key], vb=b[key];
+    if(typeof va==='string') return dir*va.localeCompare(vb);
+    return dir*((va||0)-(vb||0));
+  });
+}
+function atualizarSetasHeader(prefix, state, keys){
+  keys.forEach(k=>{
+    const th=document.getElementById('th-'+prefix+'-'+k);
+    if(!th) return;
+    let base=th.getAttribute('data-label');
+    if(!base){ base=th.textContent; th.setAttribute('data-label', base); }
+    th.textContent = base + (state.key===k ? (state.dir===1?' ▲':' ▼') : '');
+  });
+}
+
 // ── RENDER GERAL ──────────────────────────────────────────────────────
 function renderTudo(){
   if(!CARTEIRA) return;
@@ -386,8 +433,9 @@ function renderNovos(){
       lista.push({h, pm, pares: somaHolding(holdings[h], p.atual, canal, 0), valor: somaHolding(holdings[h], p.atual, canal, 1)});
     }
   }
-  lista.sort((a,b)=> (idx===1?b.valor-a.valor:b.pares-a.pares));
+  aplicarSort(lista, sortNovos);
   const filtrada = busca ? lista.filter(x=>x.h.toLowerCase().includes(busca)) : lista;
+  atualizarSetasHeader('novos', sortNovos, ['h','pm','pares','valor']);
 
   document.getElementById('novos-badge').textContent = p.labelAtual+' · '+lista.length+' novos';
   const totPares = lista.reduce((a,x)=>a+x.pares,0), totValor=lista.reduce((a,x)=>a+x.valor,0);
@@ -420,8 +468,9 @@ function renderChurn(){
       lista.push({h, pares: pAnterior, valor: somaHolding(holdings[h], p.anterior, canal, 1)});
     }
   }
-  lista.sort((a,b)=> (idx===1?b.valor-a.valor:b.pares-a.pares));
+  aplicarSort(lista, sortChurn);
   const filtrada = busca ? lista.filter(x=>x.h.toLowerCase().includes(busca)) : lista;
+  atualizarSetasHeader('churn', sortChurn, ['h','pares','valor']);
 
   document.getElementById('churn-badge').textContent = p.labelAnterior+' → '+p.labelAtual+' · '+lista.length+' pararam';
   const totPares=lista.reduce((a,x)=>a+x.pares,0), totValor=lista.reduce((a,x)=>a+x.valor,0);
@@ -510,8 +559,9 @@ function renderRecencia(){
       lista.push({h, um, meses, hist});
     }
   }
-  lista.sort((a,b)=>b.meses-a.meses);
+  aplicarSort(lista, sortRecencia);
   const filtrada = busca ? lista.filter(x=>x.h.toLowerCase().includes(busca)) : lista;
+  atualizarSetasHeader('recencia', sortRecencia, ['h','um','meses','hist']);
 
   document.getElementById('recencia-badge').textContent = lista.length+' clientes inativos há 6+ meses';
   const tb=document.getElementById('tb-recencia'); tb.innerHTML='';
