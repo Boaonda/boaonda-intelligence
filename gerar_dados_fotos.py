@@ -165,12 +165,18 @@ def fotos_por_prefixo(session, prefixo: str) -> dict:
 
 
 # ─── Função chamável pelo Flask ───────────────────────────────────────────────
-def gerar(usuario=None, senha=None, estoque_path=None, fotos_out=None):
+def gerar(usuario=None, senha=None, estoque_path=None, fotos_out=None, faltantes_out=None):
     """Gera dados_fotos.json e retorna dict com estatísticas.
     Chamada pelo app.py via /admin/fotos (sem usar argparse).
+
+    Também grava `faltantes_out` (dados_fotos_faltantes.json, por padrão ao
+    lado de fotos_out) com a lista de combinações referência/linha/cor que
+    ficaram SEM nenhuma foto encontrada no Inside — usada para exportar
+    a lista de pendências em /admin/fotos/faltantes.xlsx.
     """
     ep = Path(estoque_path) if estoque_path else ESTOQUE_PATH
     fo = Path(fotos_out)    if fotos_out    else FOTOS_OUT
+    ft = Path(faltantes_out) if faltantes_out else fo.parent / "dados_fotos_faltantes.json"
 
     with open(ep, encoding="utf-8") as f:
         estoque = json.load(f)
@@ -179,6 +185,7 @@ def gerar(usuario=None, senha=None, estoque_path=None, fotos_out=None):
     session = criar_session(usuario, senha)
     resultado: dict = {}
     stats = {"total": 0, "completas": 0, "parciais": 0, "sem_foto": 0}
+    sem_foto_lista = []
 
     for ref_key, ref_data in refs.items():
         ref_num  = extrair_ref_num(ref_key)
@@ -209,6 +216,12 @@ def gerar(usuario=None, senha=None, estoque_path=None, fotos_out=None):
                     stats["parciais"] += 1
                 else:
                     stats["sem_foto"] += 1
+                    sem_foto_lista.append({
+                        "referencia": ref_key,
+                        "linha": linha_descr,
+                        "cor": cor_nome,
+                        "prefixo_esperado": prefixo,
+                    })
 
         resultado[ref_key] = cors_map
 
@@ -219,6 +232,12 @@ def gerar(usuario=None, senha=None, estoque_path=None, fotos_out=None):
     }
     with open(fo, "w", encoding="utf-8") as f:
         json.dump(saida, f, ensure_ascii=False, indent=2)
+
+    with open(ft, "w", encoding="utf-8") as f:
+        json.dump({
+            "gerado_em": saida["gerado_em"],
+            "itens": sem_foto_lista,
+        }, f, ensure_ascii=False, indent=2)
 
     stats["cobertura_pct"] = round(
         (stats["completas"] + stats["parciais"]) / max(stats["total"], 1) * 100

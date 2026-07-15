@@ -498,6 +498,8 @@ p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
 .spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(237,104,66,.3);
   border-top-color:var(--coral);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
+.dl-link{display:inline-block;margin-top:10px;font-size:12px;font-weight:700;color:var(--coral);text-decoration:none}
+.dl-link:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -546,13 +548,17 @@ function verificarStatus() {
         clearInterval(_poll);
         document.getElementById('pfill').style.width = '100%';
         const s = d.stats || {};
+        const linkFaltantes = s.sem_foto > 0
+          ? '<br><a class="dl-link" href="/admin/fotos/faltantes.xlsx" target="_blank">⬇ Baixar lista de itens sem foto (' + s.sem_foto + ')</a>'
+          : '';
         document.getElementById('status-box').innerHTML =
           '<div class="msg ok">✓ Fotos atualizadas com sucesso!<br>' +
           'Total: <strong>' + s.total + '</strong> cores · ' +
           'Completas: <strong>' + s.completas + '</strong> · ' +
           'Parciais: <strong>' + s.parciais + '</strong> · ' +
           'Sem foto: <strong>' + s.sem_foto + '</strong> · ' +
-          'Cobertura: <strong>' + s.cobertura_pct + '%</strong></div>';
+          'Cobertura: <strong>' + s.cobertura_pct + '%</strong>' +
+          linkFaltantes + '</div>';
         document.getElementById('btn').disabled = false;
         document.getElementById('pbar').style.display = 'none';
       } else if (d.status === 'error') {
@@ -572,6 +578,34 @@ function mostrarErro(msg) {
   document.getElementById('btn').disabled = false;
   document.getElementById('pbar').style.display = 'none';
 }
+
+// Ao carregar a página, mostra o resultado da última atualização (mesmo que
+// tenha sido rodada numa visita anterior) — inclui o link de download da
+// lista de itens sem foto, sem precisar rodar a busca de novo só para vê-lo.
+fetch('/admin/fotos/status')
+  .then(r => r.json())
+  .then(d => {
+    if (d.status === 'running') {
+      document.getElementById('btn').disabled = true;
+      document.getElementById('pbar').style.display = 'block';
+      _elapsed = 0; _poll = setInterval(verificarStatus, 3000);
+      verificarStatus();
+    } else if (d.status === 'done') {
+      const s = d.stats || {};
+      const linkFaltantes = s.sem_foto > 0
+        ? '<br><a class="dl-link" href="/admin/fotos/faltantes.xlsx" target="_blank">⬇ Baixar lista de itens sem foto (' + s.sem_foto + ')</a>'
+        : '';
+      document.getElementById('status-box').innerHTML =
+        '<div class="msg ok">Última atualização: <strong>' + (d.ts || '–') + '</strong><br>' +
+        'Total: <strong>' + s.total + '</strong> cores · ' +
+        'Completas: <strong>' + s.completas + '</strong> · ' +
+        'Parciais: <strong>' + s.parciais + '</strong> · ' +
+        'Sem foto: <strong>' + s.sem_foto + '</strong> · ' +
+        'Cobertura: <strong>' + s.cobertura_pct + '%</strong>' +
+        linkFaltantes + '</div>';
+    }
+  })
+  .catch(() => {});
 </script>
 </body>
 </html>'''
@@ -627,6 +661,37 @@ def admin_fotos_start():
 @app.route('/admin/fotos/status')
 def admin_fotos_status():
     return jsonify(_ler_job())
+
+
+@app.route('/admin/fotos/faltantes.xlsx')
+def admin_fotos_faltantes():
+    """Exporta em Excel a lista de referência/linha/cor que ficaram SEM
+    nenhuma foto na última atualização (gerado por gerar_dados_fotos.gerar,
+    arquivo dados_fotos_faltantes.json)."""
+    arq = DATA_DIR / 'dados_fotos_faltantes.json'
+    if not arq.exists():
+        return jsonify({'erro': 'Ainda não há uma atualização de fotos processada. '
+                                 'Rode "Buscar fotos e atualizar catálogo" primeiro.'}), 404
+    try:
+        with open(arq, encoding='utf-8') as f_:
+            dados = json.load(f_)
+        itens = dados.get('itens', [])
+        from openpyxl import Workbook
+        wb = Workbook(); ws = wb.active; ws.title = 'Sem foto'
+        ws.append(['Referência', 'Linha', 'Cor', 'Prefixo esperado no Inside'])
+        for it in itens:
+            ws.append([it.get('referencia', ''), it.get('linha', ''),
+                       it.get('cor', ''), it.get('prefixo_esperado', '')])
+        bio = io.BytesIO(); wb.save(bio); bio.seek(0)
+        ts = (dados.get('gerado_em') or '').replace('/', '-').replace(' ', '_').replace(':', 'h')
+        return send_file(
+            bio, as_attachment=True,
+            download_name=f'fotos_sem_foto_{ts or "atual"}.xlsx',
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'erro': f'Falha ao gerar a lista: {ex}'}), 500
 
 
 @app.route('/api/foto-proxy')
