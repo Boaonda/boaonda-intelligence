@@ -107,6 +107,7 @@ tr:hover td{background:var(--card2);color:var(--txt)}
   <select class="sel" id="f-cadencia" onchange="renderTudo()">
     <option value="mes">Mês vs mês anterior</option>
     <option value="trimestre">Trimestre vs trimestre anterior</option>
+    <option value="semestre">Semestre vs semestre anterior</option>
     <option value="ano" selected>Ano (YTD) vs ano anterior (mesmo período)</option>
   </select>
   <span class="filtro-hint" id="periodo-hint"></span>
@@ -149,7 +150,7 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 
   <!-- RECÊNCIA -->
   <div class="stitle">Recência — quem não compra há mais tempo <span class="stitle-badge" id="recencia-badge"></span></div>
-  <div class="bloco-desc">Clientes com histórico de compra que não compram há pelo menos 1 mês (granularidade mensal) — alvos de reativação/prospecção.</div>
+  <div class="bloco-desc">Clientes com histórico de compra que não compram há pelo menos 6 meses (base: data da última atualização dos dados) — alvos de reativação/prospecção.</div>
   <input type="text" class="search-box" id="recencia-busca" placeholder="Buscar cliente/holding..." oninput="renderRecencia()">
   <div class="tcard">
     <table><thead><tr><th>Cliente / Holding</th><th>Última compra</th><th>Meses sem comprar</th><th>Histórico (pares)</th></tr></thead>
@@ -259,6 +260,11 @@ function progressoPeriodo(cadencia){
     const diaNoTri = (mesNoTri-1)*30 + diaHoje; // aproximado, só para dar noção de escala
     return (mesNoTri<3 || diaHoje<diasNoMes) ? `trimestre em andamento — ${mesNoTri}º mês de 3` : 'trimestre fechado';
   }
+  if(cadencia==='semestre'){
+    const mesNoSem = (hoje.getMonth()%6)+1; // 1..6
+    const diasNoMes=new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+    return (mesNoSem<6 || diaHoje<diasNoMes) ? `semestre em andamento — ${mesNoSem}º mês de 6` : 'semestre fechado';
+  }
   const diaDoAno = Math.ceil((hoje - new Date(hoje.getFullYear(),0,0))/864e5);
   return diaDoAno<365 ? `ano em andamento — dia ${diaDoAno} de 365` : 'ano fechado';
 }
@@ -278,6 +284,14 @@ function periodoAtualAnterior(cadencia){
     let triAnt=tri-1, anoAnt=anoAtual; if(triAnt<0){triAnt=3;anoAnt--;}
     const anterior=mesesDoTri(triAnt,anoAnt);
     return {atual, anterior, labelAtual:'T'+(tri+1)+'/'+anoAtual, labelAnterior:'T'+(triAnt+1)+'/'+anoAnt};
+  }
+  if(cadencia==='semestre'){
+    const sem=Math.floor((mesAtual-1)/6);
+    const mesesDoSem=(s,ano)=>{const arr=[];for(let i=0;i<6;i++)arr.push(ym(ano,s*6+i+1));return arr;};
+    const atual=mesesDoSem(sem,anoAtual);
+    let semAnt=sem-1, anoAnt=anoAtual; if(semAnt<0){semAnt=1;anoAnt--;}
+    const anterior=mesesDoSem(semAnt,anoAnt);
+    return {atual, anterior, labelAtual:'S'+(sem+1)+'/'+anoAtual, labelAnterior:'S'+(semAnt+1)+'/'+anoAnt};
   }
   // ano — YTD jan..mesAtual do ano corrente vs mesmo intervalo do ano anterior
   const atual=[], anterior=[];
@@ -322,6 +336,18 @@ function ultimoMesCanal(mesesObj, canalFiltro){
 function diffMeses(m1,m2){ // m2 - m1, ambos 'YYYYMM'
   const a1=+m1.slice(0,4), me1=+m1.slice(4), a2=+m2.slice(0,4), me2=+m2.slice(4);
   return (a2-a1)*12 + (me2-me1);
+}
+// Mês de referência da Recência = data da última atualização dos dados
+// (CARTEIRA.gerado_em, formato 'dd/mm/aaaa hh:mm'), não a data real de hoje —
+// senão o "meses sem comprar" cresceria sozinho entre uma atualização e outra.
+function mesReferenciaAtualizacao(){
+  const g = CARTEIRA && CARTEIRA.gerado_em;
+  if(g){
+    const m = g.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(m) return ym(+m[3], +m[2]);
+  }
+  const hoje=new Date();
+  return ym(hoje.getFullYear(), hoje.getMonth()+1);
 }
 
 // ── RENDER GERAL ──────────────────────────────────────────────────────
@@ -472,14 +498,14 @@ function renderRecencia(){
   const {canal, idx} = getFiltros();
   const busca = (document.getElementById('recencia-busca').value||'').toLowerCase();
   const holdings = CARTEIRA.holdings;
-  const mesAtualStr = ym(new Date().getFullYear(), new Date().getMonth()+1);
+  const mesAtualStr = mesReferenciaAtualizacao();
   const lista=[];
   for(const h in holdings){
     if(!passaFiltrosExtra(h)) continue;
     const um = ultimoMesCanal(holdings[h], canal);
     if(!um) continue;
     const meses = diffMeses(um, mesAtualStr);
-    if(meses>=1){
+    if(meses>=6){
       const hist = somaHolding(holdings[h], Object.keys(holdings[h]), canal, 0);
       lista.push({h, um, meses, hist});
     }
@@ -487,7 +513,7 @@ function renderRecencia(){
   lista.sort((a,b)=>b.meses-a.meses);
   const filtrada = busca ? lista.filter(x=>x.h.toLowerCase().includes(busca)) : lista;
 
-  document.getElementById('recencia-badge').textContent = lista.length+' clientes inativos há 1+ mês';
+  document.getElementById('recencia-badge').textContent = lista.length+' clientes inativos há 6+ meses';
   const tb=document.getElementById('tb-recencia'); tb.innerHTML='';
   document.getElementById('recencia-empty').style.display = filtrada.length ? 'none' : 'block';
   filtrada.slice(0,300).forEach(x=>{
