@@ -185,8 +185,9 @@ tr:last-child td{border:none}
 
 <div class="crow2">
   <div class="ccard">
-    <div class="ctitle">Pares por mês de entrada</div>
+    <div class="ctitle">Pares por mês de entrada <span style="text-transform:none;letter-spacing:0;color:var(--txt-m)">— clique na barra para detalhar</span></div>
     <div style="position:relative;height:240px"><canvas id="c-entrada"></canvas></div>
+    <div id="entrada-drill"></div>
   </div>
   <div class="ccard">
     <div class="ctitle">Pares por mês de entrega prevista <span style="text-transform:none;letter-spacing:0;color:var(--txt-m)">— clique na barra para detalhar</span></div>
@@ -467,6 +468,12 @@ function renderCharts(){
     labels: ent.map(([,v])=>v.label),
     datasets:[{label:'Pares', data: ent.map(([,v])=>v.pares), backgroundColor:'#4994c788', borderRadius:4}]
   },options:{responsive:true,maintainAspectRatio:false,
+    onClick:(evt,elems)=>{
+      if(!elems.length) return;
+      const [key,v] = ent[elems[0].index];
+      toggleMesEntrada(key, v.label);
+    },
+    onHover:(evt,elems)=>{ evt.native.target.style.cursor = elems.length ? 'pointer' : 'default'; },
     plugins:{legend:{display:false},tooltip:{...TIP,callbacks:{label:ctx=>`${f(ctx.raw)} pares`}}},
     scales:{y:{ticks:{callback:v=>f(v)}},x:{grid:{display:false}}}}
   });
@@ -645,6 +652,180 @@ function renderEntregaDrill(){
       </div>
       ${listaHtml}
     </div>`;
+}
+
+// ── Drilldown — Pares por mês de entrada (mesma estrutura da entrega) ──
+let mesEntradaAtivo = null;
+let mesEntradaLabelAtivo = '';
+let entradaModo = 'cliente';   // 'cliente' | 'modelo' | 'etapa'
+let clienteEntradaAtivo = null;
+let modeloEntradaAtivo = null;
+let etapaEntradaAtiva = null;
+let clienteEmEtapaEntradaAtivo = null;
+let CLIENTES_ENTRADA_REF = [];
+let MODELOS_ENTRADA_REF = [];
+let ETAPAS_ENTRADA_REF = [];
+let CLIENTES_EM_ETAPA_ENTRADA_REF = [];
+
+function toggleMesEntrada(key, label){
+  if(mesEntradaAtivo === key){ mesEntradaAtivo = null; }
+  else { mesEntradaAtivo = key; mesEntradaLabelAtivo = label; }
+  clienteEntradaAtivo = null;
+  modeloEntradaAtivo = null;
+  etapaEntradaAtiva = null;
+  clienteEmEtapaEntradaAtivo = null;
+  renderEntradaDrill();
+}
+function fecharEntradaDrill(){
+  mesEntradaAtivo = null;
+  clienteEntradaAtivo = null;
+  modeloEntradaAtivo = null;
+  etapaEntradaAtiva = null;
+  clienteEmEtapaEntradaAtivo = null;
+  renderEntradaDrill();
+}
+function setEntradaModo(modo){
+  entradaModo = modo;
+  clienteEntradaAtivo = null;
+  modeloEntradaAtivo = null;
+  etapaEntradaAtiva = null;
+  clienteEmEtapaEntradaAtivo = null;
+  renderEntradaDrill();
+}
+function toggleClienteEntrada(idx){
+  const nome = CLIENTES_ENTRADA_REF[idx];
+  clienteEntradaAtivo = (clienteEntradaAtivo===nome) ? null : nome;
+  renderEntradaDrill();
+}
+function toggleModeloEntrada(idx){
+  const ref = MODELOS_ENTRADA_REF[idx];
+  modeloEntradaAtivo = (modeloEntradaAtivo===ref) ? null : ref;
+  renderEntradaDrill();
+}
+function toggleEtapaEntrada(idx){
+  const nome = ETAPAS_ENTRADA_REF[idx];
+  if(etapaEntradaAtiva === nome){ etapaEntradaAtiva = null; }
+  else { etapaEntradaAtiva = nome; clienteEmEtapaEntradaAtivo = null; }
+  renderEntradaDrill();
+}
+function toggleClienteEmEtapaEntrada(idx){
+  const nome = CLIENTES_EM_ETAPA_ENTRADA_REF[idx];
+  clienteEmEtapaEntradaAtivo = (clienteEmEtapaEntradaAtivo===nome) ? null : nome;
+  renderEntradaDrill();
+}
+
+function renderEntradaDrill(){
+  const wrap = document.getElementById('entrada-drill');
+  if(!wrap) return;
+  if(!mesEntradaAtivo){ wrap.innerHTML = ''; return; }
+
+  const pedidos = (DATA.pedidos||[]).filter(p=>mesKey(p.dt_entrada)===mesEntradaAtivo);
+
+  let count, listaHtml;
+  if(entradaModo === 'modelo'){
+    const porModelo = {};
+    pedidos.forEach(p=>{
+      const refs = (p.refs && Object.keys(p.refs).length) ? p.refs : {[p.ref_principal||'–']: p.pares};
+      Object.entries(refs).forEach(([ref,qtd])=>{
+        if(!porModelo[ref]) porModelo[ref] = {ref, pares:0, clientes:new Set(), pedidos:[]};
+        porModelo[ref].pares += qtd;
+        porModelo[ref].clientes.add(p.cliente);
+        porModelo[ref].pedidos.push({cliente:p.cliente, pedido:p.pedido, qtd});
+      });
+    });
+    const modelos = Object.values(porModelo).sort((a,b)=>b.pares-a.pares);
+    count = modelos.length;
+    MODELOS_ENTRADA_REF = [];
+    listaHtml = modelos.map(m=>`
+      <div class="drill-cliente ${modeloEntradaAtivo===m.ref?'ativa':''}" onclick="toggleModeloEntrada(${MODELOS_ENTRADA_REF.push(m.ref)-1})">
+        <div class="drill-arrow">${modeloEntradaAtivo===m.ref?'▾':'▸'}</div>
+        <div class="dc-nome">${m.ref}</div>
+        <div class="dc-ped">${f(m.clientes.size)} cli.</div>
+        <div class="dc-pares">${f(m.pares)} pares</div>
+      </div>
+      ${modeloEntradaAtivo===m.ref ? renderClientesModelo(m.pedidos) : ''}
+    `).join('');
+  } else if(entradaModo === 'etapa'){
+    const porEtapa = {};
+    pedidos.forEach(p=>{
+      const etapa = p.etapa || '(sem etapa)';
+      if(!porEtapa[etapa]) porEtapa[etapa] = {etapa, pares:0, clientes:new Set(), pedidos:[]};
+      porEtapa[etapa].pares += p.pares;
+      porEtapa[etapa].clientes.add(p.cliente);
+      porEtapa[etapa].pedidos.push(p);
+    });
+    const etapas = Object.values(porEtapa).sort((a,b)=>b.pares-a.pares);
+    count = etapas.length;
+    ETAPAS_ENTRADA_REF = [];
+    listaHtml = etapas.map(e=>`
+      <div class="drill-cliente ${etapaEntradaAtiva===e.etapa?'ativa':''}" onclick="toggleEtapaEntrada(${ETAPAS_ENTRADA_REF.push(e.etapa)-1})">
+        <div class="drill-arrow">${etapaEntradaAtiva===e.etapa?'▾':'▸'}</div>
+        <div class="dc-nome">${e.etapa}</div>
+        <div class="dc-ped">${f(e.clientes.size)} cli.</div>
+        <div class="dc-pares">${f(e.pares)} pares</div>
+      </div>
+      ${etapaEntradaAtiva===e.etapa ? renderClientesEtapaEntradaDrill(e.pedidos) : ''}
+    `).join('');
+  } else {
+    const porCliente = {};
+    pedidos.forEach(p=>{
+      const k = p.cliente;
+      if(!porCliente[k]) porCliente[k] = {cliente:k, pares:0, pedidos:[]};
+      porCliente[k].pares += p.pares;
+      porCliente[k].pedidos.push(p);
+    });
+    const clientes = Object.values(porCliente).sort((a,b)=>b.pares-a.pares);
+    count = clientes.length;
+    CLIENTES_ENTRADA_REF = [];
+    listaHtml = clientes.map(c=>`
+      <div class="drill-cliente ${clienteEntradaAtivo===c.cliente?'ativa':''}" onclick="toggleClienteEntrada(${CLIENTES_ENTRADA_REF.push(c.cliente)-1})">
+        <div class="drill-arrow">${clienteEntradaAtivo===c.cliente?'▾':'▸'}</div>
+        <div class="dc-nome">${c.cliente}</div>
+        <div class="dc-ped">${f(c.pedidos.length)} ped.</div>
+        <div class="dc-pares">${f(c.pares)} pares</div>
+      </div>
+      ${clienteEntradaAtivo===c.cliente ? renderProdutosCliente(c.pedidos) : ''}
+    `).join('');
+  }
+
+  const modoLabel = entradaModo==='modelo' ? 'modelo' : entradaModo==='etapa' ? 'etapa' : 'cliente';
+  wrap.innerHTML = `
+    <div class="drill">
+      <div class="drill-head">
+        <span>${count} ${modoLabel}(s) — entrada em ${mesEntradaLabelAtivo||mesEntradaAtivo}</span>
+        <div class="drill-sort">
+          <span>ver por</span>
+          <select onchange="setEntradaModo(this.value)">
+            <option value="cliente" ${entradaModo==='cliente'?'selected':''}>Cliente</option>
+            <option value="modelo" ${entradaModo==='modelo'?'selected':''}>Modelo</option>
+            <option value="etapa" ${entradaModo==='etapa'?'selected':''}>Etapa</option>
+          </select>
+          <span class="drill-close" onclick="event.stopPropagation();fecharEntradaDrill()">fechar ✕</span>
+        </div>
+      </div>
+      ${listaHtml}
+    </div>`;
+}
+
+function renderClientesEtapaEntradaDrill(pedidosEtapa){
+  const porCliente = {};
+  pedidosEtapa.forEach(p=>{
+    const k = p.cliente;
+    if(!porCliente[k]) porCliente[k] = {cliente:k, pares:0, pedidos:[]};
+    porCliente[k].pares += p.pares;
+    porCliente[k].pedidos.push(p);
+  });
+  const clientes = Object.values(porCliente).sort((a,b)=>b.pares-a.pares);
+  CLIENTES_EM_ETAPA_ENTRADA_REF = [];
+  return clientes.map(c=>`
+    <div class="drill-cliente sub ${clienteEmEtapaEntradaAtivo===c.cliente?'ativa':''}" onclick="event.stopPropagation();toggleClienteEmEtapaEntrada(${CLIENTES_EM_ETAPA_ENTRADA_REF.push(c.cliente)-1})">
+      <div class="drill-arrow">${clienteEmEtapaEntradaAtivo===c.cliente?'▾':'▸'}</div>
+      <div class="dc-nome">${c.cliente}</div>
+      <div class="dc-ped">${f(c.pedidos.length)} ped.</div>
+      <div class="dc-pares">${f(c.pares)} pares</div>
+    </div>
+    ${clienteEmEtapaEntradaAtivo===c.cliente ? renderProdutosCliente(c.pedidos) : ''}
+  `).join('');
 }
 
 function renderProdutosCliente(pedidosCliente){
