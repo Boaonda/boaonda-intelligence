@@ -68,6 +68,14 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .tag.churn{background:rgba(237,104,66,.14);color:var(--coral)}
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 .th-sort:hover{color:var(--txt)}
+.card-alerta{background:var(--card);border:1px solid rgba(237,104,66,.35);border-top:3px solid var(--coral);border-radius:10px;padding:18px;margin-bottom:22px}
+.card-alerta .stitle{margin:0 0 6px}
+.badge-alerta{background:rgba(237,104,66,.15);color:var(--coral);font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;margin-left:8px}
+.rep-scorecard{background:var(--card);border:1px solid var(--azul);border-top:3px solid var(--azul);border-radius:10px;padding:18px;margin-bottom:22px;display:none}
+.rep-scorecard.ativo{display:block}
+.btn-mais{display:block;width:100%;background:var(--card2);border:1px solid var(--line2);color:var(--txt-s);border-radius:7px;padding:9px;font-size:11px;font-weight:700;cursor:pointer;margin:6px 0 4px;font-family:'Montserrat',sans-serif}
+.btn-mais:hover{border-color:var(--coral);color:var(--coral)}
+.btn-mais[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -117,10 +125,33 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 
 <div class="main">
 
+  <!-- SCORECARD DO REPRESENTANTE -->
+  <div class="rep-scorecard" id="rep-scorecard">
+    <div class="stitle">Resumo do representante — <span id="rep-nome" style="color:var(--azul)"></span></div>
+    <div class="kpi-row" id="rep-kpi"></div>
+  </div>
+
+  <!-- PERDA CRÍTICA -->
+  <div class="card-alerta" id="perda-critica-card">
+    <div class="stitle">⚠ Perda crítica <span class="badge-alerta" id="perda-critica-badge"></span></div>
+    <div class="bloco-desc">Clientes que estavam entre os 20 maiores da carteira (Pareto do período anterior) e pararam de comprar no período atual — a perda mais grave da carteira, hoje invisível no restante do painel.</div>
+    <div class="kpi-row" id="perda-critica-kpi"></div>
+    <div class="tcard" style="margin-top:8px">
+      <table><thead><tr>
+        <th id="th-critico-h" class="th-sort" onclick="sortCriticoBy('h')">Cliente / Holding</th>
+        <th id="th-critico-posicao" class="th-sort" onclick="sortCriticoBy('posicao')">Posição no Pareto (anterior)</th>
+        <th id="th-critico-pares" class="th-sort" onclick="sortCriticoBy('pares')">Pares perdidos</th>
+        <th id="th-critico-valor" class="th-sort" onclick="sortCriticoBy('valor')">Valor perdido</th>
+      </tr></thead>
+      <tbody id="tb-critico"></tbody></table>
+    </div>
+    <div class="bloco-empty" id="critico-empty" style="display:none">Nenhum cliente do Top 20 (período anterior) parou de comprar no critério selecionado.</div>
+  </div>
+
   <!-- NOVOS CLIENTES -->
   <div class="stitle">Novos clientes <span class="stitle-badge" id="novos-badge"></span></div>
   <div class="kpi-row" id="novos-kpi"></div>
-  <input type="text" class="search-box" id="novos-busca" placeholder="Buscar cliente/holding..." oninput="renderNovos()">
+  <input type="text" class="search-box" id="novos-busca" placeholder="Buscar cliente/holding..." oninput="novosSetBusca()">
   <div class="tcard">
     <table><thead><tr>
       <th id="th-novos-h" class="th-sort" onclick="sortNovosBy('h')">Cliente / Holding</th>
@@ -131,12 +162,13 @@ tr:hover td{background:var(--card2);color:var(--txt)}
     <tbody id="tb-novos"></tbody></table>
     <div class="bloco-empty" id="novos-empty" style="display:none">Nenhum cliente novo no período.</div>
   </div>
+  <button class="btn-mais" id="novos-mais" hidden onclick="carregarMaisNovos()"></button>
 
   <!-- CLIENTES QUE PARARAM DE COMPRAR -->
   <div class="stitle">Clientes que pararam de comprar <span class="stitle-badge" id="churn-badge"></span></div>
   <div class="bloco-desc">Compraram no período anterior mas não no período atual — candidatos a reativação imediata.</div>
   <div class="kpi-row" id="churn-kpi"></div>
-  <input type="text" class="search-box" id="churn-busca" placeholder="Buscar cliente/holding..." oninput="renderChurn()">
+  <input type="text" class="search-box" id="churn-busca" placeholder="Buscar cliente/holding..." oninput="churnSetBusca()">
   <div class="tcard">
     <table><thead><tr>
       <th id="th-churn-h" class="th-sort" onclick="sortChurnBy('h')">Cliente / Holding</th>
@@ -146,6 +178,7 @@ tr:hover td{background:var(--card2);color:var(--txt)}
     <tbody id="tb-churn"></tbody></table>
     <div class="bloco-empty" id="churn-empty" style="display:none">Ninguém parou de comprar no critério selecionado.</div>
   </div>
+  <button class="btn-mais" id="churn-mais" hidden onclick="carregarMaisChurn()"></button>
 
   <!-- CONCENTRAÇÃO / PARETO -->
   <div class="stitle">Concentração da carteira (Pareto) <span class="stitle-badge" id="pareto-badge"></span></div>
@@ -161,18 +194,25 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 
   <!-- RECÊNCIA -->
   <div class="stitle">Recência — quem não compra há mais tempo <span class="stitle-badge" id="recencia-badge"></span></div>
-  <div class="bloco-desc">Clientes com histórico de compra que não compram há pelo menos 6 meses (base: data da última atualização dos dados) — alvos de reativação/prospecção.</div>
-  <input type="text" class="search-box" id="recencia-busca" placeholder="Buscar cliente/holding..." oninput="renderRecencia()">
+  <div class="bloco-desc">Clientes com histórico de compra que não compram há pelo menos 6 meses (base: data da última atualização dos dados) — alvos de reativação/prospecção. Ordenado por padrão pelo <b>Score de prioridade</b> (histórico ÷ meses sem comprar), para não deixar clientes de alto valor enterrados atrás de centenas de linhas de baixo volume.</div>
+  <input type="text" class="search-box" id="recencia-busca" placeholder="Buscar cliente/holding..." oninput="recenciaSetBusca()">
   <div class="tcard">
     <table><thead><tr>
       <th id="th-recencia-h" class="th-sort" onclick="sortRecenciaBy('h')">Cliente / Holding</th>
       <th id="th-recencia-um" class="th-sort" onclick="sortRecenciaBy('um')">Última compra</th>
       <th id="th-recencia-meses" class="th-sort" onclick="sortRecenciaBy('meses')">Meses sem comprar</th>
-      <th id="th-recencia-hist" class="th-sort" onclick="sortRecenciaBy('hist')">Histórico (pares)</th>
+      <th id="th-recencia-hist" class="th-sort" onclick="sortRecenciaBy('hist')">Histórico</th>
+      <th id="th-recencia-score" class="th-sort" onclick="sortRecenciaBy('score')">Score prioridade</th>
     </tr></thead>
     <tbody id="tb-recencia"></tbody></table>
     <div class="bloco-empty" id="recencia-empty" style="display:none">Nenhum cliente inativo encontrado.</div>
   </div>
+  <button class="btn-mais" id="recencia-mais" hidden onclick="carregarMaisRecencia()"></button>
+
+  <!-- TENDÊNCIA MENSAL -->
+  <div class="stitle">Tendência mensal — Novos vs Churn <span class="stitle-badge" id="tendencia-badge"></span></div>
+  <div class="bloco-desc">Novos clientes captados e clientes que pararam de comprar, mês a mês, considerando todo o histórico disponível — independente da Cadência selecionada acima (que só afeta os blocos de Novos/Pararam/Pareto).</div>
+  <div class="tcard"><div style="position:relative;height:280px"><canvas id="c-tendencia"></canvas></div></div>
 
 </div>
 
@@ -184,7 +224,7 @@ Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
 Chart.defaults.font.family="'Montserrat',sans-serif";
 
 let CARTEIRA = null; // {gerado_em, meses_disponiveis, holdings:{h:{mes:{canal_tipo:[pares,valor]}}}}
-let chartPareto=null;
+let chartPareto=null, chartTendencia=null;
 
 fetch('dados_vendas_carteira.json?_='+Date.now())
   .then(r=>r.ok?r.json():null)
@@ -366,18 +406,20 @@ function mesReferenciaAtualizacao(){
   return ym(hoje.getFullYear(), hoje.getMonth()+1);
 }
 
-// ── ORDENAÇÃO DAS TABELAS (Novos/Churn/Recência) ───────────────────────
+// ── ORDENAÇÃO DAS TABELAS (Novos/Churn/Recência/Crítico) ───────────────
 let sortNovos={key:'pares', dir:-1};
 let sortChurn={key:'pares', dir:-1};
-let sortRecencia={key:'meses', dir:-1};
+let sortRecencia={key:'score', dir:-1}; // padrão: score de prioridade (RFM simplificado), não recência pura
+let sortCritico={key:'posicao', dir:1}; // padrão: posição 1 (pior perda) primeiro
 
 function toggleSort(state, key){
   if(state.key===key) state.dir=-state.dir;
-  else { state.key=key; state.dir = (key==='h')?1:-1; } // texto começa A→Z, número começa maior→menor
+  else { state.key=key; state.dir = (key==='h')?1:(key==='posicao'?1:-1); }
 }
-function sortNovosBy(key){ toggleSort(sortNovos,key); renderNovos(); }
-function sortChurnBy(key){ toggleSort(sortChurn,key); renderChurn(); }
-function sortRecenciaBy(key){ toggleSort(sortRecencia,key); renderRecencia(); }
+function sortNovosBy(key){ visibleNovos=PAGINA_TAM; toggleSort(sortNovos,key); renderNovos(); }
+function sortChurnBy(key){ visibleChurn=PAGINA_TAM; toggleSort(sortChurn,key); renderChurn(); }
+function sortRecenciaBy(key){ visibleRecencia=PAGINA_TAM; toggleSort(sortRecencia,key); renderRecencia(); }
+function sortCriticoBy(key){ toggleSort(sortCritico,key); renderPerdaCritica(); }
 
 function aplicarSort(lista, state){
   const {key, dir} = state;
@@ -397,6 +439,29 @@ function atualizarSetasHeader(prefix, state, keys){
   });
 }
 
+// ── PAGINAÇÃO ("carregar mais") — Novos/Churn/Recência ─────────────────
+// As 3 tabelas grandes (13k/8k/16k linhas em produção) renderizavam tudo de
+// uma vez; agora mostram só os top N por relevância (já vêm ordenadas por
+// volume/valor/score) com botão para revelar mais 50 por vez.
+const PAGINA_TAM = 50;
+let visibleNovos=PAGINA_TAM, visibleChurn=PAGINA_TAM, visibleRecencia=PAGINA_TAM;
+function novosSetBusca(){ visibleNovos=PAGINA_TAM; renderNovos(); }
+function churnSetBusca(){ visibleChurn=PAGINA_TAM; renderChurn(); }
+function recenciaSetBusca(){ visibleRecencia=PAGINA_TAM; renderRecencia(); }
+function carregarMaisNovos(){ visibleNovos+=PAGINA_TAM; renderNovos(); }
+function carregarMaisChurn(){ visibleChurn+=PAGINA_TAM; renderChurn(); }
+function carregarMaisRecencia(){ visibleRecencia+=PAGINA_TAM; renderRecencia(); }
+function atualizarBotaoMais(id, total, visivel){
+  const btn=document.getElementById(id);
+  if(!btn) return;
+  if(total>visivel){
+    btn.hidden=false;
+    btn.textContent='Carregar mais '+PAGINA_TAM+' (mostrando '+Math.min(visivel,total)+' de '+total+')';
+  } else {
+    btn.hidden=true;
+  }
+}
+
 // ── RENDER GERAL ──────────────────────────────────────────────────────
 function renderTudo(){
   if(!CARTEIRA) return;
@@ -404,10 +469,16 @@ function renderTudo(){
   const p=periodoAtualAnterior(cadencia);
   document.getElementById('periodo-hint').textContent =
     'Atual: '+p.labelAtual+' · Anterior: '+p.labelAnterior+' · '+progressoPeriodo(cadencia);
+  // Qualquer mudança nos filtros principais muda a população das tabelas —
+  // volta pra primeira página em todas.
+  visibleNovos=PAGINA_TAM; visibleChurn=PAGINA_TAM; visibleRecencia=PAGINA_TAM;
   renderNovos();
   renderChurn();
   renderPareto();
   renderRecencia();
+  renderPerdaCritica();
+  renderScorecardRep();
+  renderTendenciaMensal();
 }
 
 function getFiltros(){
@@ -445,12 +516,13 @@ function renderNovos(){
 
   const tb=document.getElementById('tb-novos'); tb.innerHTML='';
   document.getElementById('novos-empty').style.display = filtrada.length ? 'none' : 'block';
-  filtrada.slice(0,300).forEach(x=>{
+  filtrada.slice(0,visibleNovos).forEach(x=>{
     const tr=document.createElement('tr');
     tr.innerHTML = '<td class="td-nome"><span class="tag novo">novo</span> '+x.h+'</td><td>'+mesLabelYYYYMM(x.pm)+'</td>'+
       '<td class="td-num">'+f(x.pares)+'</td><td class="td-num">'+fmoeda(x.valor)+'</td>';
     tb.appendChild(tr);
   });
+  atualizarBotaoMais('novos-mais', filtrada.length, visibleNovos);
 }
 
 // ── CHURN ─────────────────────────────────────────────────────────────
@@ -480,12 +552,13 @@ function renderChurn(){
 
   const tb=document.getElementById('tb-churn'); tb.innerHTML='';
   document.getElementById('churn-empty').style.display = filtrada.length ? 'none' : 'block';
-  filtrada.slice(0,300).forEach(x=>{
+  filtrada.slice(0,visibleChurn).forEach(x=>{
     const tr=document.createElement('tr');
     tr.innerHTML='<td class="td-nome"><span class="tag churn">parou</span> '+x.h+'</td>'+
       '<td class="td-num">'+f(x.pares)+'</td><td class="td-num">'+fmoeda(x.valor)+'</td>';
     tb.appendChild(tr);
   });
+  atualizarBotaoMais('churn-mais', filtrada.length, visibleChurn);
 }
 
 // ── CONCENTRAÇÃO / PARETO ─────────────────────────────────────────────
@@ -542,7 +615,7 @@ function renderPareto(){
       }}});
 }
 
-// ── RECÊNCIA ─────────────────────────────────────────────────────────
+// ── RECÊNCIA (com score de prioridade RFM simplificado) ────────────────
 function renderRecencia(){
   const {canal, idx} = getFiltros();
   const busca = (document.getElementById('recencia-busca').value||'').toLowerCase();
@@ -555,23 +628,172 @@ function renderRecencia(){
     if(!um) continue;
     const meses = diffMeses(um, mesAtualStr);
     if(meses>=6){
-      const hist = somaHolding(holdings[h], Object.keys(holdings[h]), canal, 0);
-      lista.push({h, um, meses, hist});
+      const hist = somaHolding(holdings[h], Object.keys(holdings[h]), canal, idx);
+      // Score de prioridade: histórico ÷ meses sem comprar — um cliente com
+      // muito volume/valor histórico sobe no ranking mesmo com mais tempo
+      // parado, em vez de ficar enterrado atrás de centenas de linhas de
+      // clientes de 1-2 pares só porque pararam há mais tempo.
+      const score = meses>0 ? hist/meses : hist;
+      lista.push({h, um, meses, hist, score});
     }
   }
   aplicarSort(lista, sortRecencia);
   const filtrada = busca ? lista.filter(x=>x.h.toLowerCase().includes(busca)) : lista;
-  atualizarSetasHeader('recencia', sortRecencia, ['h','um','meses','hist']);
+  atualizarSetasHeader('recencia', sortRecencia, ['h','um','meses','hist','score']);
 
   document.getElementById('recencia-badge').textContent = lista.length+' clientes inativos há 6+ meses';
   const tb=document.getElementById('tb-recencia'); tb.innerHTML='';
   document.getElementById('recencia-empty').style.display = filtrada.length ? 'none' : 'block';
-  filtrada.slice(0,300).forEach(x=>{
+  filtrada.slice(0,visibleRecencia).forEach(x=>{
     const tr=document.createElement('tr');
     tr.innerHTML='<td class="td-nome">'+x.h+'</td><td>'+mesLabelYYYYMM(x.um)+'</td>'+
-      '<td class="td-num">'+x.meses+'</td><td>'+f(x.hist)+'</td>';
+      '<td class="td-num">'+x.meses+'</td><td>'+fmtIdx(x.hist,idx)+'</td>'+
+      '<td class="td-num">'+fmtIdx(x.score,idx)+'/mês</td>';
     tb.appendChild(tr);
   });
+  atualizarBotaoMais('recencia-mais', filtrada.length, visibleRecencia);
+}
+
+// ── PERDA CRÍTICA (cruzamento Pareto do período anterior × Churn) ──────
+// Ranking Pareto por p.anterior (não p.atual): quem "parou de comprar" tem,
+// por definição, volume ZERO no período atual — nunca apareceria num Pareto
+// rankeado pelo período atual. O período anterior é quando o cliente ainda
+// era ativo e ocupava sua posição no ranking, imediatamente antes de sumir.
+function calcularParetoAnterior(canal, idx, p){
+  const holdings = CARTEIRA.holdings;
+  const lista=[];
+  for(const h in holdings){
+    if(!passaFiltrosExtra(h)) continue;
+    const v = somaHolding(holdings[h], p.anterior, canal, idx);
+    if(v>0) lista.push({h, v});
+  }
+  lista.sort((a,b)=>b.v-a.v);
+  return lista;
+}
+
+function renderPerdaCritica(){
+  const {canal, idx, cadencia} = getFiltros();
+  const p = periodoAtualAnterior(cadencia);
+  const TOPN = 20;
+  const paretoAnterior = calcularParetoAnterior(canal, idx, p).slice(0, TOPN);
+  const posicaoPorHolding = {};
+  paretoAnterior.forEach((x,i)=>{ posicaoPorHolding[x.h] = i+1; });
+
+  const holdings = CARTEIRA.holdings;
+  const lista=[];
+  for(const h in holdings){
+    if(!(h in posicaoPorHolding)) continue; // só quem estava no Top 20 anterior
+    const pAtual = somaHolding(holdings[h], p.atual, canal, 0);
+    if(pAtual>0) continue; // ainda está comprando, não é perda
+    lista.push({
+      h, posicao: posicaoPorHolding[h],
+      pares: somaHolding(holdings[h], p.anterior, canal, 0),
+      valor: somaHolding(holdings[h], p.anterior, canal, 1),
+    });
+  }
+  aplicarSort(lista, sortCritico);
+  atualizarSetasHeader('critico', sortCritico, ['h','posicao','pares','valor']);
+
+  document.getElementById('perda-critica-badge').textContent =
+    lista.length+' de '+TOPN+' — '+p.labelAnterior+' → '+p.labelAtual;
+  const totPares=lista.reduce((a,x)=>a+x.pares,0), totValor=lista.reduce((a,x)=>a+x.valor,0);
+  document.getElementById('perda-critica-kpi').innerHTML =
+    kpi('','Clientes do Top 20 perdidos',f(lista.length),'de '+TOPN+' maiores em '+p.labelAnterior) +
+    kpi('coral','Volume perdido',fmtIdx(idx===1?totValor:totPares,idx),'desses clientes, no período anterior');
+
+  const tb=document.getElementById('tb-critico'); tb.innerHTML='';
+  document.getElementById('critico-empty').style.display = lista.length ? 'none' : 'block';
+  lista.forEach(x=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="td-nome"><span class="tag churn">crítico</span> '+x.h+'</td>'+
+      '<td class="td-num">#'+x.posicao+'</td>'+
+      '<td class="td-num">'+f(x.pares)+'</td><td class="td-num">'+fmoeda(x.valor)+'</td>';
+    tb.appendChild(tr);
+  });
+}
+
+// ── SCORECARD DO REPRESENTANTE ──────────────────────────────────────────
+// Reaproveita a mesma lógica de agregação já usada em Novos/Churn/Pareto,
+// só que consolidada num card único — como o filtro de Representante já
+// restringe passaFiltrosExtra() a esse rep, basta recalcular os 3 números
+// com a carteira já filtrada por ele.
+function renderScorecardRep(){
+  const card=document.getElementById('rep-scorecard');
+  const rep=document.getElementById('f-representante').value;
+  if(rep==='TODOS'){ card.classList.remove('ativo'); return; }
+  card.classList.add('ativo');
+  document.getElementById('rep-nome').textContent = rep;
+
+  const {canal, idx, cadencia} = getFiltros();
+  const p = periodoAtualAnterior(cadencia);
+  const holdings = CARTEIRA.holdings;
+  const atualSet = new Set(p.atual);
+
+  let novosCount=0, novosVol=0, churnCount=0, churnVol=0;
+  const ativos=[];
+  for(const h in holdings){
+    if(!passaFiltrosExtra(h)) continue; // já restringe ao rep selecionado
+    const pm = primeiroMesCanal(holdings[h], canal);
+    if(pm && atualSet.has(pm)){
+      novosCount++; novosVol += somaHolding(holdings[h], p.atual, canal, idx);
+    }
+    const pAtual = somaHolding(holdings[h], p.atual, canal, 0);
+    const pAnterior = somaHolding(holdings[h], p.anterior, canal, 0);
+    if(pAnterior>0 && pAtual===0){
+      churnCount++; churnVol += somaHolding(holdings[h], p.anterior, canal, idx);
+    }
+    const v = somaHolding(holdings[h], p.atual, canal, idx);
+    if(v>0) ativos.push(v);
+  }
+  ativos.sort((a,b)=>b-a);
+  const totalAtivo = ativos.reduce((a,b)=>a+b,0);
+  const top10 = ativos.slice(0,10).reduce((a,b)=>a+b,0);
+  const pctTop10 = totalAtivo ? Math.round(top10/totalAtivo*100) : 0;
+
+  document.getElementById('rep-kpi').innerHTML =
+    kpi('verde','Novos clientes captados',f(novosCount),fmtIdx(novosVol,idx)+' no período '+p.labelAtual) +
+    kpi('coral','Clientes perdidos (churn)',f(churnCount),fmtIdx(churnVol,idx)+' do período anterior') +
+    kpi('azul','Concentração da carteira dele',pctTop10+'%','top 10 clientes / volume total do rep');
+}
+
+// ── TENDÊNCIA MENSAL — Novos vs Churn (todo o histórico disponível) ────
+function renderTendenciaMensal(){
+  const {canal} = getFiltros();
+  const meses = (CARTEIRA.meses_disponiveis||[]).slice().sort();
+  const holdings = CARTEIRA.holdings;
+
+  const novosPorMes = {}, churnPorMes = {};
+  meses.forEach(m=>{ novosPorMes[m]=0; churnPorMes[m]=0; });
+
+  for(const h in holdings){
+    if(!passaFiltrosExtra(h)) continue;
+    const pm = primeiroMesCanal(holdings[h], canal);
+    if(pm && pm in novosPorMes) novosPorMes[pm]++;
+  }
+  // Churn mês a mês: comprou no mês M mas não comprou no mês M+1 (e M+1 já
+  // tem dados no histórico — senão não dá pra saber se churnou ou só é o
+  // mês mais recente ainda em andamento).
+  for(let i=0;i<meses.length-1;i++){
+    const mAtual=meses[i], mProx=meses[i+1];
+    for(const h in holdings){
+      if(!passaFiltrosExtra(h)) continue;
+      const tinhaAtual = somaHolding(holdings[h], [mAtual], canal, 0) > 0;
+      const tinhaProx = somaHolding(holdings[h], [mProx], canal, 0) > 0;
+      if(tinhaAtual && !tinhaProx) churnPorMes[mProx] = (churnPorMes[mProx]||0)+1;
+    }
+  }
+
+  document.getElementById('tendencia-badge').textContent = meses.length+' meses de histórico';
+  if(chartTendencia){ chartTendencia.destroy(); chartTendencia=null; }
+  chartTendencia = new Chart(document.getElementById('c-tendencia'), {
+    type:'line',
+    data:{ labels: meses.map(mesLabelYYYYMM), datasets:[
+      {label:'Novos clientes', data: meses.map(m=>novosPorMes[m]||0), borderColor:'#6c9c37', backgroundColor:'#6c9c3733', tension:.25, fill:true},
+      {label:'Clientes perdidos', data: meses.map(m=>churnPorMes[m]||0), borderColor:'#ed6842', backgroundColor:'#ed684233', tension:.25, fill:true},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}}},
+      scales:{ x:{grid:{display:false},ticks:{font:{size:9}}}, y:{beginAtZero:true} } } });
 }
 
 function kpi(cls,label,val,sub){
