@@ -8,7 +8,7 @@ import threading
 import traceback
 
 from flask import (Flask, request, jsonify, send_from_directory, send_file,
-                    session, redirect, url_for, render_template_string)
+                    session, redirect, url_for, render_template_string, render_template)
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import processador
@@ -39,6 +39,16 @@ DATA_FILES = (
 # Arquivos JSON servidos publicamente (sem autenticação) para o catálogo público.
 DATA_FILES_PUBLICOS = {'dados_estoque.json', 'dados_fotos.json', 'dados_home.json'}
 
+# Páginas do cluster de Vendas que usam a sidebar de navegação compartilhada
+# (frontend/_sidebar_vendas.html, incluída via Jinja {% include %} — fonte
+# única, sem duplicar HTML/CSS/JS em cada arquivo). Servidas via
+# render_template() em vez de send_from_directory() só para essas; o
+# restante do site continua estático puro. Ver serve_file() abaixo.
+PAGINAS_COM_SIDEBAR_VENDAS = {
+    'boaonda_vendas_catalogo.html',
+    'boaonda_carteira_clientes.html',
+}
+
 # Primeira execução com volume vazio: semeia com os JSONs versionados no repo
 if DATA_DIR != FRONTEND_DIR:
     for _fname in DATA_FILES:
@@ -47,7 +57,7 @@ if DATA_DIR != FRONTEND_DIR:
         if not _dst.exists() and _src.exists():
             shutil.copy(_src, _dst)
 
-app = Flask(__name__, static_folder=None)
+app = Flask(__name__, static_folder=None, template_folder=str(FRONTEND_DIR))
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-local-key-change-in-prod')
 app.config['MAX_CONTENT_LENGTH'] = 250 * 1024 * 1024  # 250MB — 3YS.csv pode ter ~130MB
 
@@ -356,6 +366,8 @@ def serve_file(filename):
             resp.cache_control.public = True
             resp.cache_control.max_age = 300
         return resp
+    if filename in PAGINAS_COM_SIDEBAR_VENDAS:
+        return render_template(filename)
     return send_from_directory(FRONTEND_DIR, filename)
 
 

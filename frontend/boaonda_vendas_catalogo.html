@@ -132,7 +132,9 @@ th.sortable .sort-arrow{margin-left:3px;color:var(--coral);opacity:.9}
 @media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}}
 </style>
 </head>
-<body>
+<!-- SIDEBAR: incluída via Jinja a partir de frontend/_sidebar_vendas.html — fonte única, não duplicar manualmente aqui -->
+<body data-active="vendas">
+{% include '_sidebar_vendas.html' %}
 
 <div class="header">
   <div>

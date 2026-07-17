@@ -78,7 +78,9 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .btn-mais[hidden]{display:none}
 </style>
 </head>
-<body>
+<!-- SIDEBAR: incluída via Jinja a partir de frontend/_sidebar_vendas.html — fonte única, não duplicar manualmente aqui -->
+<body data-active="carteira">
+{% include '_sidebar_vendas.html' %}
 
 <div class="header">
   <div>
