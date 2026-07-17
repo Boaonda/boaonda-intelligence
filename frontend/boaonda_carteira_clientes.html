@@ -118,8 +118,8 @@ tr:hover td{background:var(--card2);color:var(--txt)}
   <span class="filtro-label">Cadência (novos/churn)</span>
   <select class="sel" id="f-cadencia" onchange="renderTudo()">
     <option value="mes">Mês vs mês anterior</option>
-    <option value="trimestre">Trimestre vs trimestre anterior</option>
-    <option value="semestre">Semestre vs semestre anterior</option>
+    <option value="3meses">3 meses (últimos fechados) vs mesmo período ano anterior</option>
+    <option value="6meses">6 meses (últimos fechados) vs mesmo período ano anterior</option>
     <option value="ano" selected>Ano (YTD) vs ano anterior (mesmo período)</option>
   </select>
   <span class="filtro-hint" id="periodo-hint"></span>
@@ -303,8 +303,10 @@ function mesLabelYYYYMM(m){
   return mn[parseInt(m.slice(4))-1]+'/'+m.slice(0,4);
 }
 // Quanto do período "atual" já passou — deixa explícito quando ele está em
-// andamento (mês/trimestre/ano ainda não fechou), já que isso infla o número
-// de "clientes que pararam de comprar" sem ser um sinal real de churn.
+// andamento (mês/ano ainda não fechou), já que isso infla o número de
+// "clientes que pararam de comprar" sem ser um sinal real de churn. "3
+// meses"/"6 meses" sempre partem do último mês FECHADO (ver
+// periodoAtualAnterior), então já nascem fechados — não têm esse problema.
 function progressoPeriodo(cadencia){
   const hoje=new Date();
   const diaHoje=hoje.getDate();
@@ -312,16 +314,9 @@ function progressoPeriodo(cadencia){
     const diasNoMes=new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
     return diaHoje<diasNoMes ? `mês em andamento — dia ${diaHoje} de ${diasNoMes}` : 'mês fechado';
   }
-  if(cadencia==='trimestre'){
-    const mesNoTri = (hoje.getMonth()%3)+1; // 1..3
-    const diasNoMes=new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
-    const diaNoTri = (mesNoTri-1)*30 + diaHoje; // aproximado, só para dar noção de escala
-    return (mesNoTri<3 || diaHoje<diasNoMes) ? `trimestre em andamento — ${mesNoTri}º mês de 3` : 'trimestre fechado';
-  }
-  if(cadencia==='semestre'){
-    const mesNoSem = (hoje.getMonth()%6)+1; // 1..6
-    const diasNoMes=new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
-    return (mesNoSem<6 || diaHoje<diasNoMes) ? `semestre em andamento — ${mesNoSem}º mês de 6` : 'semestre fechado';
+  if(cadencia==='3meses' || cadencia==='6meses'){
+    const n = cadencia==='3meses' ? 3 : 6;
+    return `${n} meses fechados — comparado ao mesmo intervalo do ano anterior (controla sazonalidade)`;
   }
   const diaDoAno = Math.ceil((hoje - new Date(hoje.getFullYear(),0,0))/864e5);
   return diaDoAno<365 ? `ano em andamento — dia ${diaDoAno} de 365` : 'ano fechado';
@@ -335,27 +330,39 @@ function periodoAtualAnterior(cadencia){
     let am=mesAtual-1, aa=anoAtual; if(am<1){am=12;aa--;}
     return {atual, anterior:[ym(aa,am)], labelAtual:mesLabelYYYYMM(atual[0]), labelAnterior:mesLabelYYYYMM(ym(aa,am))};
   }
-  if(cadencia==='trimestre'){
-    const tri=Math.floor((mesAtual-1)/3);
-    const mesesDoTri=(t,ano)=>{const arr=[];for(let i=0;i<3;i++)arr.push(ym(ano,t*3+i+1));return arr;};
-    const atual=mesesDoTri(tri,anoAtual);
-    let triAnt=tri-1, anoAnt=anoAtual; if(triAnt<0){triAnt=3;anoAnt--;}
-    const anterior=mesesDoTri(triAnt,anoAnt);
-    return {atual, anterior, labelAtual:'T'+(tri+1)+'/'+anoAtual, labelAnterior:'T'+(triAnt+1)+'/'+anoAnt};
-  }
-  if(cadencia==='semestre'){
-    const sem=Math.floor((mesAtual-1)/6);
-    const mesesDoSem=(s,ano)=>{const arr=[];for(let i=0;i<6;i++)arr.push(ym(ano,s*6+i+1));return arr;};
-    const atual=mesesDoSem(sem,anoAtual);
-    let semAnt=sem-1, anoAnt=anoAtual; if(semAnt<0){semAnt=1;anoAnt--;}
-    const anterior=mesesDoSem(semAnt,anoAnt);
-    return {atual, anterior, labelAtual:'S'+(sem+1)+'/'+anoAtual, labelAnterior:'S'+(semAnt+1)+'/'+anoAnt};
+  if(cadencia==='3meses' || cadencia==='6meses'){
+    // Sempre os N últimos meses FECHADOS (nunca o mês em andamento) — e o
+    // "anterior" é o MESMO intervalo de meses, um ano antes (não o bloco de
+    // N meses imediatamente anterior). Ex.: se atual = Mar-Abr-Mai/2026,
+    // anterior = Mar-Abr-Mai/2025 — nunca Dez-Jan-Fev. Isso evita comparar
+    // estações diferentes (sazonalidade do calçado) entre si.
+    const n = cadencia==='3meses' ? 3 : 6;
+    let mesRef=mesAtual-1, anoRef=anoAtual; if(mesRef<1){mesRef=12;anoRef--;}
+    const atual=[];
+    let a=anoRef, m=mesRef;
+    for(let i=0;i<n;i++){ atual.unshift(ym(a,m)); m--; if(m<1){m=12;a--;} }
+    const anterior = atual.map(mm=>ym(+mm.slice(0,4)-1, +mm.slice(4)));
+    return {
+      atual, anterior,
+      labelAtual: mesLabelYYYYMM(atual[0])+'–'+mesLabelYYYYMM(atual[atual.length-1]),
+      labelAnterior: mesLabelYYYYMM(anterior[0])+'–'+mesLabelYYYYMM(anterior[anterior.length-1]),
+    };
   }
   // ano — YTD jan..mesAtual do ano corrente vs mesmo intervalo do ano anterior
   const atual=[], anterior=[];
   for(let m=1;m<=mesAtual;m++){ atual.push(ym(anoAtual,m)); anterior.push(ym(anoAtual-1,m)); }
   return {atual, anterior, labelAtual:anoAtual+' (jan–'+mesLabelYYYYMM(atual[atual.length-1]).split('/')[0]+')',
           labelAnterior:(anoAtual-1)+' (mesmo intervalo)'};
+}
+
+// Alerta se o histórico disponível não cobre totalmente o período "anterior"
+// — sem isso, "anterior" ficaria artificialmente baixo (meses faltando
+// contam como zero), inflando falsamente crescimento/queda.
+function avisoCoberturaHistorico(p){
+  const disponiveis = new Set(CARTEIRA.meses_disponiveis || []);
+  const faltando = p.anterior.filter(m => !disponiveis.has(m));
+  if(!faltando.length) return '';
+  return ` · ⚠ histórico não cobre ${faltando.length} mês(es) do período anterior (${faltando.map(mesLabelYYYYMM).join(', ')}) — comparação pode ficar distorcida`;
 }
 
 // ── AGREGAÇÃO ─────────────────────────────────────────────────────────
@@ -470,7 +477,7 @@ function renderTudo(){
   const cadencia=document.getElementById('f-cadencia').value;
   const p=periodoAtualAnterior(cadencia);
   document.getElementById('periodo-hint').textContent =
-    'Atual: '+p.labelAtual+' · Anterior: '+p.labelAnterior+' · '+progressoPeriodo(cadencia);
+    'Atual: '+p.labelAtual+' · Anterior: '+p.labelAnterior+' · '+progressoPeriodo(cadencia)+avisoCoberturaHistorico(p);
   // Qualquer mudança nos filtros principais muda a população das tabelas —
   // volta pra primeira página em todas.
   visibleNovos=PAGINA_TAM; visibleChurn=PAGINA_TAM; visibleRecencia=PAGINA_TAM;
