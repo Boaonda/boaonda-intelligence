@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Por Representante</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --line:#262b3a;--line2:#333a4d;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+
+.header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:19px;font-weight:800;color:var(--txt)}
+.h-sub{font-size:10.5px;color:var(--txt-m);margin-top:3px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.back-link{font-size:11px;font-weight:700;color:var(--azul);text-decoration:none}
+.back-link:hover{color:var(--coral)}
+
+.filtros{background:var(--card);border-bottom:1px solid var(--line);padding:12px 32px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sel{background:var(--card2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
+.sel:focus{border-color:var(--coral)}
+.filtro-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
+.filtro-hint{font-size:9.5px;color:var(--txt-m);margin-left:auto;font-style:italic}
+.canal-travado{background:rgba(73,148,199,.12);border:1px solid rgba(73,148,199,.3);color:var(--azul);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+
+.main{padding:24px 32px;max-width:1400px;margin:0 auto}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin:28px 0 14px;display:flex;align-items:center;gap:12px}
+.stitle:first-child{margin-top:0}
+.stitle::after{content:'';flex:1;height:1px;background:var(--line)}
+.stitle-badge{font-size:9px;background:rgba(237,104,66,.1);color:var(--coral);padding:2px 8px;border-radius:4px;font-weight:700;text-transform:none;letter-spacing:0}
+
+.sumario{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:18px 20px;margin-bottom:20px}
+.sumario ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.sumario li{font-size:12.5px;color:var(--txt-s);padding-left:16px;position:relative}
+.sumario li::before{content:'▸';position:absolute;left:0;color:var(--coral)}
+.sumario li b{color:var(--txt);font-weight:700}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
+.kpi.verde{border-top-color:var(--verde)}
+.kpi.azul{border-top-color:var(--azul)}
+.kpi.cinza{border-top-color:var(--cinza)}
+.kpi.coral2{border-top-color:var(--coral2)}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.kpi-v{font-size:1.5rem;font-weight:800;color:var(--coral)}
+.kpi-v.verde{color:var(--verde)}
+.kpi-v.azul{color:var(--azul)}
+.kpi-v.cinza{color:var(--cinza)}
+.kpi-v.coral2{color:var(--coral2)}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px}
+.nao-informado{color:var(--txt-m);font-style:italic;font-weight:400}
+
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:8px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line)}
+td{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--txt-s)}
+tr:last-child td{border:none}
+tr:hover td{background:var(--card2);color:var(--txt)}
+.td-nome{font-weight:700;color:var(--txt)}
+.td-num{font-weight:800;color:var(--txt)}
+.th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.th-sort:hover{color:var(--txt)}
+.tr-rep{cursor:pointer}
+.tr-rep.selecionado td{background:rgba(237,104,66,.08)}
+.tr-rep.selecionado td.td-nome{color:var(--coral)}
+
+.badge-classif{display:inline-block;font-size:9px;font-weight:700;padding:3px 10px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em}
+.badge-classif.crescimento{background:rgba(108,156,55,.14);color:var(--verde)}
+.badge-classif.estavel{background:rgba(155,154,152,.14);color:var(--cinza)}
+.badge-classif.declinio{background:rgba(237,104,66,.14);color:var(--coral)}
+.badge-classif.indefinido{background:rgba(125,124,121,.14);color:var(--txt-m)}
+
+.painel-rep{display:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px;margin-top:8px}
+.painel-rep.ativo{display:block}
+.painel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.painel-nome{font-size:16px;font-weight:800;color:var(--txt)}
+
+.card-alerta{background:var(--card2);border:1px solid rgba(237,104,66,.35);border-top:3px solid var(--coral);border-radius:10px;padding:16px;margin-bottom:16px}
+.card-alerta .titulo-alerta{font-size:11px;font-weight:700;color:var(--coral);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.alerta-linha{font-size:12px;color:var(--txt-s);line-height:1.7;margin-bottom:3px}
+.alerta-linha b{color:var(--txt)}
+.alerta-linha .rotulo{color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-right:6px}
+
+.mini-serie{display:flex;gap:4px;align-items:flex-end;height:40px;margin:10px 0}
+.mini-serie .barra{flex:1;background:var(--azul);border-radius:2px 2px 0 0;position:relative;min-height:2px}
+.mini-serie .barra.subida{background:var(--coral)}
+.mini-lbl{display:flex;gap:4px;font-size:8px;color:var(--txt-m)}
+.mini-lbl span{flex:1;text-align:center}
+
+.bloco-desc{font-size:11px;color:var(--txt-m);margin-bottom:12px;line-height:1.5}
+.pareto-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.main{padding:14px}.pareto-row{grid-template-columns:1fr}}
+.bloco-empty{padding:20px;text-align:center;color:var(--txt-m);font-size:12px}
+
+.rodape-nota{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-top:28px;font-size:11px;color:var(--txt-m);line-height:1.8}
+.rodape-nota h3{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-s);margin-bottom:8px}
+.rodape-nota code{background:var(--card2);padding:1px 5px;border-radius:3px;color:var(--txt-s)}
+.rodape-nota ul{margin:6px 0 12px 18px}
+</style>
+</head>
+<!-- SIDEBAR: incluída via Jinja a partir de frontend/_sidebar_vendas.html — fonte única, não duplicar manualmente aqui -->
+<body data-active="representante">
+{% include '_sidebar_vendas.html' %}
+
+<div class="header">
+  <div>
+    <div class="h-badge">Por Representante</div>
+    <div class="h-title">Saúde Comercial por Representante</div>
+    <div class="h-sub">Ranking, tendência e alertas de ação por representante — canal Mercado Interno (MI)</div>
+  </div>
+  <div style="text-align:right">
+    <a href="boaonda_vendas_catalogo.html" class="back-link">← Voltar para Vendas</a>
+    <div class="h-meta">Atualizado: <strong id="hdr-data">–</strong></div>
+  </div>
+</div>
+
+<div class="filtros">
+  <span class="canal-travado">Canal: Mercado Interno (travado)</span>
+  <span class="filtro-label">Visão</span>
+  <select class="sel" id="f-visao" onchange="renderTudo()">
+    <option value="0">Pares</option>
+    <option value="1">Valor (R$)</option>
+  </select>
+  <span class="filtro-label">Cadência</span>
+  <select class="sel" id="f-cadencia" onchange="renderTudo()">
+    <option value="mes">Mês vs mês anterior</option>
+    <option value="trimestre">Trimestre vs trimestre anterior</option>
+    <option value="semestre">Semestre vs semestre anterior</option>
+    <option value="ano" selected>Ano (YTD) vs ano anterior (mesmo período)</option>
+  </select>
+  <span class="filtro-hint" id="periodo-hint"></span>
+</div>
+
+<div class="main">
+
+  <!-- SUMÁRIO EXECUTIVO -->
+  <div class="sumario">
+    <div class="stitle" style="margin:0 0 12px">Sumário executivo</div>
+    <ul id="sumario-lista"></ul>
+  </div>
+
+  <!-- KPIs GERAIS -->
+  <div class="kpi-row" id="geral-kpi"></div>
+
+  <!-- RANKING -->
+  <div class="stitle">Ranking de representantes <span class="stitle-badge" id="ranking-badge"></span></div>
+  <div class="bloco-desc">Clique num representante para abrir o painel de detalhe abaixo. Exclui lançamentos de atendimento comercial/e-commerce (não são representantes de equipe comercial); ALEXSHOES já unificado a FRALDA &amp; COMPANHIA e ROGERIO RAPPA SILVEIRA já unificado a RRAPPA REPRESENTACOES — ver nota metodológica no rodapé.</div>
+  <div class="tcard">
+    <table><thead><tr>
+      <th id="th-rk-rep" class="th-sort" onclick="sortRankingBy('rep')">Representante</th>
+      <th id="th-rk-pares" class="th-sort" onclick="sortRankingBy('pares')">Pares</th>
+      <th id="th-rk-valor" class="th-sort" onclick="sortRankingBy('valor')">Valor (R$)</th>
+      <th id="th-rk-var" class="th-sort" onclick="sortRankingBy('varPct')">Var. vs ano anterior</th>
+      <th id="th-rk-clientes" class="th-sort" onclick="sortRankingBy('clientesAtivos')">Clientes ativos</th>
+      <th id="th-rk-conc" class="th-sort" onclick="sortRankingBy('concentracaoTop10')">Concentração (top 10)</th>
+      <th id="th-rk-classif" class="th-sort" onclick="sortRankingBy('classifOrdem')">Classificação</th>
+    </tr></thead>
+    <tbody id="tb-ranking"></tbody></table>
+    <div class="bloco-empty" id="ranking-empty" style="display:none">Nenhum representante com volume no período selecionado.</div>
+  </div>
+
+  <!-- PAINEL DO REPRESENTANTE SELECIONADO -->
+  <div class="painel-rep" id="painel-rep">
+    <div class="painel-head">
+      <div>
+        <div class="painel-nome" id="painel-nome"></div>
+        <div class="h-sub" id="painel-sub"></div>
+      </div>
+      <span class="badge-classif" id="painel-classif-badge"></span>
+    </div>
+
+    <!-- 4 DIMENSÕES -->
+    <div class="kpi-row" id="painel-dimensoes"></div>
+
+    <!-- ALERTAS -->
+    <div id="painel-alertas"></div>
+
+    <!-- PERDA CRÍTICA DO REP -->
+    <div class="stitle">⚠ Perda crítica <span class="stitle-badge" id="painel-critico-badge"></span></div>
+    <div class="bloco-desc" id="painel-critico-desc"></div>
+    <div class="tcard">
+      <table><thead><tr>
+        <th>Cliente / Holding</th><th>Posição no Pareto do rep (anterior)</th><th>Pares perdidos</th><th>Valor perdido</th>
+      </tr></thead>
+      <tbody id="tb-painel-critico"></tbody></table>
+    </div>
+    <div class="bloco-empty" id="painel-critico-empty" style="display:none">Nenhum cliente do Top 20 da carteira deste representante parou de comprar no critério selecionado.</div>
+
+    <!-- TENDÊNCIA MENSAL DO REP -->
+    <div class="stitle">Tendência mensal — Novos vs Churn <span class="stitle-badge" id="painel-tendencia-badge"></span></div>
+    <div class="bloco-desc">Novos clientes e clientes que pararam de comprar, mês a mês, só na carteira deste representante — todo o histórico disponível.</div>
+    <div class="tcard"><div style="position:relative;height:260px"><canvas id="c-painel-tendencia"></canvas></div></div>
+  </div>
+
+  <!-- RODAPÉ / NOTA METODOLÓGICA -->
+  <div class="rodape-nota">
+    <h3>Nota metodológica</h3>
+    <p><b>Fonte de dados:</b> <code>dados_vendas_carteira.json</code> — mesma fonte já usada e validada em "Carteira de Clientes" (histórico mensal por holding, canal e espécie de venda).</p>
+    <p style="margin-top:8px"><b>Higienização aplicada ao ranking (4 camadas, todas possíveis com a fonte atual):</b></p>
+    <ul>
+      <li>Grupo de cadastro: mantido apenas CALCADO - MERCADO INTERNO / CALCADO - CLIENTES ISENTOS — já é exatamente como o canal "MI" é calculado na fonte, então travar o canal em MI já aplica esse filtro.</li>
+      <li>Espécie de venda: mantido apenas Programado, Pronta Entrega e Venda Mista — excluídas linhas de espécie E-commerce que aparecem eventualmente sob canal MI na fonte (achado real: 18 pares em 2 holdings).</li>
+      <li>Excluídos do ranking: "ATEND. COMERCIAL - OUTRAS MARCAS", "ATEND.COMERCIAL INTERNO- BOAONDA" e "ECOMMERCE" — não são representantes de equipe comercial.</li>
+      <li>Unificados: ALEXSHOES REPRESENTACOES LTDA → FRALDA &amp; COMPANHIA LTDA; ROGERIO RAPPA SILVEIRA - ME → RRAPPA REPRESENTACOES LTDA (mesma operação comercial sob dois cadastros).</li>
+    </ul>
+    <p><b>Campos não informados/não disponíveis nesta fonte:</b></p>
+    <ul>
+      <li><b>Meta mensal por representante</b> — não existe em nenhuma fonte hoje conectada ao hub. Exibido como "não informado".</li>
+      <li><b>Carteira de pedidos futuros com lastro de produção</b> — <code>dados_carteira.json</code> (módulo Pedido em Carteira) não tem campo de representante nem classificação programado/oportunidade. Exibido como "não disponível".</li>
+    </ul>
+    <p><b>Classificação Crescimento/Estável/Declínio:</b> compara sempre cada mês com o mesmo mês do ano anterior (nunca com o mês imediatamente anterior), o que já descarta o efeito de sazonalidade do calendário de calçados por construção. Declínio = 2+ meses consecutivos de queda nessa base; alerta de ação aparece a partir de 3+ meses consecutivos.</li>
+  </div>
+
+</div>
+
+<script>
+const f=n=>(Math.round(n)||0).toLocaleString('pt-BR');
+const fmoeda=n=>'R$ '+(Math.round(n)||0).toLocaleString('pt-BR');
+const fmtIdx=(v,idx)=> idx===1 ? fmoeda(v) : f(v);
+Chart.defaults.color='#b6b3ac';Chart.defaults.borderColor='#262b3a';
+Chart.defaults.font.family="'Montserrat',sans-serif";
+
+let CARTEIRA = null;
+let chartPainelTendencia = null;
+let repSelecionado = null;
+
+fetch('dados_vendas_carteira.json?_='+Date.now())
+  .then(r=>r.ok?r.json():null)
+  .then(d=>{
+    CARTEIRA = d;
+    const hdr=document.getElementById('hdr-data');
+    if(hdr && d) hdr.textContent = d.gerado_em || '–';
+    renderTudo();
+  })
+  .catch(()=>{});
+
+// ── HIGIENIZAÇÃO DE REPRESENTANTES ──────────────────────────────────────
+const REPS_EXCLUIDOS = new Set([
+  'ATEND. COMERCIAL - OUTRAS MARCAS',
+  'ATEND.COMERCIAL INTERNO- BOAONDA',
+  'ECOMMERCE',
+]);
+const REP_UNIFICAR = {
+  'ALEXSHOES REPRESENTACOES LTDA': 'FRALDA & COMPANHIA LTDA',
+  'ROGERIO RAPPA SILVEIRA - ME': 'RRAPPA REPRESENTACOES LTDA',
+};
+function normalizarRep(nome){ return REP_UNIFICAR[nome] || nome; }
+
+// Só estes 3 tipos contam como MI válido (Espécie: Programado/Pronta
+// Entrega/Venda Mista) — exclui explicitamente MI_ECOM, que existe na
+// fonte como resíduo (18 pares / 2 holdings, achado real ao inspecionar).
+const TIPOS_MI_VALIDOS = ['PROG','PE','MISTA'];
+
+function repDoHolding(h){
+  const meta = (CARTEIRA.meta||{})[h];
+  if(!meta) return null;
+  const r = (meta.representantes||{}).MI;
+  if(!r || REPS_EXCLUIDOS.has(r)) return null;
+  return normalizarRep(r);
+}
+
+function holdingsPorRep(){
+  const grupos={};
+  const holdings=CARTEIRA.holdings;
+  for(const h in holdings){
+    const rep=repDoHolding(h);
+    if(!rep) continue;
+    (grupos[rep] = grupos[rep]||[]).push(h);
+  }
+  return grupos;
+}
+
+// ── AGREGAÇÃO (canal MI travado, só tipos válidos) ──────────────────────
+function volumeHoldings(hs, listaMeses, idx){
+  let tot=0;
+  const holdings=CARTEIRA.holdings;
+  hs.forEach(h=>{
+    const mesesObj=holdings[h]; if(!mesesObj) return;
+    listaMeses.forEach(m=>{
+      const tipos=mesesObj[m]; if(!tipos) return;
+      TIPOS_MI_VALIDOS.forEach(t=>{ const k='MI_'+t; if(tipos[k]) tot+=tipos[k][idx]; });
+    });
+  });
+  return tot;
+}
+function temMIValido(mesesObj, mes){
+  const tipos=mesesObj[mes]; if(!tipos) return false;
+  return TIPOS_MI_VALIDOS.some(t=>tipos['MI_'+t]);
+}
+function primeiroMesMI(mesesObj){
+  let min=null;
+  for(const m in mesesObj) if(temMIValido(mesesObj,m) && (min===null||m<min)) min=m;
+  return min;
+}
+
+// ── PERÍODOS (mesmo padrão de Carteira de Clientes) ─────────────────────
+function ym(ano,mes){ return String(ano)+String(mes).padStart(2,'0'); }
+function mesLabelYYYYMM(m){
+  const mn=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return mn[parseInt(m.slice(4))-1]+'/'+m.slice(0,4);
+}
+function mesMenos12(m){ return ym(+m.slice(0,4)-1, +m.slice(4)); }
+function diffMeses(m1,m2){
+  const a1=+m1.slice(0,4), me1=+m1.slice(4), a2=+m2.slice(0,4), me2=+m2.slice(4);
+  return (a2-a1)*12 + (me2-me1);
+}
+function progressoPeriodo(cadencia){
+  const hoje=new Date();
+  const diaHoje=hoje.getDate();
+  if(cadencia==='mes'){
+    const diasNoMes=new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+    return diaHoje<diasNoMes ? `mês em andamento — dia ${diaHoje} de ${diasNoMes}` : 'mês fechado';
+  }
+  if(cadencia==='trimestre'){
+    const mesNoTri = (hoje.getMonth()%3)+1;
+    const diasNoMes=new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+    return (mesNoTri<3 || diaHoje<diasNoMes) ? `trimestre em andamento — ${mesNoTri}º mês de 3` : 'trimestre fechado';
+  }
+  if(cadencia==='semestre'){
+    const mesNoSem = (hoje.getMonth()%6)+1;
+    const diasNoMes=new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+    return (mesNoSem<6 || diaHoje<diasNoMes) ? `semestre em andamento — ${mesNoSem}º mês de 6` : 'semestre fechado';
+  }
+  const diaDoAno = Math.ceil((hoje - new Date(hoje.getFullYear(),0,0))/864e5);
+  return diaDoAno<365 ? `ano em andamento — dia ${diaDoAno} de 365` : 'ano fechado';
+}
+function periodoAtualAnterior(cadencia){
+  const hoje=new Date();
+  const anoAtual=hoje.getFullYear(), mesAtual=hoje.getMonth()+1;
+  if(cadencia==='mes'){
+    const atual=[ym(anoAtual,mesAtual)];
+    let am=mesAtual-1, aa=anoAtual; if(am<1){am=12;aa--;}
+    return {atual, anterior:[ym(aa,am)], labelAtual:mesLabelYYYYMM(atual[0]), labelAnterior:mesLabelYYYYMM(ym(aa,am))};
+  }
+  if(cadencia==='trimestre'){
+    const tri=Math.floor((mesAtual-1)/3);
+    const mesesDoTri=(t,ano)=>{const arr=[];for(let i=0;i<3;i++)arr.push(ym(ano,t*3+i+1));return arr;};
+    const atual=mesesDoTri(tri,anoAtual);
+    let triAnt=tri-1, anoAnt=anoAtual; if(triAnt<0){triAnt=3;anoAnt--;}
+    const anterior=mesesDoTri(triAnt,anoAnt);
+    return {atual, anterior, labelAtual:'T'+(tri+1)+'/'+anoAtual, labelAnterior:'T'+(triAnt+1)+'/'+anoAnt};
+  }
+  if(cadencia==='semestre'){
+    const sem=Math.floor((mesAtual-1)/6);
+    const mesesDoSem=(s,ano)=>{const arr=[];for(let i=0;i<6;i++)arr.push(ym(ano,s*6+i+1));return arr;};
+    const atual=mesesDoSem(sem,anoAtual);
+    let semAnt=sem-1, anoAnt=anoAtual; if(semAnt<0){semAnt=1;anoAnt--;}
+    const anterior=mesesDoSem(semAnt,anoAnt);
+    return {atual, anterior, labelAtual:'S'+(sem+1)+'/'+anoAtual, labelAnterior:'S'+(semAnt+1)+'/'+anoAnt};
+  }
+  const atual=[], anterior=[];
+  for(let m=1;m<=mesAtual;m++){ atual.push(ym(anoAtual,m)); anterior.push(ym(anoAtual-1,m)); }
+  return {atual, anterior, labelAtual:anoAtual+' (jan–'+mesLabelYYYYMM(atual[atual.length-1]).split('/')[0]+')',
+          labelAnterior:(anoAtual-1)+' (mesmo intervalo)'};
+}
+
+// ── CLASSIFICAÇÃO CRESCIMENTO/ESTÁVEL/DECLÍNIO ──────────────────────────
+// Sempre mês vs mesmo mês do ano anterior (nunca vs mês imediatamente
+// anterior) — descarta sazonalidade por construção, conforme pedido.
+function classificarTendencia(hs, idx){
+  const meses=(CARTEIRA.meses_disponiveis||[]).slice().sort();
+  const comparaveis = meses.filter(m=>meses.includes(mesMenos12(m)));
+  const recentes = comparaveis.slice(-6);
+  if(!recentes.length) return {classificacao:'indefinido', consecutivas:0, deltas:[]};
+  const deltas = recentes.map(m=>{
+    const atual=volumeHoldings(hs, [m], idx);
+    const anoAnt=volumeHoldings(hs, [mesMenos12(m)], idx);
+    return {mes:m, atual, anoAnt, queda: atual < anoAnt};
+  });
+  let consecutivas=0;
+  for(let i=deltas.length-1;i>=0;i--){ if(deltas[i].queda) consecutivas++; else break; }
+  let classificacao;
+  if(consecutivas>=2) classificacao='declinio';
+  else if(!deltas[deltas.length-1].queda) classificacao='crescimento';
+  else classificacao='estavel';
+  return {classificacao, consecutivas, deltas};
+}
+function ordemClassif(c){ return c==='declinio'?0:c==='estavel'?1:c==='crescimento'?2:3; }
+function labelClassif(c){
+  return {declinio:'Declínio', estavel:'Estável', crescimento:'Crescimento', indefinido:'Dados insuficientes'}[c]||c;
+}
+
+// ── RENDER GERAL ─────────────────────────────────────────────────────────
+function getFiltros(){
+  return { idx: +document.getElementById('f-visao').value, cadencia: document.getElementById('f-cadencia').value };
+}
+function renderTudo(){
+  if(!CARTEIRA) return;
+  const {cadencia} = getFiltros();
+  const p = periodoAtualAnterior(cadencia);
+  document.getElementById('periodo-hint').textContent =
+    'Atual: '+p.labelAtual+' · Anterior: '+p.labelAnterior+' · '+progressoPeriodo(cadencia);
+  renderRanking();
+  if(repSelecionado) renderPainelRep(repSelecionado);
+}
+
+// ── RANKING ──────────────────────────────────────────────────────────────
+let sortRanking={key:'pares', dir:-1};
+let ultimaLinhas=[];
+function toggleSort(state,key){
+  if(state.key===key) state.dir=-state.dir;
+  else { state.key=key; state.dir=(key==='rep')?1:-1; }
+}
+function sortRankingBy(key){ toggleSort(sortRanking,key); renderRanking(); }
+function aplicarSort(lista, state){
+  const {key,dir}=state;
+  lista.sort((a,b)=>{
+    const va=a[key], vb=b[key];
+    if(typeof va==='string') return dir*va.localeCompare(vb);
+    return dir*((va||0)-(vb||0));
+  });
+}
+function atualizarSetasHeader(prefix, state, keys){
+  keys.forEach(k=>{
+    const th=document.getElementById('th-'+prefix+'-'+k);
+    if(!th) return;
+    let base=th.getAttribute('data-label');
+    if(!base){ base=th.textContent; th.setAttribute('data-label', base); }
+    th.textContent = base + (state.key===k ? (state.dir===1?' ▲':' ▼') : '');
+  });
+}
+
+function construirRanking(idx, cadencia){
+  const p=periodoAtualAnterior(cadencia);
+  const grupos=holdingsPorRep();
+  const linhas=[];
+  for(const rep in grupos){
+    const hs=grupos[rep];
+    const pares=volumeHoldings(hs, p.atual, 0);
+    const valor=volumeHoldings(hs, p.atual, 1);
+    const paresAnt=volumeHoldings(hs, p.anterior, 0);
+    let clientesAtivos=0;
+    const vols=[];
+    hs.forEach(h=>{
+      const v=volumeHoldings([h], p.atual, idx);
+      if(volumeHoldings([h], p.atual, 0)>0){ clientesAtivos++; vols.push(v); }
+    });
+    vols.sort((a,b)=>b-a);
+    const totalVol = idx===1?valor:pares;
+    const top10 = vols.slice(0,10).reduce((a,b)=>a+b,0);
+    const concentracaoTop10 = totalVol ? Math.round(top10/totalVol*100) : 0;
+    const classif = classificarTendencia(hs, idx);
+    const volAtualIdx = idx===1?valor:pares, volAntIdx = volumeHoldings(hs, p.anterior, idx);
+    const varPct = volAntIdx ? Math.round((volAtualIdx-volAntIdx)/volAntIdx*100) : (volAtualIdx>0?100:0);
+    linhas.push({
+      rep, pares, valor, clientesAtivos, concentracaoTop10, varPct,
+      classificacao: classif.classificacao, mesesConsecutivos: classif.consecutivas,
+      classifOrdem: ordemClassif(classif.classificacao),
+      hs,
+    });
+  }
+  return linhas;
+}
+
+function renderRanking(){
+  const {idx, cadencia} = getFiltros();
+  const linhas = construirRanking(idx, cadencia);
+  ultimaLinhas = linhas;
+  aplicarSort(linhas, sortRanking);
+  atualizarSetasHeader('rk', sortRanking, ['rep','pares','valor','varPct','clientesAtivos','concentracaoTop10','classifOrdem']);
+
+  document.getElementById('ranking-badge').textContent = linhas.length+' representantes ativos';
+  const tb=document.getElementById('tb-ranking'); tb.innerHTML='';
+  document.getElementById('ranking-empty').style.display = linhas.length ? 'none' : 'block';
+  linhas.forEach(x=>{
+    const tr=document.createElement('tr');
+    tr.className='tr-rep'+(repSelecionado===x.rep?' selecionado':'');
+    tr.onclick=()=>{ repSelecionado = repSelecionado===x.rep ? null : x.rep; renderRanking(); if(repSelecionado) renderPainelRep(repSelecionado); else document.getElementById('painel-rep').classList.remove('ativo'); };
+    const sinal = x.varPct>0?'+':'';
+    tr.innerHTML = '<td class="td-nome">'+x.rep+'</td>'+
+      '<td class="td-num">'+f(x.pares)+'</td><td class="td-num">'+fmoeda(x.valor)+'</td>'+
+      '<td>'+sinal+x.varPct+'%</td>'+
+      '<td class="td-num">'+f(x.clientesAtivos)+'</td>'+
+      '<td>'+x.concentracaoTop10+'%</td>'+
+      '<td><span class="badge-classif '+x.classificacao+'">'+labelClassif(x.classificacao)+'</span></td>';
+    tb.appendChild(tr);
+  });
+
+  renderKpiGeral(linhas, idx);
+  renderSumario(linhas, idx);
+}
+
+function renderKpiGeral(linhas, idx){
+  const totPares=linhas.reduce((a,x)=>a+x.pares,0), totValor=linhas.reduce((a,x)=>a+x.valor,0);
+  const emDeclinio=linhas.filter(x=>x.classificacao==='declinio').length;
+  const emCrescimento=linhas.filter(x=>x.classificacao==='crescimento').length;
+  document.getElementById('geral-kpi').innerHTML =
+    kpi('','Volume total (MI)',fmtIdx(idx===1?totValor:totPares,idx),'somado de todos os representantes') +
+    kpi('verde','Em crescimento',f(emCrescimento),'vs. mesmo mês do ano anterior') +
+    kpi('coral','Em declínio',f(emDeclinio),'2+ meses consecutivos de queda YoY') +
+    kpi('azul','Representantes ativos',f(linhas.length),'com volume no período selecionado');
+}
+
+function renderSumario(linhas, idx){
+  const ul=document.getElementById('sumario-lista');
+  if(!linhas.length){ ul.innerHTML='<li>Sem dados para o período selecionado.</li>'; return; }
+  const porVol = linhas.slice().sort((a,b)=> (idx===1?b.valor-a.valor:b.pares-a.pares));
+  const porQueda = linhas.filter(x=>x.varPct<0).sort((a,b)=>a.varPct-b.varPct);
+  const porConc = linhas.slice().sort((a,b)=>b.concentracaoTop10-a.concentracaoTop10);
+  const emDeclinio3 = linhas.filter(x=>x.classificacao==='declinio' && x.mesesConsecutivos>=3);
+  const itens=[];
+  itens.push('<li><b>'+linhas.length+'</b> representantes ativos no Mercado Interno no período selecionado.</li>');
+  if(porVol[0]) itens.push('<li>Maior volume: <b>'+porVol[0].rep+'</b> ('+fmtIdx(idx===1?porVol[0].valor:porVol[0].pares,idx)+').</li>');
+  if(porQueda[0]) itens.push('<li>Maior queda vs. período anterior: <b>'+porQueda[0].rep+'</b> ('+porQueda[0].varPct+'%).</li>');
+  if(porConc[0]) itens.push('<li>Maior concentração de risco: <b>'+porConc[0].rep+'</b> — top 10 clientes representam <b>'+porConc[0].concentracaoTop10+'%</b> da carteira dele.</li>');
+  itens.push('<li><b>'+emDeclinio3.length+'</b> representante(s) em declínio há 3+ meses consecutivos — ver alerta de ação no painel de detalhe.</li>');
+  ul.innerHTML = itens.join('');
+}
+
+// ── PAINEL DO REPRESENTANTE SELECIONADO ─────────────────────────────────
+function renderPainelRep(rep){
+  const painel=document.getElementById('painel-rep');
+  const linha = ultimaLinhas.find(x=>x.rep===rep);
+  if(!linha){ painel.classList.remove('ativo'); return; }
+  painel.classList.add('ativo');
+  const {idx, cadencia} = getFiltros();
+  const p = periodoAtualAnterior(cadencia);
+  const hs = linha.hs;
+
+  document.getElementById('painel-nome').textContent = rep;
+  document.getElementById('painel-sub').textContent = p.labelAtual+' vs '+p.labelAnterior+' · '+hs.length+' clientes na carteira';
+  document.getElementById('painel-classif-badge').className = 'badge-classif '+linha.classificacao;
+  document.getElementById('painel-classif-badge').textContent = labelClassif(linha.classificacao);
+
+  // 4 dimensões
+  const sinal = linha.varPct>0?'+':'';
+  const dimensoesHtml =
+    kpi('','Volume ('+p.labelAtual+')',fmtIdx(idx===1?linha.valor:linha.pares,idx), sinal+linha.varPct+'% vs '+p.labelAnterior+' · Meta do mês: <span class="nao-informado">não informada</span>') +
+    kpi('azul','Mix / concentração',linha.concentracaoTop10+'%','top 10 clientes / volume total do representante') +
+    kpi('cinza','Carteira (pedidos futuros)','<span class="nao-informado">não disponível</span>','fonte atual não classifica programado vs. oportunidade') +
+    kpi(linha.clientesAtivos>0?'verde':'coral','Pulverização',f(linha.clientesAtivos)+' clientes ativos', textoTendenciaPulverizacao(hs, idx));
+  document.getElementById('painel-dimensoes').innerHTML = dimensoesHtml;
+
+  // Alertas
+  renderAlertasRep(rep, linha, hs, idx);
+
+  // Perda crítica escopada ao rep
+  renderPerdaCriticaRep(rep, hs, idx, cadencia);
+
+  // Tendência mensal escopada ao rep
+  renderTendenciaMensalRep(hs);
+}
+
+function textoTendenciaPulverizacao(hs, idx){
+  // Compara clientes ativos deste mês vs mesmo mês do ano anterior — mesma
+  // base de comparação da classificação geral.
+  const meses=(CARTEIRA.meses_disponiveis||[]).slice().sort();
+  if(!meses.length) return 'sem dados suficientes';
+  const ultimo = meses[meses.length-1];
+  const anoAnt = mesMenos12(ultimo);
+  if(!meses.includes(anoAnt)) return 'histórico insuficiente para comparar tendência';
+  const ativosAgora = hs.filter(h=>volumeHoldings([h],[ultimo],0)>0).length;
+  const ativosAntes = hs.filter(h=>volumeHoldings([h],[anoAnt],0)>0).length;
+  if(ativosAgora < ativosAntes){
+    return '<b style="color:var(--coral)">Queda de '+(ativosAntes-ativosAgora)+' cliente(s) ativos</b> vs. '+mesLabelYYYYMM(anoAnt)+' — queda de clientes ativos costuma antecipar queda de volume em 1-2 meses.';
+  }
+  if(ativosAgora > ativosAntes) return '<b style="color:var(--verde)">+'+(ativosAgora-ativosAntes)+' cliente(s) ativos</b> vs. '+mesLabelYYYYMM(anoAnt)+'.';
+  return 'Estável vs. '+mesLabelYYYYMM(anoAnt)+' ('+ativosAgora+' clientes ativos).';
+}
+
+function evolucaoConcentracaoTopCliente(hs, idx, nMeses){
+  const meses=(CARTEIRA.meses_disponiveis||[]).slice().sort().slice(-nMeses);
+  if(!meses.length || !hs.length) return null;
+  const totais = hs.map(h=>({h, v: volumeHoldings([h], meses, idx)}));
+  totais.sort((a,b)=>b.v-a.v);
+  const top = totais[0];
+  if(!top || top.v<=0) return null;
+  const serie = meses.map(m=>{
+    const totalRepMes = volumeHoldings(hs, [m], idx);
+    const totalTopMes = volumeHoldings([top.h], [m], idx);
+    return {mes:m, pct: totalRepMes? Math.round(totalTopMes/totalRepMes*100):0};
+  });
+  const crescente = serie.length>=2 && serie[serie.length-1].pct > serie[0].pct;
+  return {holding: top.h, serie, crescente};
+}
+
+function renderAlertasRep(rep, linha, hs, idx){
+  const el=document.getElementById('painel-alertas');
+  let html='';
+
+  if(linha.classificacao==='declinio' && linha.mesesConsecutivos>=3){
+    html += '<div class="card-alerta">'+
+      '<div class="titulo-alerta">⚠ Representante em declínio ('+linha.mesesConsecutivos+'+ meses consecutivos)</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Ação</span><b>Revisar clientes inativos da carteira dele, acompanhamento quinzenal.</b></div>'+
+      '<div class="alerta-linha"><span class="rotulo">Alvo</span>'+rep+'</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Gatilho</span>volume caiu vs. o mesmo mês do ano anterior em '+linha.mesesConsecutivos+' meses consecutivos (últimos meses comparáveis)</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Resultado esperado</span>reverter a tendência de queda e evitar que ela se estenda — revisão quinzenal até 2 meses seguidos de recuperação.</div>'+
+      '</div>';
+  }
+
+  const evo = evolucaoConcentracaoTopCliente(hs, idx, 6);
+  if(evo && evo.crescente){
+    const barras = evo.serie.map((s,i)=>{
+      const alto = Math.max(2, s.pct);
+      const sobe = i>0 && s.pct>evo.serie[i-1].pct;
+      return '<div class="barra'+(sobe?' subida':'')+'" style="height:'+alto+'%" title="'+mesLabelYYYYMM(s.mes)+': '+s.pct+'%"></div>';
+    }).join('');
+    const labels = evo.serie.map(s=>'<span>'+mesLabelYYYYMM(s.mes).split('/')[0]+'</span>').join('');
+    html += '<div class="card-alerta">'+
+      '<div class="titulo-alerta">⚠ Cliente concentrando % crescente da carteira</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Ação</span><b>Monitorar dependência deste cliente e diversificar a carteira.</b></div>'+
+      '<div class="alerta-linha"><span class="rotulo">Alvo</span>'+evo.holding+' — hoje '+evo.serie[evo.serie.length-1].pct+'% da carteira de '+rep+'</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Gatilho</span>concentração subiu de '+evo.serie[0].pct+'% ('+mesLabelYYYYMM(evo.serie[0].mes)+') para '+evo.serie[evo.serie.length-1].pct+'% ('+mesLabelYYYYMM(evo.serie[evo.serie.length-1].mes)+')</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Resultado esperado</span>reduzir a dependência antes que a saída desse cliente cause um baque desproporcional no volume do representante.</div>'+
+      '<div class="mini-serie">'+barras+'</div><div class="mini-lbl">'+labels+'</div>'+
+      '</div>';
+  } else if(evo){
+    html += '<div class="card-alerta">'+
+      '<div class="titulo-alerta">Concentração no maior cliente</div>'+
+      '<div class="alerta-linha">'+evo.holding+' representa <b>'+evo.serie[evo.serie.length-1].pct+'%</b> da carteira de '+rep+' — concentração estável ou em queda nos últimos '+evo.serie.length+' meses (sem tendência de alta).</div>'+
+      '</div>';
+  }
+
+  if(!html) html = '<div class="bloco-empty">Nenhum alerta ativo para este representante no período selecionado.</div>';
+  el.innerHTML = html;
+}
+
+function calcularParetoAnteriorRep(hs, idx, p){
+  const lista=[];
+  hs.forEach(h=>{
+    const v=volumeHoldings([h], p.anterior, idx);
+    if(v>0) lista.push({h,v});
+  });
+  lista.sort((a,b)=>b.v-a.v);
+  return lista;
+}
+function renderPerdaCriticaRep(rep, hs, idx, cadencia){
+  const p=periodoAtualAnterior(cadencia);
+  const TOPN=20;
+  const paretoAnt = calcularParetoAnteriorRep(hs, idx, p).slice(0,TOPN);
+  const posicaoPorHolding={};
+  paretoAnt.forEach((x,i)=>{ posicaoPorHolding[x.h]=i+1; });
+  const lista=[];
+  hs.forEach(h=>{
+    if(!(h in posicaoPorHolding)) return;
+    const pAtual = volumeHoldings([h], p.atual, 0);
+    if(pAtual>0) return;
+    lista.push({ h, posicao:posicaoPorHolding[h], pares: volumeHoldings([h],p.anterior,0), valor: volumeHoldings([h],p.anterior,1) });
+  });
+  lista.sort((a,b)=>a.posicao-b.posicao);
+
+  document.getElementById('painel-critico-badge').textContent = lista.length+' de '+paretoAnt.length;
+  document.getElementById('painel-critico-desc').textContent =
+    'Top '+paretoAnt.length+' clientes da CARTEIRA DESTE REPRESENTANTE (não da empresa inteira) no período anterior ('+p.labelAnterior+'), que zeraram no período atual ('+p.labelAtual+').';
+  const tb=document.getElementById('tb-painel-critico'); tb.innerHTML='';
+  document.getElementById('painel-critico-empty').style.display = lista.length ? 'none' : 'block';
+  lista.forEach(x=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML = '<td class="td-nome">'+x.h+'</td><td class="td-num">#'+x.posicao+'</td>'+
+      '<td class="td-num">'+f(x.pares)+'</td><td class="td-num">'+fmoeda(x.valor)+'</td>';
+    tb.appendChild(tr);
+  });
+}
+
+function renderTendenciaMensalRep(hs){
+  const meses=(CARTEIRA.meses_disponiveis||[]).slice().sort();
+  const novosPorMes={}, churnPorMes={};
+  meses.forEach(m=>{ novosPorMes[m]=0; churnPorMes[m]=0; });
+  hs.forEach(h=>{
+    const pm = primeiroMesMI(CARTEIRA.holdings[h]||{});
+    if(pm && pm in novosPorMes) novosPorMes[pm]++;
+  });
+  for(let i=0;i<meses.length-1;i++){
+    const mAtual=meses[i], mProx=meses[i+1];
+    hs.forEach(h=>{
+      const tinhaAtual = volumeHoldings([h],[mAtual],0)>0;
+      const tinhaProx = volumeHoldings([h],[mProx],0)>0;
+      if(tinhaAtual && !tinhaProx) churnPorMes[mProx]=(churnPorMes[mProx]||0)+1;
+    });
+  }
+  document.getElementById('painel-tendencia-badge').textContent = meses.length+' meses de histórico';
+  if(chartPainelTendencia){ chartPainelTendencia.destroy(); chartPainelTendencia=null; }
+  chartPainelTendencia = new Chart(document.getElementById('c-painel-tendencia'), {
+    type:'line',
+    data:{ labels: meses.map(mesLabelYYYYMM), datasets:[
+      {label:'Novos clientes', data: meses.map(m=>novosPorMes[m]||0), borderColor:'#6c9c37', backgroundColor:'#6c9c3733', tension:.25, fill:true},
+      {label:'Clientes perdidos', data: meses.map(m=>churnPorMes[m]||0), borderColor:'#ed6842', backgroundColor:'#ed684233', tension:.25, fill:true},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}}},
+      scales:{ x:{grid:{display:false},ticks:{font:{size:9}}}, y:{beginAtZero:true} } } });
+}
+
+function kpi(cls,label,val,sub){
+  return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v '+cls+'">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';
+}
+</script>
+</body>
+</html>
