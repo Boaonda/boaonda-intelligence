@@ -97,6 +97,24 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .pct-pill.na{background:rgba(125,124,121,.12);color:var(--txt-m)}
 .fix-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--coral);margin-left:6px;vertical-align:middle}
 
+/* ── Desempenho mensal (operação) — tabela com barras bullet ──────── */
+.op-table td{white-space:nowrap}
+.op-status{font-size:12px;margin-left:6px;font-weight:800}
+.op-status.ok{color:var(--verde)}
+.op-status.miss{color:var(--coral)}
+.op-na{color:var(--txt-m)}
+.bul-cell{min-width:190px}
+.bul-wrap{display:flex;align-items:center;gap:8px}
+.bul-pct{font-size:11px;font-weight:800;min-width:42px;text-align:right}
+.bul-track{position:relative;flex:1;height:14px;background:var(--card2);border-radius:3px}
+.bul-fill{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.bul-fill.verde{background:var(--verde)}
+.bul-fill.amarelo{background:var(--amarelo)}
+.bul-fill.coral{background:var(--coral)}
+.bul-target{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--txt);border-radius:1px}
+tr.op-total td{border-top:2px solid var(--line2);font-weight:800;color:var(--txt);background:var(--card2)}
+tr.op-total:hover td{background:var(--card2);color:var(--txt)}
+
 .chart-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:8px}
 .chart-card h4{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-s);margin-bottom:12px}
 .chart-wrap{position:relative;height:220px}
@@ -167,8 +185,35 @@ tr:hover td{background:var(--card2);color:var(--txt)}
     <div class="import-msg" id="import-msg"></div>
   </div>
 
+  <!-- ══ DESEMPENHO MENSAL (OPERAÇÃO) ══════════════════════════════ -->
+  <div class="stitle">Desempenho mensal — operação <span class="stitle-badge">meta geral da empresa</span></div>
+  <div class="tcard" id="op-card" style="overflow-x:auto">
+    <table class="op-table">
+      <thead><tr>
+        <th>Mês</th>
+        <th class="th-num">Qtde. Pares</th>
+        <th class="th-num">Meta Pares</th>
+        <th class="th-num">Meta Prop.</th>
+        <th>% da meta</th>
+        <th class="th-num">Vendas (R$)</th>
+        <th class="th-num">Dias úteis</th>
+        <th class="th-num">Pares/dia</th>
+        <th class="th-num">Clientes</th>
+        <th class="th-num">Pares/cliente</th>
+        <th class="th-num">Ticket (R$)</th>
+      </tr></thead>
+      <tbody id="op-tbody"></tbody>
+      <tfoot id="op-tfoot"></tfoot>
+    </table>
+  </div>
+  <div class="bloco-desc" style="font-size:10.5px;color:var(--txt-m);margin:8px 2px 0;line-height:1.6">
+    <b style="color:var(--txt-s)">Meta geral da empresa</b> é informada top-down (não é a soma das metas dos representantes).
+    <b style="color:var(--txt-s)">Meta Prop.</b> = meta pró-rateada pelos dias úteis decorridos no mês parcial — é a base do <b style="color:var(--txt-s)">% da meta</b> (marcador preto = 100%).
+    Dias úteis contam seg–sex (sem feriados). Ticket = Vendas ÷ clientes ativos.
+  </div>
+
   <!-- ══ ACOMPANHAMENTO ═════════════════════════════════════════════ -->
-  <div class="stitle">Acompanhamento — meta × realizado <span class="stitle-badge" id="ac-badge">–</span></div>
+  <div class="stitle">Acompanhamento por representante <span class="stitle-badge" id="ac-badge">–</span></div>
 
   <div id="ac-vazio" class="empty" style="display:none">
     Nenhuma meta cadastrada ainda.<br>
@@ -233,6 +278,7 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 <script>
 // ── Estado ──────────────────────────────────────────────────────────
 let CARTEIRA=null, METAS=null, IDX={}, REPS=[], MESES=[];
+let PARES_MES={}, VALOR_MES={}, CLIENTES_MES={}, CLIENTES_DISTINCT=0;
 let _sort={key:'ating', dir:-1}, _chart=null;
 
 // ── Higiene (espelho do painel por representante) ───────────────────
@@ -253,7 +299,8 @@ function fmt(n){ return (Math.round(n)||0).toLocaleString('pt-BR'); }
 
 // ── Índice rep→mês→pares (uma passada nas holdings) ─────────────────
 function construirIndice(){
-  IDX={}; const reps=new Set();
+  IDX={}; PARES_MES={}; VALOR_MES={}; CLIENTES_MES={}; CLIENTES_DISTINCT=0;
+  const reps=new Set();
   const meta=CARTEIRA.meta||{}, holdings=CARTEIRA.holdings||{};
   for(const h in meta){
     const r=(meta[h].representantes||{}).MI;
@@ -262,11 +309,19 @@ function construirIndice(){
     if(REPS_EXCLUIDOS.has(rep)) continue;
     reps.add(rep);
     const hm=holdings[h]; if(!hm) continue;
+    let ativoNoPeriodo=false;
     for(const mes in hm){
-      let tot=0; const tipos=hm[mes];
-      for(const t of TIPOS_MI_VALIDOS){ const k='MI_'+t; if(tipos[k]) tot+=tipos[k][0]; }
-      if(tot>0){ (IDX[rep]=IDX[rep]||{})[mes]=(IDX[rep][mes]||0)+tot; }
+      let pares=0, valor=0; const tipos=hm[mes];
+      for(const t of TIPOS_MI_VALIDOS){ const k='MI_'+t; if(tipos[k]){ pares+=tipos[k][0]; valor+=tipos[k][1]||0; } }
+      if(pares>0){
+        (IDX[rep]=IDX[rep]||{})[mes]=(IDX[rep][mes]||0)+pares;
+        PARES_MES[mes]=(PARES_MES[mes]||0)+pares;
+        VALOR_MES[mes]=(VALOR_MES[mes]||0)+valor;
+        CLIENTES_MES[mes]=(CLIENTES_MES[mes]||0)+1;
+        ativoNoPeriodo=true;
+      }
     }
+    if(ativoNoPeriodo) CLIENTES_DISTINCT++;
   }
   REPS=[...reps].sort();
 }
@@ -285,6 +340,98 @@ function projecao(comp,realizado){
   const dc=diaCorrente(comp);
   if(!dc || dc[0]<=0) return null;
   return Math.round(realizado*dc[1]/dc[0]);
+}
+
+// ── Meta geral da empresa (informada; NÃO é a soma dos reps) ────────
+function metaEmpresaMes(m){
+  const me=(METAS&&METAS.meta_empresa)||{};
+  if(me[m]!=null) return me[m];
+  const mg=(METAS&&METAS.meta_global)||{};
+  if(mg[m]!=null) return mg[m];
+  return null;
+}
+// ── Dias úteis (seg–sex, sem feriados) ──────────────────────────────
+function diasUteisMes(ano,mes,ateDia){
+  const dim=ateDia||new Date(ano,mes,0).getDate();
+  let c=0;
+  for(let d=1;d<=dim;d++){ const wd=new Date(ano,mes-1,d).getDay(); if(wd!==0&&wd!==6) c++; }
+  return c;
+}
+function fmtRS(n,dec){ dec=dec==null?0:dec; return (n||0).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+
+function metricasMes(m){
+  const ano=+m.slice(0,4), mes=+m.slice(4);
+  const pares=PARES_MES[m]||0, valor=VALOR_MES[m]||0, cli=CLIENTES_MES[m]||0;
+  const meta=metaEmpresaMes(m);
+  const parcial=ehParcial(m);
+  const duTotal=diasUteisMes(ano,mes);
+  let duDecorr=duTotal;
+  if(parcial){ const dc=diaCorrente(m); if(dc) duDecorr=diasUteisMes(ano,mes,dc[0]); }
+  const metaProp = meta!=null ? (parcial ? Math.round(meta*duDecorr/duTotal) : meta) : null;
+  return {
+    m, pares, valor, cli, meta, metaProp, parcial, duTotal, duDecorr,
+    pct: metaProp ? pares/metaProp*100 : null,
+    paresDia: duDecorr ? Math.round(pares/duDecorr) : 0,
+    paresCli: cli ? pares/cli : 0,
+    ticket: cli ? valor/cli : 0,
+  };
+}
+
+// ── Barra bullet: 0–150% (marcador em 100%), cor por status ─────────
+function bullet(pct){
+  if(pct==null) return '<div class="bul-wrap"><span class="bul-pct op-na">–</span><div class="bul-track"></div></div>';
+  const scale=150, cor=corAting(pct);
+  const w=Math.min(pct,scale)/scale*100, tgt=100/scale*100;
+  const corVar=cor==='verde'?'--verde':cor==='amarelo'?'--amarelo':'--coral';
+  return '<div class="bul-wrap"><span class="bul-pct" style="color:var('+corVar+')">'+Math.round(pct)+'%</span>'+
+    '<div class="bul-track"><div class="bul-fill '+cor+'" style="width:'+w.toFixed(1)+'%"></div>'+
+    '<div class="bul-target" style="left:'+tgt.toFixed(1)+'%"></div></div></div>';
+}
+
+function renderOperacao(){
+  if(!CARTEIRA) return;
+  const meses=MESES.filter(m=>metaEmpresaMes(m)!=null);  // só meses com meta da empresa
+  const tb=document.getElementById('op-tbody'), tf=document.getElementById('op-tfoot');
+  if(!meses.length){
+    tb.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--txt-m);padding:26px 10px;white-space:normal">'
+      +'Nenhuma meta geral da empresa informada ainda. Preencha a aba <b>META EMPRESA</b> da planilha (na seção acima) e importe para ver o desempenho mensal da operação.</td></tr>';
+    tf.innerHTML=''; return;
+  }
+  let tP=0, tV=0, tMeta=0, tMetaP=0, tDu=0;
+  const linhas=meses.map(m=>{
+    const x=metricasMes(m);
+    tP+=x.pares; tV+=x.valor; tDu+=x.duDecorr; tMeta+=x.meta; tMetaP+=(x.metaProp||0);
+    const icon = x.pares>=(x.metaProp||0) ? '<span class="op-status ok">✓</span>'
+                                          : '<span class="op-status miss">❗</span>';
+    return '<tr>'
+      +'<td class="td-nome">'+mesLabel(m)+(x.parcial?' <span class="op-na" style="font-weight:400;font-size:10px">parcial</span>':'')+'</td>'
+      +'<td class="td-num">'+fmt(x.pares)+icon+'</td>'
+      +'<td class="td-num">'+fmt(x.meta)+'</td>'
+      +'<td class="td-num">'+fmt(x.metaProp)+'</td>'
+      +'<td class="bul-cell">'+bullet(x.pct)+'</td>'
+      +'<td class="td-num">'+fmtRS(x.valor)+'</td>'
+      +'<td class="td-num">'+x.duDecorr+(x.parcial?'<span class="op-na">/'+x.duTotal+'</span>':'')+'</td>'
+      +'<td class="td-num">'+fmt(x.paresDia)+'</td>'
+      +'<td class="td-num">'+fmt(x.cli)+'</td>'
+      +'<td class="td-num">'+fmtRS(x.paresCli,2)+'</td>'
+      +'<td class="td-num">'+fmtRS(x.ticket,2)+'</td>'
+      +'</tr>';
+  }).join('');
+  const totPct = tMetaP ? tP/tMetaP*100 : null;
+  tb.innerHTML=linhas;
+  tf.innerHTML='<tr class="op-total">'
+    +'<td>Total</td>'
+    +'<td class="td-num">'+fmt(tP)+'</td>'
+    +'<td class="td-num">'+fmt(tMeta)+'</td>'
+    +'<td class="td-num">'+fmt(tMetaP)+'</td>'
+    +'<td class="bul-cell">'+bullet(totPct)+'</td>'
+    +'<td class="td-num">'+fmtRS(tV)+'</td>'
+    +'<td class="td-num">'+tDu+'</td>'
+    +'<td class="td-num">'+fmt(tDu?tP/tDu:0)+'</td>'
+    +'<td class="td-num op-na">–</td>'
+    +'<td class="td-num op-na">–</td>'
+    +'<td class="td-num op-na">–</td>'
+    +'</tr>';
 }
 
 // ── Semáforo de atingimento ─────────────────────────────────────────
@@ -337,6 +484,7 @@ async function recarregarMetas(compSel){
   const r=await fetch('dados_metas.json?_='+Date.now());
   METAS=r.ok?await r.json():null;
   document.getElementById('hdr-metas').textContent=(METAS&&METAS.gerado_em)||'–';
+  renderOperacao();
   montarAcompanhamento(compSel);
 }
 
@@ -386,21 +534,19 @@ function linhasRep(comp){
 }
 
 function renderKPIs(comp){
-  const metaGlobal=(((METAS.meta_global||{})[comp])!=null)?METAS.meta_global[comp]
-                   :Object.values(((METAS.metas||{})[comp])||{}).reduce((a,b)=>a+b,0);
+  const metaGlobal=metaEmpresaMes(comp);
   const realizadoMes=REPS.reduce((a,r)=>a+volRep(r,[comp]),0);
   const atingMes=metaGlobal?Math.round(realizadoMes/metaGlobal*100):null;
   const parcial=ehParcial(comp);
   const proj=parcial?projecao(comp,realizadoMes):null;
 
   const mesesAcum=mesesYTDComMeta(comp);
-  const metaAcum=mesesAcum.reduce((a,m)=>a+(((METAS.meta_global||{})[m])!=null?METAS.meta_global[m]
-                   :Object.values(((METAS.metas||{})[m])||{}).reduce((x,y)=>x+y,0)),0);
+  const metaAcum=mesesAcum.reduce((a,m)=>a+(metaEmpresaMes(m)||0),0);
   const realAcum=REPS.reduce((a,r)=>a+volRep(r,mesesAcum),0);
   const atingAcum=metaAcum?Math.round(realAcum/metaAcum*100):null;
 
   const k=[];
-  k.push(kpi('Meta do mês', fmt(metaGlobal), 'coral', 'pares · '+mesLabel(comp)));
+  k.push(kpi('Meta do mês (empresa)', metaGlobal!=null?fmt(metaGlobal):'–', 'coral', 'pares · '+mesLabel(comp)));
   k.push(kpi('Realizado', fmt(realizadoMes), 'azul', parcial?'parcial (mês em curso)':'mês fechado'));
   k.push(kpi('Atingimento', atingMes!=null?atingMes+'%':'–', corKpi(atingMes),
         atingMes!=null?(realizadoMes>=metaGlobal?'meta batida':'faltam '+fmt(Math.max(0,metaGlobal-realizadoMes))+' pares'):''));
@@ -460,9 +606,7 @@ function renderTabela(){
 
 function renderChart(comp){
   const meses=mesesYTDComMeta(comp);
-  const metaGlobalMes=m=>(((METAS.meta_global||{})[m])!=null?METAS.meta_global[m]
-        :Object.values(((METAS.metas||{})[m])||{}).reduce((x,y)=>x+y,0));
-  const dMeta=meses.map(metaGlobalMes);
+  const dMeta=meses.map(m=>metaEmpresaMes(m)||0);
   const dReal=meses.map(m=>REPS.reduce((a,r)=>a+volRep(r,[m]),0));
   const labels=meses.map(mesLabel);
   if(_chart) _chart.destroy();
@@ -494,6 +638,7 @@ Promise.all([
   MESES=(CARTEIRA.meses_disponiveis||[]).slice().sort();
   document.getElementById('hdr-data').textContent=CARTEIRA.gerado_em||'–';
   document.getElementById('hdr-metas').textContent=(METAS&&METAS.gerado_em)||'–';
+  renderOperacao();
 
   // Opções de competência para DEFINIR: meses disponíveis + próximos 3
   const ult=MESES[MESES.length-1];

@@ -255,6 +255,14 @@ def _sheet_leia_me(wb, competencia, meta_global):
         ('5. Salve e importe pelo portal (botão "Importar planilha" na tela de '
          'Metas Comerciais). O total sempre fecha na meta global.', False),
         ('', False),
+        ('ABA META EMPRESA — meta oficial da empresa por mês', True),
+        ('  A meta da empresa é informada top-down e NÃO é a soma das metas dos '
+         'representantes — pode ser diferente. Alimenta o quadro "Desempenho '
+         'mensal" da operação.', False),
+        ('  Preencha a coluna meta_empresa (pares) nos meses desejados — vem '
+         'pré-preenchida com o último valor gravado, ou com a meta global do mês.', False),
+        ('  Você pode informar vários meses de uma vez nessa aba.', False),
+        ('', False),
         ('COLUNAS DA ABA METAS', True),
         ('  rep*                   — representante (não altere; é a chave)  OBRIGATÓRIO', False),
         ('  realizado_3m           — pares vendidos nos últimos 3 meses fechados (apoio)', False),
@@ -345,6 +353,39 @@ def _sheet_metas(wb, carteira, competencia, meta_global, metas_atuais=None):
     ws.freeze_panes = 'B2'
 
 
+def _meses_meta_empresa(carteira):
+    """Janela de meses oferecida na aba META EMPRESA: últimos 13 meses de
+    dados + próximos 3 (para planejar meses ainda sem venda)."""
+    meses = sorted(carteira.get('meses_disponiveis', []))
+    if not meses:
+        base = datetime.now().strftime('%Y%m')
+        return [mes_menos(base, -n) for n in range(3, -4, -1)]
+    ult = meses[-1]
+    janela = [mes_menos(ult, n) for n in range(12, -4, -1)]  # ult-12 .. ult+3
+    return janela
+
+
+def _sheet_meta_empresa(wb, carteira, meta_empresa_atual, meta_global_atual):
+    """Aba META EMPRESA — meta oficial da empresa por mês (um valor por linha).
+    É informada top-down e NÃO é a soma das metas dos representantes; alimenta
+    o quadro 'Desempenho mensal' da operação. Pré-preenche com o valor já
+    gravado ou, na falta, com o meta_global (envelope distribuído) do mês."""
+    ws = wb.create_sheet('META EMPRESA')
+    ws.column_dimensions['A'].width = 16
+    ws.column_dimensions['B'].width = 18
+    ws.column_dimensions['C'].width = 40
+    _header(ws, 1, ['mes', 'meta_empresa', 'referência'])
+    for i, m in enumerate(_meses_meta_empresa(carteira), 2):
+        val = meta_empresa_atual.get(m)
+        if val in (None, ''):
+            val = meta_global_atual.get(m, '')
+        bg = _CORES['zebra_a'] if i % 2 == 0 else None
+        _cel(ws, i, 1, int(m), bg=bg, align='center')
+        _cel(ws, i, 2, int(val) if val not in (None, '') else '', bg=bg, align='center')
+        _cel(ws, i, 3, mes_label(m), bg=bg, ft='6b6b6b')
+    ws.freeze_panes = 'A2'
+
+
 # ─── Exportar ─────────────────────────────────────────────────────────────
 def exportar_metas_excel(dados_metas_path, carteira_path, competencia, meta_global):
     """Gera o Excel de metas (BytesIO). Se já houver metas gravadas para a
@@ -359,19 +400,22 @@ def exportar_metas_excel(dados_metas_path, carteira_path, competencia, meta_glob
     meta_global = int(meta_global)
     carteira = _carregar_carteira(carteira_path)
 
-    metas_atuais = {}
+    metas_atuais, meta_global_all, meta_empresa_all = {}, {}, {}
     if os.path.exists(dados_metas_path):
         with open(dados_metas_path, encoding='utf-8') as f:
             d = json.load(f)
         metas_atuais = (d.get('metas') or {}).get(competencia, {}) or {}
+        meta_global_all = d.get('meta_global') or {}
+        meta_empresa_all = d.get('meta_empresa') or {}
         if not meta_global:
-            meta_global = int((d.get('meta_global') or {}).get(competencia, 0))
+            meta_global = int(meta_global_all.get(competencia, 0))
 
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     _sheet_leia_me(wb, competencia, meta_global)
     _sheet_parametros(wb, competencia, meta_global)
     _sheet_metas(wb, carteira, competencia, meta_global, metas_atuais)
+    _sheet_meta_empresa(wb, carteira, meta_empresa_all, meta_global_all)
 
     buf = BytesIO()
     wb.save(buf)
@@ -498,8 +542,26 @@ def importar_metas_excel(path_excel, dados_metas_path, carteira_path, output_dir
     carteira = _carregar_carteira(carteira_path)
     metas, detalhe = sugerir_distribuicao(carteira, competencia, meta_global, fixados)
 
+    # Aba META EMPRESA (opcional) — meta oficial da empresa por mês
+    meta_empresa_import = {}
+    if 'META EMPRESA' in wb.sheetnames:
+        wsE = wb['META EMPRESA']
+        for row in wsE.iter_rows(min_row=2, values_only=True):
+            if not row or row[0] in (None, ''):
+                continue
+            mes = str(row[0]).strip()
+            if not (mes.isdigit() and len(mes) == 6):
+                continue
+            val = row[1] if len(row) > 1 else None
+            if val in (None, ''):
+                continue
+            try:
+                meta_empresa_import[mes] = int(round(float(val)))
+            except (TypeError, ValueError):
+                pass
+
     # Backup + merge da competência no JSON existente
-    dados = {'meta_global': {}, 'metas': {}, 'detalhe': {}}
+    dados = {'meta_global': {}, 'metas': {}, 'detalhe': {}, 'meta_empresa': {}}
     if os.path.exists(dados_metas_path):
         with open(dados_metas_path, encoding='utf-8') as f:
             dados = json.load(f)
@@ -511,6 +573,9 @@ def importar_metas_excel(path_excel, dados_metas_path, carteira_path, output_dir
     dados.setdefault('meta_global', {})[competencia] = meta_global
     dados.setdefault('metas', {})[competencia] = metas
     dados.setdefault('detalhe', {})[competencia] = detalhe
+    # meta_empresa: se a aba não trouxe o mês, usa o meta_global como padrão
+    dados.setdefault('meta_empresa', {}).update(meta_empresa_import)
+    dados['meta_empresa'].setdefault(competencia, meta_global)
     dados['gerado_em'] = datetime.now().strftime('%d/%m/%Y')
 
     with open(dados_metas_path, 'w', encoding='utf-8') as f:
@@ -525,6 +590,8 @@ def importar_metas_excel(path_excel, dados_metas_path, carteira_path, output_dir
         'reps': len(metas),
         'reps_fixados': n_fix,
         'total_distribuido': sum(metas.values()),
+        'meta_empresa': dados['meta_empresa'].get(competencia),
+        'meses_meta_empresa': len(meta_empresa_import) or None,
         'gerado_em': dados['gerado_em'],
     }
 
