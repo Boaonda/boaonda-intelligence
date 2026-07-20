@@ -743,12 +743,15 @@ function renderParetoChart(hs, p, idx, key){
 function renderRepsAtuantes(key, hs, p, idx){
   const repMap={};
   hs.forEach(h=>{
-    if(volumeHoldings([h],p.atual,0)===0) return;
     const rep=repDoHolding(h); if(!rep) return;
-    if(!repMap[rep]) repMap[rep]={vol:0};
-    repMap[rep].vol+=volumeHoldings([h],p.atual,idx);
+    const vAt=volumeHoldings([h],p.atual,idx);
+    const vAnt=volumeHoldings([h],p.anterior,idx);
+    if(vAt===0 && vAnt===0) return;
+    if(!repMap[rep]) repMap[rep]={vol:0, volAnt:0};
+    repMap[rep].vol+=vAt;
+    repMap[rep].volAnt+=vAnt;
   });
-  const reps=Object.entries(repMap).sort((a,b)=>b[1].vol-a[1].vol);
+  const reps=Object.entries(repMap).filter(([,d])=>d.vol>0).sort((a,b)=>b[1].vol-a[1].vol);
   document.getElementById('reps-badge').textContent=reps.length+' ativos no período';
   const el=document.getElementById('lista-reps');
   if(!reps.length){
@@ -756,13 +759,26 @@ function renderRepsAtuantes(key, hs, p, idx){
     return;
   }
   const totalVol=reps.reduce((a,[,d])=>a+d.vol,0);
-  let html='<table><thead><tr><th>Representante</th><th>'+(idx===1?'Valor':'Pares')+'</th><th>% da região</th><th></th></tr></thead><tbody>';
+  let html='<table><thead><tr>'+
+    '<th>Representante</th>'+
+    '<th>'+(idx===1?'Valor':'Pares')+'</th>'+
+    '<th>% da região</th>'+
+    '<th>Var. YoY</th>'+
+    '<th></th>'+
+    '</tr></thead><tbody>';
   reps.forEach(([rep,d])=>{
     const pct=totalVol?Math.round(d.vol/totalVol*100):0;
+    let varHtml='<td style="color:var(--txt-m)">–</td>';
+    if(d.volAnt>0){
+      const v=Math.round((d.vol-d.volAnt)/d.volAnt*100);
+      const cor=v>0?'var(--verde)':v<0?'var(--coral)':'var(--cinza)';
+      varHtml='<td class="td-num" style="color:'+cor+'">'+(v>0?'+':'')+v+'%</td>';
+    }
     html+='<tr>'+
       '<td class="td-nome">'+rep+'</td>'+
       '<td class="td-num">'+fmtIdx(d.vol,idx)+'</td>'+
       '<td>'+pct+'%</td>'+
+      varHtml+
       '<td><a href="boaonda_carteira_representante.html?rep='+encodeURIComponent(rep)+'" class="rep-link">↗ Ver painel</a></td>'+
       '</tr>';
   });
