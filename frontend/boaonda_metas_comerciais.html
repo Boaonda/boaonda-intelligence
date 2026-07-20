@@ -82,6 +82,7 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 .th-sort:hover{color:var(--txt)}
 .th-sort.on{color:var(--coral)}
+.th-sort .arr{font-size:9px;font-weight:700}
 
 .badge-classif{display:inline-block;font-size:9px;font-weight:700;padding:3px 10px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em}
 .badge-classif.crescimento{background:rgba(108,156,55,.14);color:var(--verde)}
@@ -244,17 +245,17 @@ tr.op-total:hover td{background:var(--card2);color:var(--txt)}
     <div class="tcard" style="overflow-x:auto">
       <table class="op-table">
         <thead><tr>
-          <th>Representante</th>
-          <th class="th-num">Meta Pares</th>
-          <th class="th-num">Pares Faltando</th>
-          <th class="th-num">Meta Prop.</th>
-          <th class="th-num">Qtde. Pares</th>
-          <th class="th-num">% Prop.</th>
-          <th class="th-num">Vendas (R$)</th>
-          <th>Representatividade</th>
-          <th class="th-num">Clientes At.</th>
-          <th class="th-num">Cli. Novos</th>
-          <th>Últ. 13 meses</th>
+          <th class="th-sort" id="th-det-rep" onclick="sortDet('rep')">Representante<span class="arr"></span></th>
+          <th class="th-num th-sort" id="th-det-meta" onclick="sortDet('meta')">Meta Pares<span class="arr"></span></th>
+          <th class="th-num th-sort" id="th-det-faltando" onclick="sortDet('faltando')">Pares Faltando<span class="arr"></span></th>
+          <th class="th-num th-sort" id="th-det-metaProp" onclick="sortDet('metaProp')">Meta Prop.<span class="arr"></span></th>
+          <th class="th-num th-sort" id="th-det-realizado" onclick="sortDet('realizado')">Qtde. Pares<span class="arr"></span></th>
+          <th class="th-num th-sort" id="th-det-pct" onclick="sortDet('pct')">% Prop.<span class="arr"></span></th>
+          <th class="th-num th-sort" id="th-det-vendas" onclick="sortDet('vendas')">Vendas (R$)<span class="arr"></span></th>
+          <th class="th-sort" id="th-det-share" onclick="sortDet('share')">Representatividade<span class="arr"></span></th>
+          <th class="th-num th-sort" id="th-det-atend" onclick="sortDet('atend')">Clientes At.<span class="arr"></span></th>
+          <th class="th-num th-sort" id="th-det-novos" onclick="sortDet('novos')">Cli. Novos<span class="arr"></span></th>
+          <th class="th-sort" id="th-det-ult13" onclick="sortDet('ult13')">Últ. 13 meses<span class="arr"></span></th>
         </tr></thead>
         <tbody id="det-tbody"></tbody>
         <tfoot id="det-tfoot"></tfoot>
@@ -451,6 +452,20 @@ function renderOperacao(){
 function corAting(pct){ if(pct==null) return 'na'; if(pct>=100) return 'verde'; if(pct>=80) return 'amarelo'; return 'coral'; }
 
 // ══ SEÇÃO DETALHADO POR REPRESENTANTE ══════════════════════════════
+let _detSort={key:'pct', dir:-1};  // padrão: % Proporcional decrescente
+function sortDet(key){
+  if(_detSort.key===key) _detSort.dir*=-1;
+  else _detSort={key, dir:(key==='rep'?1:-1)};
+  renderDetalhado();
+}
+function marcarSortDet(){
+  document.querySelectorAll('#det-wrap .th-sort').forEach(th=>{
+    th.classList.remove('on');
+    const a=th.querySelector('.arr'); if(a) a.textContent='';
+  });
+  const th=document.getElementById('th-det-'+_detSort.key);
+  if(th){ th.classList.add('on'); const a=th.querySelector('.arr'); if(a) a.textContent=_detSort.dir<0?' ▼':' ▲'; }
+}
 function metaPropRepMes(rep,m){
   const mm=((METAS&&METAS.metas)||{})[m]||{};
   if(mm[rep]==null) return null;
@@ -511,15 +526,26 @@ function renderDetalhado(){
     : meses.length+' meses · '+mesLabel(meses[0])+' a '+mesLabel(meses[meses.length-1]);
 
   const totalReal=meses.reduce((a,m)=>a+(PARES_MES[m]||0),0);
+  const ult13Meses=MESES.slice(-13);
   const universo=REPS.filter(rep=> volRep(rep,meses)>0 ||
     meses.some(m=>(((METAS&&METAS.metas)||{})[m]||{})[rep]!=null));
   const linhas=universo.map(rep=>{
     const d=detalheRep(rep,meses,mesesSet);
     d.share=totalReal?d.realizado/totalReal*100:0;
+    d.ult13=volRep(rep,ult13Meses);
     return d;
   });
   const maxShare=Math.max(0.001,...linhas.map(l=>l.share));
-  linhas.sort((a,b)=>{ const ap=a.pct==null?-1:a.pct, bp=b.pct==null?-1:b.pct; return bp-ap; });
+  linhas.sort((a,b)=>{
+    const k=_detSort.key, dir=_detSort.dir;
+    if(k==='rep') return dir*a.rep.localeCompare(b.rep,'pt');
+    const av=a[k], bv=b[k];
+    if(av==null && bv==null) return 0;
+    if(av==null) return 1;   // nulos sempre por último
+    if(bv==null) return -1;
+    return dir*(av-bv);
+  });
+  marcarSortDet();
 
   let tMeta=0,tFalt=0,tMetaP=0,tReal=0,tVen=0,tAt=0,tNov=0;
   const html=linhas.map(l=>{
