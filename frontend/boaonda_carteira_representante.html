@@ -240,6 +240,18 @@ fetch('dados_vendas_carteira.json?_='+Date.now())
     const hdr=document.getElementById('hdr-data');
     if(hdr && d) hdr.textContent = d.gerado_em || '–';
     renderTudo();
+    // Auto-select rep via URL param (?rep=NOME) — usado pelo link da página Por Região
+    const paramRep = new URLSearchParams(location.search).get('rep');
+    if(paramRep){
+      repSelecionado = paramRep;
+      renderRanking();
+      renderPainelRep(paramRep);
+      // Rola até a linha do rep no ranking
+      document.querySelectorAll('#tb-ranking tr').forEach(tr=>{
+        if(tr.querySelector('.td-nome')?.textContent === paramRep)
+          tr.scrollIntoView({behavior:'smooth', block:'center'});
+      });
+    }
   })
   .catch(()=>{});
 

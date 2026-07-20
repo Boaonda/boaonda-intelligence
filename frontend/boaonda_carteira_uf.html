@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Por Região</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --line:#262b3a;--line2:#333a4d;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+
+.header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:19px;font-weight:800;color:var(--txt)}
+.h-sub{font-size:10.5px;color:var(--txt-m);margin-top:3px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.back-link{font-size:11px;font-weight:700;color:var(--azul);text-decoration:none}
+.back-link:hover{color:var(--coral)}
+
+.filtros{background:var(--card);border-bottom:1px solid var(--line);padding:12px 32px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sel{background:var(--card2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;outline:none}
+.sel:focus{border-color:var(--coral)}
+.filtro-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
+.filtro-hint{font-size:9.5px;color:var(--txt-m);margin-left:auto;font-style:italic}
+.canal-travado{background:rgba(73,148,199,.12);border:1px solid rgba(73,148,199,.3);color:var(--azul);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.gran-toggle{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.gran-btn{background:transparent;border:none;color:var(--txt-s);font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;padding:7px 14px;cursor:pointer;transition:.15s}
+.gran-btn:hover{color:var(--txt);background:rgba(255,255,255,.04)}
+.gran-btn.ativo{background:var(--coral);color:#fff}
+
+.main{padding:24px 32px;max-width:1400px;margin:0 auto}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin:28px 0 14px;display:flex;align-items:center;gap:12px}
+.stitle:first-child{margin-top:0}
+.stitle::after{content:'';flex:1;height:1px;background:var(--line)}
+.stitle-badge{font-size:9px;background:rgba(237,104,66,.1);color:var(--coral);padding:2px 8px;border-radius:4px;font-weight:700;text-transform:none;letter-spacing:0}
+
+.sumario{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:18px 20px;margin-bottom:20px}
+.sumario ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.sumario li{font-size:12.5px;color:var(--txt-s);padding-left:16px;position:relative}
+.sumario li::before{content:'▸';position:absolute;left:0;color:var(--coral)}
+.sumario li b{color:var(--txt);font-weight:700}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
+.kpi.verde{border-top-color:var(--verde)}
+.kpi.azul{border-top-color:var(--azul)}
+.kpi.cinza{border-top-color:var(--cinza)}
+.kpi.coral2{border-top-color:var(--coral2)}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.kpi-v{font-size:1.5rem;font-weight:800;color:var(--coral)}
+.kpi-v.verde{color:var(--verde)}
+.kpi-v.azul{color:var(--azul)}
+.kpi-v.cinza{color:var(--cinza)}
+.kpi-v.coral2{color:var(--coral2)}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px}
+
+.card-alerta-global{background:var(--card);border:1px solid rgba(237,104,66,.35);border-top:3px solid var(--coral);border-radius:10px;padding:18px;margin-bottom:14px}
+.card-alerta{background:var(--card2);border:1px solid rgba(237,104,66,.35);border-top:3px solid var(--coral);border-radius:10px;padding:16px;margin-bottom:16px}
+.titulo-alerta{font-size:11px;font-weight:700;color:var(--coral);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.alerta-linha{font-size:12px;color:var(--txt-s);line-height:1.7;margin-bottom:3px}
+.alerta-linha b{color:var(--txt)}
+.alerta-linha .rotulo{color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-right:6px}
+
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:8px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line)}
+td{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--txt-s)}
+tr:last-child td{border:none}
+tr:hover td{background:var(--card2);color:var(--txt)}
+.td-nome{font-weight:700;color:var(--txt)}
+.td-num{font-weight:800;color:var(--txt)}
+.th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.th-sort:hover{color:var(--txt)}
+.tr-item{cursor:pointer}
+.tr-item.selecionado td{background:rgba(237,104,66,.08)}
+.tr-item.selecionado td.td-nome{color:var(--coral)}
+.bloco-empty{padding:20px;text-align:center;color:var(--txt-m);font-size:12px}
+.bloco-desc{font-size:11px;color:var(--txt-m);margin-bottom:12px;line-height:1.5}
+
+.badge-classif{display:inline-block;font-size:9px;font-weight:700;padding:3px 10px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em}
+.badge-classif.crescimento{background:rgba(108,156,55,.14);color:var(--verde)}
+.badge-classif.estavel{background:rgba(155,154,152,.14);color:var(--cinza)}
+.badge-classif.declinio{background:rgba(237,104,66,.14);color:var(--coral)}
+.badge-classif.indefinido{background:rgba(125,124,121,.14);color:var(--txt-m)}
+
+.painel-uf{display:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px;margin-top:8px}
+.painel-uf.ativo{display:block}
+.painel-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.painel-nome{font-size:16px;font-weight:800;color:var(--txt)}
+.painel-sub{font-size:10.5px;color:var(--txt-m);margin-top:3px}
+
+.pareto-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
+@media(max-width:900px){.main{padding:14px}.pareto-row{grid-template-columns:1fr}}
+
+.mini-serie{display:flex;gap:4px;align-items:flex-end;height:40px;margin:10px 0}
+.mini-serie .barra{flex:1;background:var(--azul);border-radius:2px 2px 0 0;position:relative;min-height:2px}
+.mini-serie .barra.subida{background:var(--coral)}
+.mini-lbl{display:flex;gap:4px;font-size:8px;color:var(--txt-m)}
+.mini-lbl span{flex:1;text-align:center}
+
+.rep-link{font-size:10px;font-weight:700;color:var(--azul);text-decoration:none;border:1px solid rgba(73,148,199,.3);border-radius:5px;padding:2px 8px;white-space:nowrap}
+.rep-link:hover{color:var(--coral);border-color:rgba(237,104,66,.4)}
+
+.rodape-nota{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-top:32px}
+.rodape-nota h3{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-s);margin-bottom:8px}
+.rodape-nota ul{list-style:none;display:flex;flex-direction:column;gap:5px}
+.rodape-nota li{font-size:11px;color:var(--txt-m);padding-left:14px;position:relative;line-height:1.5}
+.rodape-nota li::before{content:'•';position:absolute;left:0;color:var(--cinza)}
+</style>
+</head>
+<!-- SIDEBAR: incluída via Jinja a partir de frontend/_sidebar_vendas.html -->
+<body data-active="uf">
+{% include '_sidebar_vendas.html' %}
+
+<div class="header">
+  <div>
+    <div class="h-badge">Análise Regional</div>
+    <div class="h-title">Por Região</div>
+    <div class="h-sub">Performance MI por UF e macro-região · Ranking, mix de espécie, cobertura territorial e alertas</div>
+  </div>
+  <div style="text-align:right">
+    <a href="boaonda_vendas_catalogo.html" class="back-link">← Voltar para Vendas</a>
+    <div class="h-meta">Atualizado: <strong id="hdr-data">–</strong></div>
+  </div>
+</div>
+
+<div class="filtros">
+  <span class="filtro-label">Cadência</span>
+  <select class="sel" id="f-cadencia" onchange="renderTudo()">
+    <option value="mes">Mês atual</option>
+    <option value="3meses">Trimestre (3 meses fechados)</option>
+    <option value="6meses">Semestre (6 meses fechados)</option>
+    <option value="ano" selected>Ano (YTD) vs ano anterior (mesmo período)</option>
+  </select>
+  <span class="filtro-label">Visão</span>
+  <select class="sel" id="f-visao" onchange="renderTudo()">
+    <option value="0">Pares</option>
+    <option value="1">Valor (R$)</option>
+  </select>
+  <span class="filtro-label">Granularidade</span>
+  <div class="gran-toggle">
+    <button class="gran-btn ativo" data-gran="uf" onclick="setGranularidade('uf')">Por UF</button>
+    <button class="gran-btn" data-gran="macro" onclick="setGranularidade('macro')">Por Macro-região</button>
+  </div>
+  <span class="canal-travado">● Mercado Interno</span>
+  <span class="filtro-hint" id="periodo-hint"></span>
+</div>
+
+<div class="main">
+
+  <!-- SUMÁRIO EXECUTIVO -->
+  <div class="sumario">
+    <div class="stitle" style="margin:0 0 12px">Sumário executivo</div>
+    <ul id="sumario-lista"><li>Carregando dados...</li></ul>
+  </div>
+
+  <!-- KPI GLOBAIS -->
+  <div class="kpi-row" id="geral-kpi"></div>
+
+  <!-- ALERTAS GLOBAIS (queda regional + território descoberto) -->
+  <div id="alertas-globais"></div>
+
+  <!-- RANKING -->
+  <div class="stitle">
+    Ranking — Mercado Interno
+    <span class="stitle-badge" id="ranking-badge">–</span>
+  </div>
+  <div class="bloco-desc">Clique numa linha para abrir o painel de detalhe. Todos os valores excluem UF=EX, holdings sem UF, ATEND. COMERCIAL e e-commerce. Variação vs. mesmo período do ano anterior (YoY) — controla sazonalidade do calendário de calçados.</div>
+  <div class="tcard">
+    <table>
+      <thead>
+        <tr>
+          <th class="th-sort" onclick="sortRankingBy('key')" id="th-rk-key">Região</th>
+          <th class="th-sort" onclick="sortRankingBy('pares')" id="th-rk-pares">Pares</th>
+          <th class="th-sort" onclick="sortRankingBy('valor')" id="th-rk-valor">Valor (R$)</th>
+          <th class="th-sort" onclick="sortRankingBy('varPct')" id="th-rk-varPct">Var. YoY</th>
+          <th class="th-sort" onclick="sortRankingBy('nClientes')" id="th-rk-nClientes">Clientes</th>
+          <th class="th-sort" onclick="sortRankingBy('nReps')" id="th-rk-nReps">Reps</th>
+          <th class="th-sort" onclick="sortRankingBy('classifOrdem')" id="th-rk-classifOrdem">Tendência</th>
+        </tr>
+      </thead>
+      <tbody id="tb-ranking"></tbody>
+    </table>
+    <div class="bloco-empty" id="ranking-empty" style="display:none">Sem dados para o período selecionado.</div>
+  </div>
+
+  <!-- PAINEL DA REGIÃO SELECIONADA -->
+  <div class="painel-uf" id="painel-uf">
+    <div class="painel-head">
+      <div>
+        <div class="painel-nome" id="painel-nome">–</div>
+        <div class="painel-sub" id="painel-sub"></div>
+      </div>
+      <span class="badge-classif indefinido" id="painel-classif-badge">–</span>
+    </div>
+
+    <div class="kpi-row" id="painel-dimensoes"></div>
+
+    <div class="stitle">Mix de espécie de venda <span class="stitle-badge" id="mix-badge">–</span></div>
+    <div class="bloco-desc">Proporção de Programado / Pronta Entrega / Venda Mista. Crescimento de PE às custas de Programado sinaliza perda de previsibilidade — o mercado compra menos no futuro e mais no pronto.</div>
+    <div class="pareto-row">
+      <div class="tcard" style="min-height:220px"><canvas id="c-mix"></canvas></div>
+      <div id="mix-aviso"></div>
+    </div>
+
+    <div class="stitle">Concentração de clientes (Pareto) <span class="stitle-badge" id="pareto-badge">–</span></div>
+    <div class="bloco-desc" id="pareto-desc">Top clientes desta região — relativo ao volume da região, não da empresa inteira.</div>
+    <div class="tcard" style="min-height:260px"><canvas id="c-pareto"></canvas></div>
+
+    <div class="stitle">Representantes atuantes nesta região <span class="stitle-badge" id="reps-badge">–</span></div>
+    <div class="tcard" id="lista-reps"></div>
+
+    <div id="painel-alertas"></div>
+  </div>
+
+  <!-- RODAPÉ METODOLÓGICO -->
+  <div class="rodape-nota" style="margin-top:40px">
+    <h3>Nota metodológica</h3>
+    <ul>
+      <li><b>Fonte de dados:</b> <code>dados_vendas_carteira.json</code> — histórico mensal de vendas por holding/cliente, gerado a partir da view MySQL <code>v_entradapedidos_extended</code> via 3YS.csv.</li>
+      <li><b>Canal travado:</b> Mercado Interno (MI) — apenas grupos de cadastro CALCADO - MERCADO INTERNO e CALCADO - CLIENTES ISENTOS. Não há filtro de canal na UI desta página.</li>
+      <li><b>Espécies incluídas:</b> Programado (cod 1), Pronta Entrega (cod 22) e Venda Mista (cod 31). Excluído residual MI_ECOM (cod 32 sob canal MI, achado real de 18 pares em 2 holdings).</li>
+      <li><b>Excluídos do ranking de representantes:</b> "ATEND. COMERCIAL - OUTRAS MARCAS", "ATEND.COMERCIAL INTERNO- BOAONDA" e "ECOMMERCE" — não são representantes de equipe comercial. Holdings sem rep válido contribuem para o volume da UF mas não para os contadores de cobertura.</li>
+      <li><b>Unificações de representante:</b> ALEXSHOES REPRESENTACOES LTDA → FRALDA &amp; COMPANHIA LTDA; ROGERIO RAPPA SILVEIRA - ME → RRAPPA REPRESENTACOES LTDA (mesma operação sob dois cadastros).</li>
+      <li><b>UF = EX excluída:</b> identifica exportação na base; por definição fora do escopo de Mercado Interno. Holdings com UF vazia também excluídos. Nenhum deles aparece como categoria, total ou sub-total nesta página.</li>
+      <li><b>Agrupamento macro-regional:</b> divisão oficial do IBGE (5 regiões). UFs não mapeadas são descartadas (não devem existir em condições normais).</li>
+      <li><b>Comparação temporal:</b> sempre vs. mesmo período do ano anterior (YoY) — nunca vs. mês imediatamente anterior. Elimina por construção a sazonalidade do calendário de calçados (volta às aulas, Dia das Mães, coleções outono/inverno e primavera/verão).</li>
+      <li><b>Declínio:</b> 2 ou mais meses consecutivos com queda YoY nos últimos 6 meses comparáveis. Estável: último mês comparável sem queda. Crescimento: último mês comparável com alta.</li>
+      <li><b>Meta regional:</b> não existe meta de volume por UF/região definida. Leitura de performance é exclusivamente por variação YoY.</li>
+      <li><b>Threshold cliente-âncora:</b> 1 cliente com ≥ 50% do volume MI da região no período selecionado.</li>
+    </ul>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+Chart.defaults.font.family = "'Montserrat',sans-serif";
+Chart.defaults.color = '#7d7c79';
+
+// ── ESTADO ─────────────────────────────────────────────────────────────────
+let CARTEIRA = null;
+let itemSelecionado = null;
+let granularidade = 'uf';
+let chartMix = null;
+let chartPareto = null;
+let sortRankState = {key:'pares', dir:-1};
+let ultimaLinhas = [];
+
+// ── CONSTANTES ──────────────────────────────────────────────────────────────
+const MACRO_REGIOES = {
+  'Norte':       new Set(['AC','AM','AP','PA','RO','RR','TO']),
+  'Nordeste':    new Set(['AL','BA','CE','MA','PB','PE','PI','RN','SE']),
+  'Centro-Oeste':new Set(['DF','GO','MS','MT']),
+  'Sudeste':     new Set(['ES','MG','RJ','SP']),
+  'Sul':         new Set(['PR','RS','SC']),
+};
+const REPS_EXCLUIDOS = new Set([
+  'ATEND. COMERCIAL - OUTRAS MARCAS',
+  'ATEND.COMERCIAL INTERNO- BOAONDA',
+  'ECOMMERCE',
+]);
+const REP_UNIFICAR = {
+  'ALEXSHOES REPRESENTACOES LTDA': 'FRALDA & COMPANHIA LTDA',
+  'ROGERIO RAPPA SILVEIRA - ME':   'RRAPPA REPRESENTACOES LTDA',
+};
+const TIPOS_MI_VALIDOS = ['PROG','PE','MISTA'];
+
+// ── CARREGAMENTO ─────────────────────────────────────────────────────────────
+fetch('dados_vendas_carteira.json?_='+Date.now())
+  .then(r => r.ok ? r.json() : null)
+  .then(d => {
+    CARTEIRA = d;
+    const hdr = document.getElementById('hdr-data');
+    if (hdr && d) hdr.textContent = d.gerado_em || '–';
+    renderTudo();
+  }).catch(() => {});
+
+// ── HELPERS DE REPRESENTANTE ─────────────────────────────────────────────────
+function normalizarRep(nome){ return REP_UNIFICAR[nome] || nome; }
+function repDoHolding(h){
+  const meta = (CARTEIRA.meta || {})[h] || {};
+  const r = (meta.representantes || {}).MI;
+  if (!r) return null;
+  const norm = normalizarRep(r);
+  return REPS_EXCLUIDOS.has(norm) ? null : norm;
+}
+
+// ── MAPA UF → HOLDINGS ──────────────────────────────────────────────────────
+function buildUFMap(){
+  const map = {};
+  for (const h in CARTEIRA.holdings){
+    const uf = ((CARTEIRA.meta || {})[h] || {}).uf || '';
+    if (!uf || uf === 'EX') continue;
+    (map[uf] = map[uf] || []).push(h);
+  }
+  return map;
+}
+
+// ── MAPA MACRO-REGIÃO → HOLDINGS ─────────────────────────────────────────────
+function ufParaMacro(uf){
+  for (const [m, ufs] of Object.entries(MACRO_REGIOES)) if (ufs.has(uf)) return m;
+  return null;
+}
+function buildMacroMap(ufMap){
+  const map = {};
+  for (const [uf, hs] of Object.entries(ufMap)){
+    const m = ufParaMacro(uf);
+    if (!m) continue;
+    if (!map[m]) map[m] = {holdings:[], ufs:[]};
+    map[m].holdings.push(...hs);
+    map[m].ufs.push(uf);
+  }
+  return map;
+}
+
+// ── VOLUME ───────────────────────────────────────────────────────────────────
+function volumeHoldings(hs, listaMeses, idx){
+  let tot = 0;
+  for (const h of hs){
+    const mo = CARTEIRA.holdings[h]; if (!mo) continue;
+    for (const m of listaMeses){
+      const t = mo[m]; if (!t) continue;
+      for (const tp of TIPOS_MI_VALIDOS){ const k='MI_'+tp; if(t[k]) tot+=t[k][idx]; }
+    }
+  }
+  return tot;
+}
+
+function calcularMix(hs, listaMeses, idx){
+  const r = {PROG:0, PE:0, MISTA:0};
+  for (const h of hs){
+    const mo = CARTEIRA.holdings[h]; if (!mo) continue;
+    for (const m of listaMeses){
+      const t = mo[m]; if (!t) continue;
+      for (const tp of TIPOS_MI_VALIDOS){ const k='MI_'+tp; if(t[k]) r[tp]+=t[k][idx]; }
+    }
+  }
+  return r;
+}
+
+// ── PERÍODOS (mesmo padrão da página de Representante) ────────────────────────
+function ym(ano,mes){ return String(ano)+String(mes).padStart(2,'0'); }
+function mesLabelYYYYMM(m){
+  const mn=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return mn[parseInt(m.slice(4))-1]+'/'+m.slice(0,4);
+}
+function mesMenos12(m){ return ym(+m.slice(0,4)-1, +m.slice(4)); }
+function progressoPeriodo(cadencia){
+  const hoje=new Date(), d=hoje.getDate();
+  if(cadencia==='mes'){
+    const dias=new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();
+    return d<dias?`mês em andamento — dia ${d} de ${dias}`:'mês fechado';
+  }
+  if(cadencia==='3meses'||cadencia==='6meses'){
+    const n=cadencia==='3meses'?3:6;
+    return `${n} meses fechados — comparado ao mesmo intervalo do ano anterior`;
+  }
+  const diaDoAno=Math.ceil((hoje-new Date(hoje.getFullYear(),0,0))/864e5);
+  return diaDoAno<365?`ano em andamento — dia ${diaDoAno} de 365`:'ano fechado';
+}
+function periodoAtualAnterior(cadencia){
+  const hoje=new Date(), anoAtual=hoje.getFullYear(), mesAtual=hoje.getMonth()+1;
+  if(cadencia==='mes'){
+    const atual=[ym(anoAtual,mesAtual)];
+    let am=mesAtual-1, aa=anoAtual; if(am<1){am=12;aa--;}
+    return {atual, anterior:[ym(aa,am)], labelAtual:mesLabelYYYYMM(atual[0]), labelAnterior:mesLabelYYYYMM(ym(aa,am))};
+  }
+  if(cadencia==='3meses'||cadencia==='6meses'){
+    const n=cadencia==='3meses'?3:6;
+    let mesRef=mesAtual-1, anoRef=anoAtual; if(mesRef<1){mesRef=12;anoRef--;}
+    const atual=[];
+    let a=anoRef, m=mesRef;
+    for(let i=0;i<n;i++){ atual.unshift(ym(a,m)); m--; if(m<1){m=12;a--;} }
+    const anterior=atual.map(mm=>ym(+mm.slice(0,4)-1, +mm.slice(4)));
+    return {atual, anterior,
+      labelAtual: mesLabelYYYYMM(atual[0])+'–'+mesLabelYYYYMM(atual[atual.length-1]),
+      labelAnterior: mesLabelYYYYMM(anterior[0])+'–'+mesLabelYYYYMM(anterior[anterior.length-1])};
+  }
+  const atual=[], anterior=[];
+  for(let m=1;m<=mesAtual;m++){ atual.push(ym(anoAtual,m)); anterior.push(ym(anoAtual-1,m)); }
+  return {atual, anterior,
+    labelAtual: anoAtual+' (jan–'+mesLabelYYYYMM(atual[atual.length-1]).split('/')[0]+')',
+    labelAnterior: (anoAtual-1)+' (mesmo intervalo)'};
+}
+function avisoCoberturaHistorico(p){
+  const disp=new Set(CARTEIRA.meses_disponiveis||[]);
+  const falt=p.anterior.filter(m=>!disp.has(m));
+  if(!falt.length) return '';
+  return ` · ⚠ histórico não cobre ${falt.length} mês(es) anterior(es) (${falt.map(mesLabelYYYYMM).join(', ')})`;
+}
+
+// ── CLASSIFICAÇÃO YoY ────────────────────────────────────────────────────────
+function classificarTendencia(hs, idx){
+  const meses=(CARTEIRA.meses_disponiveis||[]).slice().sort();
+  const comp=meses.filter(m=>meses.includes(mesMenos12(m))).slice(-6);
+  if(!comp.length) return {classificacao:'indefinido', consecutivas:0};
+  const deltas=comp.map(m=>({
+    atual: volumeHoldings(hs,[m],idx),
+    anoAnt: volumeHoldings(hs,[mesMenos12(m)],idx),
+  }));
+  const quedas=deltas.map(d=>d.atual<d.anoAnt);
+  let cons=0; for(let i=quedas.length-1;i>=0;i--){ if(quedas[i]) cons++; else break; }
+  const classif=cons>=2?'declinio':!quedas[quedas.length-1]?'crescimento':'estavel';
+  return {classificacao:classif, consecutivas:cons};
+}
+function ordemClassif(c){ return c==='declinio'?0:c==='estavel'?1:c==='crescimento'?2:3; }
+function labelClassif(c){
+  return {declinio:'Declínio',estavel:'Estável',crescimento:'Crescimento',indefinido:'Dados insuficientes'}[c]||c;
+}
+
+// ── GRANULARIDADE ────────────────────────────────────────────────────────────
+function setGranularidade(g){
+  granularidade=g;
+  document.querySelectorAll('.gran-btn').forEach(b=>b.classList.toggle('ativo', b.dataset.gran===g));
+  itemSelecionado=null;
+  document.getElementById('painel-uf').classList.remove('ativo');
+  renderTudo();
+}
+
+// ── FILTROS ──────────────────────────────────────────────────────────────────
+function getFiltros(){ return {idx:+document.getElementById('f-visao').value, cadencia:document.getElementById('f-cadencia').value}; }
+
+// ── RENDER GERAL ─────────────────────────────────────────────────────────────
+function renderTudo(){
+  if(!CARTEIRA) return;
+  const {cadencia}=getFiltros();
+  const p=periodoAtualAnterior(cadencia);
+  document.getElementById('periodo-hint').textContent=
+    'Atual: '+p.labelAtual+' · Anterior: '+p.labelAnterior+' · '+progressoPeriodo(cadencia)+avisoCoberturaHistorico(p);
+  const ufMap=buildUFMap();
+  const macroMap=buildMacroMap(ufMap);
+  const items=granularidade==='uf'?ufMap:macroMap;
+  renderAlertasGlobais(ufMap, p);
+  renderRanking(items);
+  if(itemSelecionado) renderPainelUF(itemSelecionado, items);
+}
+
+// ── RANKING ──────────────────────────────────────────────────────────────────
+function toggleSort(state, key){
+  if(state.key===key) state.dir=-state.dir; else{ state.key=key; state.dir=key==='key'?1:-1; }
+}
+function sortRankingBy(key){ toggleSort(sortRankState, key); const ufMap=buildUFMap(); renderRanking(granularidade==='uf'?ufMap:buildMacroMap(ufMap)); }
+function aplicarSort(lista, state){
+  const {key,dir}=state;
+  lista.sort((a,b)=>{ const va=a[key],vb=b[key]; if(typeof va==='string') return dir*va.localeCompare(vb,'pt-BR'); return dir*((va||0)-(vb||0)); });
+}
+function atualizarSetasHeader(state, keys){
+  keys.forEach(k=>{
+    const th=document.getElementById('th-rk-'+k); if(!th) return;
+    let base=th.getAttribute('data-label'); if(!base){base=th.textContent;th.setAttribute('data-label',base);}
+    th.textContent=base+(state.key===k?(state.dir===1?' ▲':' ▼'):'');
+  });
+}
+
+function construirRanking(items){
+  const {idx,cadencia}=getFiltros();
+  const p=periodoAtualAnterior(cadencia);
+  const linhas=[];
+  for(const [key, data] of Object.entries(items)){
+    const hs=Array.isArray(data)?data:data.holdings;
+    const pares=volumeHoldings(hs,p.atual,0);
+    const valor=volumeHoldings(hs,p.atual,1);
+    const paresAnt=volumeHoldings(hs,p.anterior,0);
+    const valorAnt=volumeHoldings(hs,p.anterior,1);
+    const volA=idx===1?valor:pares, volB=idx===1?valorAnt:paresAnt;
+    const varPct=volB?Math.round((volA-volB)/volB*100):(volA>0?100:0);
+    const nClientes=hs.filter(h=>volumeHoldings([h],p.atual,0)>0).length;
+    const repsSet=new Set();
+    hs.forEach(h=>{ if(volumeHoldings([h],p.atual,0)>0){ const r=repDoHolding(h); if(r) repsSet.add(r); } });
+    const cl=classificarTendencia(hs,idx);
+    linhas.push({key, hs, pares, valor, varPct, nClientes, nReps:repsSet.size,
+      classificacao:cl.classificacao, consecutivas:cl.consecutivas, classifOrdem:ordemClassif(cl.classificacao),
+      ufs:Array.isArray(data)?null:data.ufs});
+  }
+  return linhas;
+}
+
+function renderRanking(items){
+  const {idx}=getFiltros();
+  const linhas=construirRanking(items);
+  ultimaLinhas=linhas;
+  aplicarSort(linhas, sortRankState);
+  atualizarSetasHeader(sortRankState,['key','pares','valor','varPct','nClientes','nReps','classifOrdem']);
+  const isUF=granularidade==='uf';
+  document.getElementById('ranking-badge').textContent=linhas.length+(isUF?' estados':' macro-regiões');
+  const tb=document.getElementById('tb-ranking'); tb.innerHTML='';
+  document.getElementById('ranking-empty').style.display=linhas.length?'none':'block';
+  linhas.forEach(x=>{
+    const tr=document.createElement('tr');
+    tr.className='tr-item'+(itemSelecionado===x.key?' selecionado':'');
+    tr.onclick=()=>{
+      itemSelecionado=itemSelecionado===x.key?null:x.key;
+      renderRanking(items);
+      if(itemSelecionado) renderPainelUF(itemSelecionado, items);
+      else document.getElementById('painel-uf').classList.remove('ativo');
+    };
+    const sinal=x.varPct>0?'+':'';
+    const varCor=x.varPct>0?'color:var(--verde)':x.varPct<0?'color:var(--coral)':'';
+    const nomeExtra=!isUF&&x.ufs?` <span style="font-size:9px;color:var(--txt-m)">(${x.ufs.sort().join(', ')})</span>`:'';
+    tr.innerHTML='<td class="td-nome">'+x.key+nomeExtra+'</td>'+
+      '<td class="td-num">'+f(x.pares)+'</td>'+
+      '<td class="td-num">'+fmoeda(x.valor)+'</td>'+
+      '<td style="'+varCor+'">'+sinal+x.varPct+'%</td>'+
+      '<td>'+f(x.nClientes)+'</td>'+
+      '<td>'+f(x.nReps)+'</td>'+
+      '<td><span class="badge-classif '+x.classificacao+'">'+labelClassif(x.classificacao)+'</span></td>';
+    tb.appendChild(tr);
+  });
+  renderKpiGeral(linhas, idx);
+  renderSumario(linhas, idx);
+}
+
+function renderKpiGeral(linhas, idx){
+  const tot=linhas.reduce((a,x)=>a+(idx===1?x.valor:x.pares),0);
+  const dec=linhas.filter(x=>x.classificacao==='declinio').length;
+  const cres=linhas.filter(x=>x.classificacao==='crescimento').length;
+  const isUF=granularidade==='uf';
+  document.getElementById('geral-kpi').innerHTML=
+    kpi('','Volume total MI',fmtIdx(tot,idx),'somado de todas as '+(isUF?'UFs':'macro-regiões'))+
+    kpi('verde','Em crescimento',f(cres),(isUF?'estados':'regiões')+' com alta YoY no último mês comparável')+
+    kpi('','Em declínio',f(dec),'2+ meses consecutivos de queda YoY')+
+    kpi('azul',isUF?'Estados ativos':'Macro-regiões',f(linhas.length),'com volume MI no período selecionado');
+}
+
+function renderSumario(linhas, idx){
+  const ul=document.getElementById('sumario-lista');
+  if(!linhas.length){ ul.innerHTML='<li>Sem dados para o período selecionado.</li>'; return; }
+  const porVol=[...linhas].sort((a,b)=>(idx===1?b.valor-a.valor:b.pares-a.pares));
+  const porQueda=linhas.filter(x=>x.varPct<0).sort((a,b)=>a.varPct-b.varPct);
+  const dec=linhas.filter(x=>x.classificacao==='declinio');
+  const descob=linhas.filter(x=>x.nReps===0&&x.nClientes>0);
+  const itens=[];
+  itens.push('<li><b>'+linhas.length+'</b> '+(granularidade==='uf'?'estados':'macro-regiões')+' com volume MI no período.</li>');
+  if(porVol[0]) itens.push('<li>Maior volume: <b>'+porVol[0].key+'</b> ('+fmtIdx(idx===1?porVol[0].valor:porVol[0].pares,idx)+', '+sinalVar(porVol[0].varPct)+' YoY).</li>');
+  if(porQueda[0]) itens.push('<li>Maior queda YoY: <b>'+porQueda[0].key+'</b> ('+porQueda[0].varPct+'%).</li>');
+  if(dec.length) itens.push('<li><b>'+dec.length+'</b> '+(granularidade==='uf'?'estado(s)':'região(ões)')+' em declínio (2+ meses consecutivos de queda YoY): '+dec.map(x=>x.key).join(', ')+'.</li>');
+  if(descob.length) itens.push('<li><b>'+descob.length+'</b> território(s) com clientes ativos mas <b>sem representante</b> registrado — ver alertas.</li>');
+  ul.innerHTML=itens.join('');
+}
+
+// ── ALERTAS GLOBAIS ───────────────────────────────────────────────────────────
+function renderAlertasGlobais(ufMap, p){
+  const {idx}=getFiltros();
+  let html='';
+
+  // Queda regional: 2+ reps da mesma UF caindo YoY simultaneamente
+  const quedas=calcularQuedaRegional(ufMap, p, idx);
+  if(quedas.length){
+    const lista=quedas.map(x=>{
+      const reps=x.repsComQueda.map(r=>`${r.rep} (${r.queda}%)`).join(', ');
+      return `<b>${x.uf}</b> — ${reps}`;
+    }).join('<br>');
+    html+='<div class="card-alerta-global">'+
+      '<div class="titulo-alerta">⚠ Queda Regional — '+quedas.length+' UF(s) com 2+ representantes em queda simultânea</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Ação</span><b>Investigar mercado regional antes de cobrar representantes individualmente — sinal de problema de mercado, não de pessoa.</b></div>'+
+      '<div class="alerta-linha"><span class="rotulo">Alvo</span>'+lista+'</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Gatilho</span>2+ representantes da mesma UF com queda vs. mesmo período do ano anterior.</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Resultado esperado</span>Diagnóstico regional (concorrência local, sazonalidade atípica, evento) antes de ação individual sobre os reps.</div>'+
+      '</div>';
+  }
+
+  // Território descoberto: clientes ativos sem rep no período
+  const desc=calcularTerritorioDescoberto(ufMap, p);
+  if(desc.length){
+    html+='<div class="card-alerta-global">'+
+      '<div class="titulo-alerta">⚠ Território Descoberto — '+desc.length+' UF(s) com clientes ativos sem representante</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Ação</span><b>Avaliar alocação de representante para estes territórios ou confirmar se a venda direta é intencional.</b></div>'+
+      '<div class="alerta-linha"><span class="rotulo">Alvo</span>'+desc.join(', ')+'</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Gatilho</span>UFs com pedidos MI no período mas nenhum representante de equipe comercial registrado.</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Resultado esperado</span>Estruturar cobertura ou mapear como venda direta; UFs com histórico de alto volume representam oportunidade de expansão não estruturada.</div>'+
+      '</div>';
+  }
+
+  document.getElementById('alertas-globais').innerHTML=html;
+}
+
+function calcularQuedaRegional(ufMap, p, idx){
+  const result=[];
+  for(const [uf, holdings] of Object.entries(ufMap)){
+    const repHs={};
+    for(const h of holdings){
+      if(volumeHoldings([h],p.atual,0)===0 && volumeHoldings([h],p.anterior,0)===0) continue;
+      const rep=repDoHolding(h); if(!rep) continue;
+      (repHs[rep]=repHs[rep]||[]).push(h);
+    }
+    const repsComQueda=[];
+    for(const [rep, hs] of Object.entries(repHs)){
+      const at=volumeHoldings(hs,p.atual,idx), ant=volumeHoldings(hs,p.anterior,idx);
+      if(ant>0 && at<ant) repsComQueda.push({rep, queda:Math.round((at-ant)/ant*100)});
+    }
+    if(repsComQueda.length>=2) result.push({uf, repsComQueda});
+  }
+  return result.sort((a,b)=>a.uf.localeCompare(b.uf));
+}
+
+function calcularTerritorioDescoberto(ufMap, p){
+  return Object.entries(ufMap)
+    .filter(([, hs])=>
+      hs.some(h=>volumeHoldings([h],p.atual,0)>0) &&
+      !hs.some(h=>volumeHoldings([h],p.atual,0)>0 && repDoHolding(h)!==null))
+    .map(([uf])=>uf).sort();
+}
+
+// ── PAINEL DE DETALHE ─────────────────────────────────────────────────────────
+function renderPainelUF(key, items){
+  const painel=document.getElementById('painel-uf');
+  const linha=ultimaLinhas.find(x=>x.key===key);
+  if(!linha){ painel.classList.remove('ativo'); return; }
+  painel.classList.add('ativo');
+
+  const {idx,cadencia}=getFiltros();
+  const p=periodoAtualAnterior(cadencia);
+  const hs=linha.hs;
+  const macro=granularidade==='uf'?ufParaMacro(key):null;
+  const nomeExibido=macro?key+' — '+macro:key+(linha.ufs?' ('+linha.ufs.sort().join(', ')+')':'');
+
+  document.getElementById('painel-nome').textContent=nomeExibido;
+  document.getElementById('painel-sub').textContent=
+    p.labelAtual+' vs '+p.labelAnterior+' · '+linha.nClientes+' clientes · '+linha.nReps+' representantes ativos';
+  document.getElementById('painel-classif-badge').className='badge-classif '+linha.classificacao;
+  document.getElementById('painel-classif-badge').textContent=labelClassif(linha.classificacao);
+
+  const volA=idx===1?linha.valor:linha.pares;
+  const volB=volumeHoldings(hs,p.anterior,idx);
+  const sinal=linha.varPct>0?'+':'';
+  let cobLabel,cobSub;
+  if(linha.nReps===0){cobLabel='Sem cobertura';cobSub='território descoberto — ver alertas';}
+  else if(linha.nReps===1){cobLabel='Rep. único';cobSub='risco de continuidade — ver alertas';}
+  else{cobLabel=f(linha.nReps)+' reps';cobSub='cobertura múltipla no período';}
+
+  document.getElementById('painel-dimensoes').innerHTML=
+    kpi('','Volume ('+p.labelAtual+')',fmtIdx(volA,idx),sinal+linha.varPct+'% vs. '+p.labelAnterior)+
+    kpi('verde','Clientes ativos',f(linha.nClientes),'com ao menos 1 pedido MI no período')+
+    kpi('azul','Representantes',f(linha.nReps),'com vendas MI nesta região no período')+
+    kpi(linha.nReps===0?'':linha.nReps===1?'coral2':'cinza','Cobertura comercial',cobLabel,cobSub);
+
+  renderMixChart(hs, p, idx);
+  renderParetoChart(hs, p, idx, key);
+  renderRepsAtuantes(key, hs, p, idx);
+  renderAlertasPainel(key, linha, hs, p, idx);
+  setTimeout(()=>painel.scrollIntoView({behavior:'smooth', block:'start'}), 50);
+}
+
+// ── MIX DE ESPÉCIES ───────────────────────────────────────────────────────────
+function renderMixChart(hs, p, idx){
+  const at=calcularMix(hs,p.atual,idx);
+  const ant=calcularMix(hs,p.anterior,idx);
+  const tAt=at.PROG+at.PE+at.MISTA, tAnt=ant.PROG+ant.PE+ant.MISTA;
+  const pct=(v,t)=>t?Math.round(v/t*100):0;
+
+  const pePctAt=pct(at.PE,tAt), pePctAnt=pct(ant.PE,tAnt);
+  const pgPctAt=pct(at.PROG,tAt), pgPctAnt=pct(ant.PROG,tAnt);
+  const miPctAt=pct(at.MISTA,tAt), miPctAnt=pct(ant.MISTA,tAnt);
+
+  document.getElementById('mix-badge').textContent=pgPctAt+'% Prog · '+pePctAt+'% PE · '+miPctAt+'% Mista';
+
+  const mixShift=pePctAt>pePctAnt && pgPctAt<pgPctAnt;
+  const avEl=document.getElementById('mix-aviso');
+  if(mixShift){
+    avEl.innerHTML='<div class="card-alerta" style="margin:0;height:100%">'+
+      '<div class="titulo-alerta" style="color:var(--coral2)">⚠ Mudança de mix — PE avançando sobre Programado</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Sinal</span>Pronta Entrega: <b>'+pePctAnt+'%</b> → <b>'+pePctAt+'%</b> · Programado: <b>'+pgPctAnt+'%</b> → <b>'+pgPctAt+'%</b></div>'+
+      '<div class="alerta-linha"><span class="rotulo">Interpretação</span>Crescimento de PE às custas de Programado indica menor comprometimento futuro — mercado comprando mais no pronto e menos no planejado.</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Resultado esperado</span>Investigar causa (atraso de programação, giro de estoque, mudança de perfil de comprador) antes de interpretar como crescimento de volume.</div>'+
+      '</div>';
+  } else {
+    avEl.innerHTML='<div class="tcard" style="margin:0;height:100%;display:flex;align-items:center;justify-content:center;color:var(--txt-m);font-size:12px">Mix estável — sem mudança significativa de espécie no período.</div>';
+  }
+
+  if(chartMix){chartMix.destroy();chartMix=null;}
+  chartMix=new Chart(document.getElementById('c-mix'),{
+    type:'bar',
+    data:{
+      labels:[p.labelAtual, p.labelAnterior],
+      datasets:[
+        {label:'Programado',     data:[pgPctAt, pgPctAnt], backgroundColor:'#4994c7', stack:'s'},
+        {label:'Pronta Entrega', data:[pePctAt, pePctAnt], backgroundColor:'#ed6842', stack:'s'},
+        {label:'Venda Mista',    data:[miPctAt, miPctAnt], backgroundColor:'#6c9c37', stack:'s'},
+      ],
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.raw+'%'}},
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{font:{size:10}}},
+        y:{stacked:true,max:100,ticks:{callback:v=>v+'%',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}},
+      },
+    },
+  });
+}
+
+// ── PARETO ────────────────────────────────────────────────────────────────────
+function renderParetoChart(hs, p, idx, key){
+  const vols=hs.map(h=>({h, v:volumeHoldings([h],p.atual,idx)})).filter(x=>x.v>0);
+  vols.sort((a,b)=>b.v-a.v);
+  const top=vols.slice(0,10);
+  const total=vols.reduce((a,x)=>a+x.v,0);
+  const pcts=top.map(x=>total?Math.round(x.v/total*100):0);
+
+  document.getElementById('pareto-badge').textContent='Top '+top.length+' de '+vols.length+' clientes ativos';
+  document.getElementById('pareto-desc').textContent=
+    'Top clientes desta região no período — relativo ao volume de '+key+', não da empresa inteira.';
+
+  if(chartPareto){chartPareto.destroy();chartPareto=null;}
+  chartPareto=new Chart(document.getElementById('c-pareto'),{
+    type:'bar',
+    data:{
+      labels:top.map(x=>x.h.length>32?x.h.slice(0,30)+'…':x.h),
+      datasets:[{
+        label:'% do volume da região',
+        data:pcts,
+        backgroundColor:top.map((_,i)=>i===0?'#ed6842':'#4994c7aa'),
+        borderRadius:3,
+      }],
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>ctx.raw+'% do volume de '+key}},
+      },
+      scales:{
+        x:{max:100,ticks:{callback:v=>v+'%',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{font:{size:9}}},
+      },
+    },
+  });
+}
+
+// ── REPRESENTANTES ATUANTES ───────────────────────────────────────────────────
+function renderRepsAtuantes(key, hs, p, idx){
+  const repMap={};
+  hs.forEach(h=>{
+    if(volumeHoldings([h],p.atual,0)===0) return;
+    const rep=repDoHolding(h); if(!rep) return;
+    if(!repMap[rep]) repMap[rep]={vol:0};
+    repMap[rep].vol+=volumeHoldings([h],p.atual,idx);
+  });
+  const reps=Object.entries(repMap).sort((a,b)=>b[1].vol-a[1].vol);
+  document.getElementById('reps-badge').textContent=reps.length+' ativos no período';
+  const el=document.getElementById('lista-reps');
+  if(!reps.length){
+    el.innerHTML='<div class="bloco-empty">Nenhum representante ativo nesta região no período — território descoberto. Ver alerta acima.</div>';
+    return;
+  }
+  const totalVol=reps.reduce((a,[,d])=>a+d.vol,0);
+  let html='<table><thead><tr><th>Representante</th><th>'+(idx===1?'Valor':'Pares')+'</th><th>% da região</th><th></th></tr></thead><tbody>';
+  reps.forEach(([rep,d])=>{
+    const pct=totalVol?Math.round(d.vol/totalVol*100):0;
+    html+='<tr>'+
+      '<td class="td-nome">'+rep+'</td>'+
+      '<td class="td-num">'+fmtIdx(d.vol,idx)+'</td>'+
+      '<td>'+pct+'%</td>'+
+      '<td><a href="boaonda_carteira_representante.html?rep='+encodeURIComponent(rep)+'" class="rep-link">↗ Ver painel</a></td>'+
+      '</tr>';
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+// ── ALERTAS DO PAINEL ─────────────────────────────────────────────────────────
+function renderAlertasPainel(key, linha, hs, p, idx){
+  let html='';
+
+  // Dependência de rep único
+  if(linha.nReps===1){
+    const repUnico=hs.map(h=>volumeHoldings([h],p.atual,0)>0?repDoHolding(h):null).find(r=>r);
+    html+='<div class="card-alerta">'+
+      '<div class="titulo-alerta">⚠ Dependência de representante único</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Ação</span><b>Avaliar segunda cobertura comercial para '+key+'.</b></div>'+
+      '<div class="alerta-linha"><span class="rotulo">Alvo</span>'+(repUnico||'–')+' — único representante ativo nesta região no período</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Gatilho</span>Apenas 1 representante com vendas MI em '+key+' no período selecionado.</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Resultado esperado</span>Reduzir risco de descontinuidade territorial caso este representante encerre ou reduza operação.</div>'+
+      '</div>';
+  }
+
+  // Território descoberto (no painel)
+  if(linha.nReps===0 && linha.nClientes>0){
+    html+='<div class="card-alerta">'+
+      '<div class="titulo-alerta">⚠ Território descoberto — sem representante ativo</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Ação</span><b>Avaliar alocação de representante para '+key+' ou confirmar venda direta intencional.</b></div>'+
+      '<div class="alerta-linha"><span class="rotulo">Alvo</span>'+key+' — '+linha.nClientes+' cliente(s) comprando sem cobertura de equipe comercial</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Gatilho</span>Clientes ativos no período sem nenhum representante de equipe comercial registrado.</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Resultado esperado</span>Estruturar cobertura ou documentar como canal direto; território com volume representa oportunidade não estruturada.</div>'+
+      '</div>';
+  }
+
+  // Cliente-âncora regional (≥ 50%)
+  const ancora=calcularClienteAncora(hs, idx, 6);
+  if(ancora && ancora.pctAtual>=50){
+    let mini='';
+    if(ancora.serie.length>1){
+      const maxP=Math.max(...ancora.serie.map(s=>s.pct),1);
+      mini='<div class="mini-serie">'+
+        ancora.serie.map((s,i)=>{
+          const h=Math.max(2,Math.round(s.pct/maxP*100));
+          const sobe=i>0&&s.pct>ancora.serie[i-1].pct;
+          return '<div class="barra'+(sobe?' subida':'')+'" style="height:'+h+'%" title="'+mesLabelYYYYMM(s.mes)+': '+s.pct+'%"></div>';
+        }).join('')+'</div>'+
+        '<div class="mini-lbl">'+ancora.serie.map(s=>'<span>'+mesLabelYYYYMM(s.mes).split('/')[0]+'</span>').join('')+'</div>';
+    }
+    const tendTxt=ancora.crescente?
+      'Concentração crescente: de '+ancora.pctInicio+'% ('+mesLabelYYYYMM(ancora.serie[0].mes)+') → '+ancora.pctAtual+'% ('+mesLabelYYYYMM(ancora.serie[ancora.serie.length-1].mes)+')':
+      'Concentração estável em '+ancora.pctAtual+'% nos últimos '+ancora.serie.length+' meses';
+    html+='<div class="card-alerta">'+
+      '<div class="titulo-alerta">⚠ Cliente-âncora regional</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Ação</span><b>Monitorar dependência e diversificar a base de clientes em '+key+'.</b></div>'+
+      '<div class="alerta-linha"><span class="rotulo">Alvo</span>'+ancora.holding+' — <b>'+ancora.pctAtual+'%</b> do volume MI de '+key+'</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Gatilho</span>'+tendTxt+'.</div>'+
+      '<div class="alerta-linha"><span class="rotulo">Resultado esperado</span>Reduzir dependência antes que a saída ou retração deste cliente cause impacto desproporcional na região.</div>'+
+      mini+
+      '</div>';
+  }
+
+  if(!html) html='<div class="bloco-empty">Nenhum alerta ativo para esta região no período selecionado.</div>';
+  document.getElementById('painel-alertas').innerHTML=html;
+}
+
+function calcularClienteAncora(hs, idx, nMeses){
+  const meses=(CARTEIRA.meses_disponiveis||[]).slice().sort().slice(-nMeses);
+  if(!meses.length) return null;
+  const vols=hs.map(h=>({h, v:volumeHoldings([h],meses,idx)})).filter(x=>x.v>0);
+  if(!vols.length) return null;
+  vols.sort((a,b)=>b.v-a.v);
+  const top=vols[0];
+  const serie=meses.map(m=>({
+    mes:m, pct:volumeHoldings(hs,[m],idx)?Math.round(volumeHoldings([top.h],[m],idx)/volumeHoldings(hs,[m],idx)*100):0
+  }));
+  const pctAtual=serie[serie.length-1].pct;
+  const pctInicio=serie[0].pct;
+  return {holding:top.h, serie, pctAtual, pctInicio, crescente:serie.length>=2&&pctAtual>pctInicio};
+}
+
+// ── FORMATAÇÃO ────────────────────────────────────────────────────────────────
+function f(n){ return (n||0).toLocaleString('pt-BR'); }
+function fmoeda(n){ return 'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtIdx(v,idx){ return idx===1?fmoeda(v):f(v)+' pares'; }
+function sinalVar(v){ return (v>0?'+':'')+v+'%'; }
+function kpi(cls,label,val,sub){
+  return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v '+cls+'">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';
+}
+</script>
+</body>
+</html>

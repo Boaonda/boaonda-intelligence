@@ -48,6 +48,7 @@ PAGINAS_COM_SIDEBAR_VENDAS = {
     'boaonda_vendas_catalogo.html',
     'boaonda_carteira_clientes.html',
     'boaonda_carteira_representante.html',
+    'boaonda_carteira_uf.html',
 }
 
 # Primeira execução com volume vazio: semeia com os JSONs versionados no repo
@@ -119,7 +120,7 @@ _seed_usuarios_iniciais()
 MODULOS = {
     'vendas': {
         'label': 'Vendas Calçados',
-        'htmls': ['boaonda_vendas_catalogo.html', 'boaonda_carteira_clientes.html', 'boaonda_carteira_representante.html'],
+        'htmls': ['boaonda_vendas_catalogo.html', 'boaonda_carteira_clientes.html', 'boaonda_carteira_representante.html', 'boaonda_carteira_uf.html'],
         'jsons': ['dados_vendas.json', 'dados_vendas_clientes.json', 'dados_vendas_carteira.json'],
         'ia': ['vendas'],
     },
