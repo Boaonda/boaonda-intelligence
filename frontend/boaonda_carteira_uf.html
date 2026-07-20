@@ -182,6 +182,7 @@ tr:hover td{background:var(--card2);color:var(--txt)}
           <th class="th-sort" onclick="sortRankingBy('pares')" id="th-rk-pares">Pares</th>
           <th class="th-sort" onclick="sortRankingBy('valor')" id="th-rk-valor">Valor (R$)</th>
           <th class="th-sort" onclick="sortRankingBy('varPct')" id="th-rk-varPct">Var. YoY</th>
+          <th class="th-sort" onclick="sortRankingBy('pctNac')" id="th-rk-pctNac">% Nacional</th>
           <th class="th-sort" onclick="sortRankingBy('nClientes')" id="th-rk-nClientes">Clientes</th>
           <th class="th-sort" onclick="sortRankingBy('nReps')" id="th-rk-nReps">Reps</th>
           <th class="th-sort" onclick="sortRankingBy('classifOrdem')" id="th-rk-classifOrdem">Tendência</th>
@@ -487,8 +488,14 @@ function renderRanking(items){
   const {idx}=getFiltros();
   const linhas=construirRanking(items);
   ultimaLinhas=linhas;
+  // % Nacional: participação de cada região no volume total do período
+  const totalNac=linhas.reduce((a,x)=>a+(idx===1?x.valor:x.pares),0);
+  linhas.forEach(x=>{
+    const vol=idx===1?x.valor:x.pares;
+    x.pctNac=totalNac>0?Math.round(vol/totalNac*1000)/10:0; // 1 decimal
+  });
   aplicarSort(linhas, sortRankState);
-  atualizarSetasHeader(sortRankState,['key','pares','valor','varPct','nClientes','nReps','classifOrdem']);
+  atualizarSetasHeader(sortRankState,['key','pares','valor','varPct','pctNac','nClientes','nReps','classifOrdem']);
   const isUF=granularidade==='uf';
   document.getElementById('ranking-badge').textContent=linhas.length+(isUF?' estados':' macro-regiões');
   const tb=document.getElementById('tb-ranking'); tb.innerHTML='';
@@ -509,6 +516,7 @@ function renderRanking(items){
       '<td class="td-num">'+f(x.pares)+'</td>'+
       '<td class="td-num">'+fmoeda(x.valor)+'</td>'+
       '<td style="'+varCor+'">'+sinal+x.varPct+'%</td>'+
+      '<td class="td-num">'+x.pctNac.toFixed(1)+'%</td>'+
       '<td>'+f(x.nClientes)+'</td>'+
       '<td>'+f(x.nReps)+'</td>'+
       '<td><span class="badge-classif '+x.classificacao+'">'+labelClassif(x.classificacao)+'</span></td>';
