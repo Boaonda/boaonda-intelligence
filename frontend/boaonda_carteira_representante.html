@@ -803,7 +803,7 @@ function todosHoldingsDoRep(rep){
 function vol12m(h, ref){
   const meses=[];
   let yr=+ref.slice(0,4), mo=+ref.slice(4);
-  for(let i=0;i<12;i++){
+  for(let i=0;i<13;i++){
     meses.push(ym(yr,mo));
     mo--; if(mo<1){mo=12;yr--;}
   }
