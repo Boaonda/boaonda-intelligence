@@ -239,6 +239,18 @@ fetch('dados_vendas_carteira.json?_='+Date.now())
   })
   .catch(()=>{});
 
+// ── HIGIENIZAÇÃO DE REPRESENTANTES ──────────────────────────────────────
+const REPS_EXCLUIDOS = new Set([
+  'ATEND. COMERCIAL - OUTRAS MARCAS',
+  'ECOMMERCE',
+]);
+const REP_UNIFICAR = {
+  'ALEXSHOES REPRESENTACOES LTDA':    'FRALDA & COMPANHIA LTDA',
+  'ROGERIO RAPPA SILVEIRA - ME':      'RRAPPA REPRESENTACOES LTDA',
+  'RIBEIRO UDI REPRESENTACOES LTDA':  'CLEOBERTO REPRESENTACOES LTDA',
+};
+function normalizarRep(nome){ return REP_UNIFICAR[nome] || nome; }
+
 // ── FILTROS UF / REPRESENTANTE ─────────────────────────────────────────
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -254,8 +266,11 @@ function distinctRepresentantes(canal){
   const meta=(CARTEIRA&&CARTEIRA.meta)||{};
   for(const h in meta){
     const reps=meta[h].representantes||{};
-    if(canal==='TODOS'){ for(const c in reps) set.add(reps[c]); }
-    else if(reps[canal]) set.add(reps[canal]);
+    if(canal==='TODOS'){
+      for(const c in reps){ const n=normalizarRep(reps[c]); if(!REPS_EXCLUIDOS.has(n)) set.add(n); }
+    } else if(reps[canal]){
+      const n=normalizarRep(reps[canal]); if(!REPS_EXCLUIDOS.has(n)) set.add(n);
+    }
   }
   return Array.from(set).sort();
 }
@@ -290,8 +305,8 @@ function passaFiltrosExtra(h){
     const reps=meta.representantes||{};
     const canal=document.getElementById('f-canal').value;
     if(canal==='TODOS'){
-      if(!Object.values(reps).includes(rep)) return false;
-    } else if(reps[canal]!==rep) return false;
+      if(!Object.values(reps).map(normalizarRep).includes(rep)) return false;
+    } else if(normalizarRep(reps[canal])!==rep) return false;
   }
   return true;
 }
