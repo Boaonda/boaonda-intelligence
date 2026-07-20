@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Metas Comerciais</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;--amarelo:#d9a441;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --line:#262b3a;--line2:#333a4d;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+
+.header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:19px;font-weight:800;color:var(--txt)}
+.h-sub{font-size:10.5px;color:var(--txt-m);margin-top:3px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+.back-link{font-size:11px;font-weight:700;color:var(--azul);text-decoration:none}
+.back-link:hover{color:var(--coral)}
+
+.main{padding:24px 32px;max-width:1400px;margin:0 auto}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin:30px 0 14px;display:flex;align-items:center;gap:12px}
+.stitle:first-child{margin-top:0}
+.stitle::after{content:'';flex:1;height:1px;background:var(--line)}
+.stitle-badge{font-size:9px;background:rgba(237,104,66,.1);color:var(--coral);padding:2px 8px;border-radius:4px;font-weight:700;text-transform:none;letter-spacing:0}
+
+.sel,.inp{background:var(--card2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:8px 14px;font-size:12px;font-weight:700;font-family:'Montserrat',sans-serif;outline:none}
+.sel{cursor:pointer}
+.sel:focus,.inp:focus{border-color:var(--coral)}
+.filtro-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
+
+/* ── Card DEFINIR (round-trip Excel) ─────────────────────────────── */
+.def-card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:12px;padding:22px 24px}
+.def-desc{font-size:12px;color:var(--txt-s);line-height:1.7;margin-bottom:18px}
+.def-desc b{color:var(--txt)}
+.def-steps{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:820px){.def-steps{grid-template-columns:1fr}}
+.def-step{background:var(--card2);border:1px solid var(--line2);border-radius:10px;padding:18px}
+.def-step-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--coral);color:#fff;font-size:11px;font-weight:800;margin-right:8px}
+.def-step-t{font-size:12px;font-weight:800;color:var(--txt);margin-bottom:6px}
+.def-step-d{font-size:10.5px;color:var(--txt-m);line-height:1.6;margin-bottom:14px}
+.def-row{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.def-field{display:flex;flex-direction:column;gap:5px}
+.btn{background:var(--coral);color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:11.5px;font-weight:800;font-family:'Montserrat',sans-serif;cursor:pointer;transition:.15s;text-transform:uppercase;letter-spacing:.04em}
+.btn:hover{background:var(--coral2)}
+.btn.sec{background:var(--card);border:1px solid var(--line2);color:var(--txt-s)}
+.btn.sec:hover{border-color:var(--coral);color:var(--txt)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.file-name{font-size:10.5px;color:var(--txt-m);margin-top:8px;font-style:italic}
+.import-msg{margin-top:14px;font-size:11.5px;border-radius:8px;padding:12px 14px;line-height:1.6;display:none;white-space:pre-wrap}
+.import-msg.ok{display:block;background:rgba(108,156,55,.1);border:1px solid rgba(108,156,55,.35);color:var(--verde)}
+.import-msg.err{display:block;background:rgba(237,104,66,.1);border:1px solid rgba(237,104,66,.35);color:var(--coral)}
+
+/* ── KPIs ────────────────────────────────────────────────────────── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
+.kpi.verde{border-top-color:var(--verde)}.kpi.azul{border-top-color:var(--azul)}
+.kpi.cinza{border-top-color:var(--cinza)}.kpi.amarelo{border-top-color:var(--amarelo)}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.kpi-v{font-size:1.5rem;font-weight:800;color:var(--coral)}
+.kpi-v.verde{color:var(--verde)}.kpi-v.azul{color:var(--azul)}
+.kpi-v.cinza{color:var(--cinza)}.kpi-v.amarelo{color:var(--amarelo)}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px}
+.acum-tag{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--azul);background:rgba(73,148,199,.12);border:1px solid rgba(73,148,199,.3);border-radius:10px;padding:2px 8px;vertical-align:middle;margin-left:8px}
+
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:8px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:8px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line)}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--txt-s)}
+tr:last-child td{border:none}
+tr:hover td{background:var(--card2);color:var(--txt)}
+.td-nome{font-weight:700;color:var(--txt)}
+.td-num{font-weight:800;color:var(--txt);text-align:right}
+.th-num{text-align:right}
+.th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.th-sort:hover{color:var(--txt)}
+.th-sort.on{color:var(--coral)}
+
+.badge-classif{display:inline-block;font-size:9px;font-weight:700;padding:3px 10px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em}
+.badge-classif.crescimento{background:rgba(108,156,55,.14);color:var(--verde)}
+.badge-classif.estavel{background:rgba(155,154,152,.14);color:var(--cinza)}
+.badge-classif.declinio{background:rgba(237,104,66,.14);color:var(--coral)}
+.badge-classif.novo{background:rgba(73,148,199,.14);color:var(--azul)}
+.badge-classif.indefinido{background:rgba(125,124,121,.14);color:var(--txt-m)}
+
+.pct-pill{display:inline-block;min-width:52px;text-align:center;font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px}
+.pct-pill.verde{background:rgba(108,156,55,.16);color:var(--verde)}
+.pct-pill.amarelo{background:rgba(217,164,65,.16);color:var(--amarelo)}
+.pct-pill.coral{background:rgba(237,104,66,.16);color:var(--coral)}
+.pct-pill.na{background:rgba(125,124,121,.12);color:var(--txt-m)}
+.fix-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--coral);margin-left:6px;vertical-align:middle}
+
+.chart-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:8px}
+.chart-card h4{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-s);margin-bottom:12px}
+.chart-wrap{position:relative;height:220px}
+
+.empty{background:var(--card);border:1px dashed var(--line2);border-radius:12px;padding:40px 24px;text-align:center;color:var(--txt-m);font-size:13px;line-height:1.7}
+.empty b{color:var(--txt-s)}
+
+.rodape-nota{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-top:30px;font-size:11px;color:var(--txt-m);line-height:1.8}
+.rodape-nota h3{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-s);margin-bottom:8px}
+.rodape-nota code{background:var(--card2);padding:1px 5px;border-radius:3px;color:var(--txt-s)}
+@media(max-width:900px){.main{padding:14px}}
+</style>
+</head>
+<body data-active="metas">
+{% include '_sidebar_vendas.html' %}
+
+<div class="header">
+  <div>
+    <div class="h-badge">Metas Comerciais</div>
+    <div class="h-title">Metas por Representante</div>
+    <div class="h-sub">Definição da meta mensal (planilha) e acompanhamento meta × realizado — canal Mercado Interno (MI)</div>
+  </div>
+  <div style="text-align:right">
+    <a href="boaonda_vendas_catalogo.html" class="back-link">← Voltar para Vendas</a>
+    <div class="h-meta">Vendas até: <strong id="hdr-data">–</strong><br>Metas geradas em: <strong id="hdr-metas">–</strong></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ══ DEFINIR METAS ══════════════════════════════════════════════ -->
+  <div class="stitle">Definir metas do mês <span class="stitle-badge">planilha Excel</span></div>
+  <div class="def-card">
+    <div class="def-desc">
+      Informe a <b>meta global de pares</b> do mês e baixe a planilha: ela já vem com a
+      <b>sugestão de distribuição por representante</b>, ponderada pelo histórico
+      (crescimento 1,5× · estável 1,0× · declínio 0,6×, sempre vs. mesmo mês do ano anterior).
+      Ajuste offline — para <b>travar</b> um rep, marque <b>“S”</b> na coluna <code style="background:var(--card2);padding:1px 5px;border-radius:3px">fixar</code>
+      e o resto se redistribui — e reimporte. O total sempre fecha na meta global.
+    </div>
+    <div class="def-steps">
+      <div class="def-step">
+        <div class="def-step-t"><span class="def-step-n">1</span>Baixar planilha</div>
+        <div class="def-step-d">Escolha o mês e a meta global. Se já houver metas gravadas para o mês, elas voltam pré-preenchidas.</div>
+        <div class="def-row">
+          <div class="def-field">
+            <span class="filtro-label">Competência</span>
+            <select class="sel" id="def-comp"></select>
+          </div>
+          <div class="def-field">
+            <span class="filtro-label">Meta global (pares)</span>
+            <input class="inp" id="def-meta" type="number" min="0" step="500" placeholder="ex.: 150000" style="width:150px">
+          </div>
+          <button class="btn" onclick="baixarPlanilha()">⬇ Baixar</button>
+        </div>
+      </div>
+      <div class="def-step">
+        <div class="def-step-t"><span class="def-step-n">2</span>Importar planilha preenchida</div>
+        <div class="def-step-d">Envie o arquivo editado. O sistema valida, faz backup e grava as metas do mês.</div>
+        <div class="def-row">
+          <input type="file" id="def-file" accept=".xlsx" style="display:none" onchange="arqSelecionado()">
+          <button class="btn sec" onclick="document.getElementById('def-file').click()">📄 Escolher arquivo</button>
+          <button class="btn" id="btn-import" onclick="importarPlanilha()" disabled>⬆ Importar</button>
+        </div>
+        <div class="file-name" id="def-fname">Nenhum arquivo selecionado</div>
+      </div>
+    </div>
+    <div class="import-msg" id="import-msg"></div>
+  </div>
+
+  <!-- ══ ACOMPANHAMENTO ═════════════════════════════════════════════ -->
+  <div class="stitle">Acompanhamento — meta × realizado <span class="stitle-badge" id="ac-badge">–</span></div>
+
+  <div id="ac-vazio" class="empty" style="display:none">
+    Nenhuma meta cadastrada ainda.<br>
+    <b>Defina a meta do mês acima</b> (baixe a planilha, preencha e importe) para ver o acompanhamento aqui.
+  </div>
+
+  <div id="ac-conteudo" style="display:none">
+    <div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="def-field">
+        <span class="filtro-label">Mês do acompanhamento</span>
+        <select class="sel" id="ac-comp" onchange="renderAcompanhamento()"></select>
+      </div>
+      <div class="def-field">
+        <span class="filtro-label">Ordenar por</span>
+        <select class="sel" id="ac-sort" onchange="renderTabela()">
+          <option value="ating">Atingimento do mês</option>
+          <option value="meta">Meta (pares)</option>
+          <option value="realizado">Realizado (pares)</option>
+          <option value="ating_acum">Atingimento acumulado</option>
+          <option value="nome">Nome</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="kpi-row" id="ac-kpis"></div>
+
+    <div class="chart-card">
+      <h4>Meta × Realizado por mês — acumulado do ano</h4>
+      <div class="chart-wrap"><canvas id="chart-ytd"></canvas></div>
+    </div>
+
+    <div class="tcard">
+      <table>
+        <thead>
+          <tr>
+            <th class="th-sort" onclick="setSort('nome')" id="th-nome">Representante</th>
+            <th>Tendência</th>
+            <th class="th-num th-sort" onclick="setSort('meta')" id="th-meta">Meta mês</th>
+            <th class="th-num th-sort" onclick="setSort('realizado')" id="th-realizado">Realizado</th>
+            <th class="th-num th-sort" onclick="setSort('ating')" id="th-ating">Ating. mês</th>
+            <th class="th-num">Meta acum.</th>
+            <th class="th-num">Realiz. acum.</th>
+            <th class="th-num th-sort" onclick="setSort('ating_acum')" id="th-ating_acum">Ating. acum.</th>
+          </tr>
+        </thead>
+        <tbody id="ac-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="rodape-nota">
+    <h3>Metodologia</h3>
+    <ul>
+      <li><b>Base de realizado:</b> <code>dados_vendas_carteira.json</code> — mercado interno, espécies Programado / Pronta Entrega / Venda Mista. Exclui e-commerce, EVA e exportação.</li>
+      <li><b>Sugestão de meta:</b> distribui a meta global proporcional a <i>base × peso</i>, onde base = pares no mesmo mês do ano anterior (deseasonaliza) e peso = tendência (1,5 / 1,0 / 0,6).</li>
+      <li><b>Mês parcial:</b> o mês mais recente é marcado como parcial e recebe uma <i>projeção linear por dias corridos</i> (estimativa) — nunca comparado como fechado sem aviso.</li>
+      <li><b>Acumulado do ano (YTD):</b> soma das metas × soma do realizado de janeiro até o mês selecionado, considerando só os meses que têm meta cadastrada.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// ── Estado ──────────────────────────────────────────────────────────
+let CARTEIRA=null, METAS=null, IDX={}, REPS=[], MESES=[];
+let _sort={key:'ating', dir:-1}, _chart=null;
+
+// ── Higiene (espelho do painel por representante) ───────────────────
+const REPS_EXCLUIDOS=new Set(['ATEND. COMERCIAL - OUTRAS MARCAS','ECOMMERCE']);
+const REP_UNIFICAR={
+  'ALEXSHOES REPRESENTACOES LTDA':'FRALDA & COMPANHIA LTDA',
+  'ROGERIO RAPPA SILVEIRA - ME':'RRAPPA REPRESENTACOES LTDA',
+  'RIBEIRO UDI REPRESENTACOES LTDA':'CLEOBERTO REPRESENTACOES LTDA',
+};
+const TIPOS_MI_VALIDOS=['PROG','PE','MISTA'];
+function normalizarRep(n){ return REP_UNIFICAR[n]||n; }
+
+// ── Utilidades de competência ───────────────────────────────────────
+const MES_NOME=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function mesLabel(c){ c=String(c); return MES_NOME[+c.slice(4)-1]+'/'+c.slice(0,4); }
+function mesMenos(c,n){ let a=+String(c).slice(0,4),m=+String(c).slice(4); let t=a*12+(m-1)-n; return String(Math.floor(t/12)).padStart(4,'0')+String(t%12+1).padStart(2,'0'); }
+function fmt(n){ return (Math.round(n)||0).toLocaleString('pt-BR'); }
+
+// ── Índice rep→mês→pares (uma passada nas holdings) ─────────────────
+function construirIndice(){
+  IDX={}; const reps=new Set();
+  const meta=CARTEIRA.meta||{}, holdings=CARTEIRA.holdings||{};
+  for(const h in meta){
+    const r=(meta[h].representantes||{}).MI;
+    if(!r || REPS_EXCLUIDOS.has(r)) continue;
+    const rep=normalizarRep(r);
+    if(REPS_EXCLUIDOS.has(rep)) continue;
+    reps.add(rep);
+    const hm=holdings[h]; if(!hm) continue;
+    for(const mes in hm){
+      let tot=0; const tipos=hm[mes];
+      for(const t of TIPOS_MI_VALIDOS){ const k='MI_'+t; if(tipos[k]) tot+=tipos[k][0]; }
+      if(tot>0){ (IDX[rep]=IDX[rep]||{})[mes]=(IDX[rep][mes]||0)+tot; }
+    }
+  }
+  REPS=[...reps].sort();
+}
+function volRep(rep,meses){ let t=0; const m=IDX[rep]||{}; meses.forEach(x=>t+=(m[x]||0)); return t; }
+
+// ── Parcial / projeção ──────────────────────────────────────────────
+function ehParcial(comp){ return comp===MESES[MESES.length-1]; }
+function diaCorrente(comp){
+  const m=/(\d{2})\/(\d{2})\/(\d{4})/.exec(CARTEIRA.gerado_em||'');
+  if(!m) return null;
+  if(m[3]+m[2]!==String(comp)) return null;
+  const dias=new Date(+m[3],+m[2],0).getDate();
+  return [+m[1],dias];
+}
+function projecao(comp,realizado){
+  const dc=diaCorrente(comp);
+  if(!dc || dc[0]<=0) return null;
+  return Math.round(realizado*dc[1]/dc[0]);
+}
+
+// ── Semáforo de atingimento ─────────────────────────────────────────
+function corAting(pct){ if(pct==null) return 'na'; if(pct>=100) return 'verde'; if(pct>=80) return 'amarelo'; return 'coral'; }
+function pill(realizado,meta){
+  if(!meta) return '<span class="pct-pill na">–</span>';
+  const pct=Math.round(realizado/meta*100);
+  return '<span class="pct-pill '+corAting(pct)+'">'+pct+'%</span>';
+}
+
+// ── Meses YTD com meta cadastrada ───────────────────────────────────
+function mesesYTDComMeta(comp){
+  const ano=String(comp).slice(0,4);
+  const metasObj=(METAS&&METAS.metas)||{};
+  return Object.keys(metasObj).filter(m=>m.slice(0,4)===ano && m<=comp).sort();
+}
+
+// ══ SEÇÃO DEFINIR ══════════════════════════════════════════════════
+function baixarPlanilha(){
+  const comp=document.getElementById('def-comp').value;
+  const meta=document.getElementById('def-meta').value||0;
+  location.href='/api/metas/exportar?competencia='+encodeURIComponent(comp)+'&meta_global='+encodeURIComponent(meta);
+}
+function arqSelecionado(){
+  const f=document.getElementById('def-file').files[0];
+  document.getElementById('def-fname').textContent=f?f.name:'Nenhum arquivo selecionado';
+  document.getElementById('btn-import').disabled=!f;
+}
+async function importarPlanilha(){
+  const f=document.getElementById('def-file').files[0];
+  if(!f) return;
+  const btn=document.getElementById('btn-import'); btn.disabled=true; btn.textContent='Importando…';
+  const msg=document.getElementById('import-msg');
+  try{
+    const fd=new FormData(); fd.append('arquivo',f);
+    const r=await fetch('/api/metas/importar',{method:'POST',body:fd});
+    const j=await r.json();
+    if(j.status==='ok'){
+      msg.className='import-msg ok';
+      msg.textContent='✓ Metas de '+j.competencia_label+' gravadas — '+j.reps+' representantes, '
+        +j.reps_fixados+' fixado(s), total '+fmt(j.total_distribuido)+' pares (meta global '+fmt(j.meta_global)+').';
+      await recarregarMetas(j.competencia);
+    }else{
+      msg.className='import-msg err'; msg.textContent='✗ '+(j.mensagem||'Erro ao importar.');
+    }
+  }catch(e){ msg.className='import-msg err'; msg.textContent='✗ Falha na comunicação: '+e; }
+  btn.disabled=false; btn.textContent='⬆ Importar';
+}
+async function recarregarMetas(compSel){
+  const r=await fetch('dados_metas.json?_='+Date.now());
+  METAS=r.ok?await r.json():null;
+  document.getElementById('hdr-metas').textContent=(METAS&&METAS.gerado_em)||'–';
+  montarAcompanhamento(compSel);
+}
+
+// ══ SEÇÃO ACOMPANHAMENTO ═══════════════════════════════════════════
+function montarAcompanhamento(compSel){
+  const metasObj=(METAS&&METAS.metas)||{};
+  const comps=Object.keys(metasObj).sort();
+  const temMetas=comps.length>0;
+  document.getElementById('ac-vazio').style.display=temMetas?'none':'block';
+  document.getElementById('ac-conteudo').style.display=temMetas?'block':'none';
+  if(!temMetas){ document.getElementById('ac-badge').textContent='sem metas'; return; }
+
+  const sel=document.getElementById('ac-comp');
+  sel.innerHTML=comps.slice().reverse().map(c=>'<option value="'+c+'">'+mesLabel(c)+'</option>').join('');
+  sel.value=(compSel&&metasObj[compSel])?compSel:comps[comps.length-1];
+  renderAcompanhamento();
+}
+
+function renderAcompanhamento(){
+  const comp=document.getElementById('ac-comp').value;
+  document.getElementById('ac-badge').textContent=mesLabel(comp)+(ehParcial(comp)?' · parcial':'');
+  renderKPIs(comp);
+  renderChart(comp);
+  renderTabela();
+}
+
+function linhasRep(comp){
+  const metasMes=((METAS.metas||{})[comp])||{};
+  const det=((METAS.detalhe||{})[comp])||{};
+  const mesesAcum=mesesYTDComMeta(comp);
+  // Universo = reps com meta no mês OU com realizado no mês
+  const universo=new Set(Object.keys(metasMes));
+  REPS.forEach(r=>{ if(volRep(r,[comp])>0) universo.add(r); });
+  return [...universo].map(rep=>{
+    const meta=metasMes[rep]!=null?metasMes[rep]:null;
+    const realizado=volRep(rep,[comp]);
+    const metaAcum=mesesAcum.reduce((a,m)=>a+((((METAS.metas||{})[m])||{})[rep]||0),0);
+    const realAcum=volRep(rep,mesesAcum);
+    return {
+      rep, meta, realizado, metaAcum, realAcum,
+      tend:(det[rep]&&det[rep].tendencia)||'indefinido',
+      fixado:!!(det[rep]&&det[rep].fixado),
+      ating: meta?realizado/meta*100:null,
+      atingAcum: metaAcum?realAcum/metaAcum*100:null,
+    };
+  });
+}
+
+function renderKPIs(comp){
+  const metaGlobal=(((METAS.meta_global||{})[comp])!=null)?METAS.meta_global[comp]
+                   :Object.values(((METAS.metas||{})[comp])||{}).reduce((a,b)=>a+b,0);
+  const realizadoMes=REPS.reduce((a,r)=>a+volRep(r,[comp]),0);
+  const atingMes=metaGlobal?Math.round(realizadoMes/metaGlobal*100):null;
+  const parcial=ehParcial(comp);
+  const proj=parcial?projecao(comp,realizadoMes):null;
+
+  const mesesAcum=mesesYTDComMeta(comp);
+  const metaAcum=mesesAcum.reduce((a,m)=>a+(((METAS.meta_global||{})[m])!=null?METAS.meta_global[m]
+                   :Object.values(((METAS.metas||{})[m])||{}).reduce((x,y)=>x+y,0)),0);
+  const realAcum=REPS.reduce((a,r)=>a+volRep(r,mesesAcum),0);
+  const atingAcum=metaAcum?Math.round(realAcum/metaAcum*100):null;
+
+  const k=[];
+  k.push(kpi('Meta do mês', fmt(metaGlobal), 'coral', 'pares · '+mesLabel(comp)));
+  k.push(kpi('Realizado', fmt(realizadoMes), 'azul', parcial?'parcial (mês em curso)':'mês fechado'));
+  k.push(kpi('Atingimento', atingMes!=null?atingMes+'%':'–', corKpi(atingMes),
+        atingMes!=null?(realizadoMes>=metaGlobal?'meta batida':'faltam '+fmt(Math.max(0,metaGlobal-realizadoMes))+' pares'):''));
+  if(parcial && proj!=null){
+    const projPct=metaGlobal?Math.round(proj/metaGlobal*100):null;
+    k.push(kpi('Projeção fechamento', fmt(proj), corKpi(projPct),
+          'estimativa linear'+(projPct!=null?' · '+projPct+'% da meta':'')));
+  }else{
+    k.push(kpi('Acumulado ano', atingAcum!=null?atingAcum+'%':'–', corKpi(atingAcum),
+          fmt(realAcum)+' / '+fmt(metaAcum)+' pares', true));
+  }
+  document.getElementById('ac-kpis').innerHTML=k.join('');
+}
+function corKpi(pct){ if(pct==null) return 'cinza'; if(pct>=100) return 'verde'; if(pct>=80) return 'amarelo'; return 'coral'; }
+function kpi(l,v,cls,s,acum){
+  return '<div class="kpi '+cls+'"><div class="kpi-l">'+l+(acum?'<span class="acum-tag">YTD</span>':'')
+    +'</div><div class="kpi-v '+cls+'">'+v+'</div><div class="kpi-s">'+(s||'')+'</div></div>';
+}
+
+function setSort(key){
+  if(_sort.key===key) _sort.dir*=-1;
+  else _sort={key, dir:(key==='nome'?1:-1)};
+  document.getElementById('ac-sort').value=key;
+  renderTabela();
+}
+function renderTabela(){
+  const comp=document.getElementById('ac-comp').value;
+  const key=document.getElementById('ac-sort').value;
+  if(key!==_sort.key) _sort={key, dir:(key==='nome'?1:-1)};
+  const linhas=linhasRep(comp);
+  const dir=_sort.dir;
+  linhas.sort((a,b)=>{
+    if(_sort.key==='nome') return dir*a.rep.localeCompare(b.rep);
+    const map={meta:'meta',realizado:'realizado',ating:'ating',ating_acum:'atingAcum'};
+    const f=map[_sort.key]||'ating';
+    const av=a[f]==null?-1:a[f], bv=b[f]==null?-1:b[f];
+    return dir*(av-bv);
+  });
+  document.querySelectorAll('.th-sort').forEach(th=>th.classList.remove('on'));
+  const thOn=document.getElementById('th-'+_sort.key); if(thOn) thOn.classList.add('on');
+
+  document.getElementById('ac-tbody').innerHTML=linhas.map(l=>{
+    const tendCls=['crescimento','estavel','declinio','novo'].includes(l.tend)?l.tend:'indefinido';
+    const tendLbl={crescimento:'Crescimento',estavel:'Estável',declinio:'Declínio',novo:'Novo',indefinido:'—'}[tendCls];
+    return '<tr>'
+      +'<td class="td-nome">'+l.rep+(l.fixado?'<span class="fix-dot" title="Meta fixada manualmente"></span>':'')+'</td>'
+      +'<td><span class="badge-classif '+tendCls+'">'+tendLbl+'</span></td>'
+      +'<td class="td-num">'+(l.meta!=null?fmt(l.meta):'<span style="color:var(--txt-m)">–</span>')+'</td>'
+      +'<td class="td-num">'+fmt(l.realizado)+'</td>'
+      +'<td class="td-num">'+pill(l.realizado,l.meta)+'</td>'
+      +'<td class="td-num" style="color:var(--txt-m)">'+(l.metaAcum?fmt(l.metaAcum):'–')+'</td>'
+      +'<td class="td-num" style="color:var(--txt-m)">'+fmt(l.realAcum)+'</td>'
+      +'<td class="td-num">'+pill(l.realAcum,l.metaAcum)+'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+function renderChart(comp){
+  const meses=mesesYTDComMeta(comp);
+  const metaGlobalMes=m=>(((METAS.meta_global||{})[m])!=null?METAS.meta_global[m]
+        :Object.values(((METAS.metas||{})[m])||{}).reduce((x,y)=>x+y,0));
+  const dMeta=meses.map(metaGlobalMes);
+  const dReal=meses.map(m=>REPS.reduce((a,r)=>a+volRep(r,[m]),0));
+  const labels=meses.map(mesLabel);
+  if(_chart) _chart.destroy();
+  const ctx=document.getElementById('chart-ytd');
+  _chart=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Meta',data:dMeta,backgroundColor:'rgba(237,104,66,.55)',borderColor:'#ed6842',borderWidth:1,borderRadius:3},
+      {label:'Realizado',data:dReal,backgroundColor:'rgba(73,148,199,.55)',borderColor:'#4994c7',borderWidth:1,borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#b6b3ac',font:{size:11}}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.parsed.y)+' pares'}}},
+      scales:{
+        x:{ticks:{color:'#7d7c79',font:{size:10}},grid:{display:false}},
+        y:{ticks:{color:'#7d7c79',font:{size:10},callback:v=>fmt(v)},grid:{color:'rgba(255,255,255,.04)'}},
+      }}
+  });
+}
+
+// ══ CARGA ══════════════════════════════════════════════════════════
+Promise.all([
+  fetch('dados_vendas_carteira.json?_='+Date.now()).then(r=>r.ok?r.json():null),
+  fetch('dados_metas.json?_='+Date.now()).then(r=>r.ok?r.json():null),
+]).then(([cart,metas])=>{
+  CARTEIRA=cart; METAS=metas;
+  if(!CARTEIRA){ document.querySelector('.main').innerHTML='<div class="empty">Não foi possível carregar os dados de vendas.</div>'; return; }
+  construirIndice();
+  MESES=(CARTEIRA.meses_disponiveis||[]).slice().sort();
+  document.getElementById('hdr-data').textContent=CARTEIRA.gerado_em||'–';
+  document.getElementById('hdr-metas').textContent=(METAS&&METAS.gerado_em)||'–';
+
+  // Opções de competência para DEFINIR: meses disponíveis + próximos 3
+  const ult=MESES[MESES.length-1];
+  const futuros=[1,2,3].map(n=>mesMenos(ult,-n));
+  const opcoes=[...MESES.slice(-12),...futuros];
+  document.getElementById('def-comp').innerHTML=
+    opcoes.map(c=>'<option value="'+c+'">'+mesLabel(c)+'</option>').join('');
+  document.getElementById('def-comp').value=ult;
+
+  montarAcompanhamento();
+});
+</script>
+</body>
+</html>

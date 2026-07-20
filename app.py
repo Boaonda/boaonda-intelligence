@@ -34,6 +34,7 @@ DATA_FILES = (
     'boaonda_dados_completos.json', 'config_producao.json',
     'dados_capacidade.json', 'dados_ocupacao_semanal.json',
     'dados_faturamento.json', 'dados_fotos.json', 'dados_home.json',
+    'dados_metas.json',
 )
 
 # Arquivos JSON servidos publicamente (sem autenticação) para o catálogo público.
@@ -49,6 +50,7 @@ PAGINAS_COM_SIDEBAR_VENDAS = {
     'boaonda_carteira_clientes.html',
     'boaonda_carteira_representante.html',
     'boaonda_carteira_uf.html',
+    'boaonda_metas_comerciais.html',
 }
 
 # Primeira execução com volume vazio: semeia com os JSONs versionados no repo
@@ -71,7 +73,7 @@ USUARIOS_FILE = DATA_DIR / 'usuarios.json'
 # público continuam abertos a qualquer usuário logado (ou sem login, no caso
 # do catálogo). Checado por prefixo de path em require_login().
 ADMIN_ONLY_PREFIXES = ('/admin/', '/upload', '/config')
-ADMIN_ONLY_EXATOS = {'/api/capacidade/importar'}
+ADMIN_ONLY_EXATOS = {'/api/capacidade/importar', '/api/metas/importar'}
 
 
 def _ler_usuarios():
@@ -120,8 +122,8 @@ _seed_usuarios_iniciais()
 MODULOS = {
     'vendas': {
         'label': 'Vendas Calçados',
-        'htmls': ['boaonda_vendas_catalogo.html', 'boaonda_carteira_clientes.html', 'boaonda_carteira_representante.html', 'boaonda_carteira_uf.html'],
-        'jsons': ['dados_vendas.json', 'dados_vendas_clientes.json', 'dados_vendas_carteira.json'],
+        'htmls': ['boaonda_vendas_catalogo.html', 'boaonda_carteira_clientes.html', 'boaonda_carteira_representante.html', 'boaonda_carteira_uf.html', 'boaonda_metas_comerciais.html'],
+        'jsons': ['dados_vendas.json', 'dados_vendas_clientes.json', 'dados_vendas_carteira.json', 'dados_metas.json'],
         'ia': ['vendas'],
     },
     'vendas_eva': {
@@ -1402,6 +1404,72 @@ def capacidade_importar():
                 calculo_ocupacao_semanal.gerar(diretorio=str(DATA_DIR))
             except Exception:
                 traceback.print_exc()
+        return jsonify(resultado)
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'status': 'erro', 'mensagem': str(ex)}), 500
+    finally:
+        if path_xlsx.exists():
+            path_xlsx.unlink()
+
+
+@app.route('/api/metas/exportar')
+def metas_exportar():
+    bloqueio = _exige_modulo('vendas')
+    if bloqueio:
+        return bloqueio
+    from processador_metas import exportar_metas_excel, mes_label
+    from flask import send_file
+    carteira_path = DATA_DIR / 'dados_vendas_carteira.json'
+    if not carteira_path.exists():
+        return jsonify({'erro': 'dados_vendas_carteira.json não encontrado'}), 404
+
+    competencia = (request.args.get('competencia') or '').strip()
+    if not (competencia.isdigit() and len(competencia) == 6):
+        # default: mês mais recente disponível nos dados de vendas
+        try:
+            with open(carteira_path, encoding='utf-8') as f:
+                meses = json.load(f).get('meses_disponiveis', [])
+            competencia = sorted(meses)[-1] if meses else datetime.now().strftime('%Y%m')
+        except Exception:
+            competencia = datetime.now().strftime('%Y%m')
+    try:
+        meta_global = int(float(request.args.get('meta_global') or 0))
+    except (TypeError, ValueError):
+        meta_global = 0
+
+    try:
+        buf = exportar_metas_excel(str(DATA_DIR / 'dados_metas.json'),
+                                   str(carteira_path), competencia, meta_global)
+        return send_file(
+            buf,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'Boaonda_Metas_{competencia}.xlsx',
+        )
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'erro': str(ex)}), 500
+
+
+@app.route('/api/metas/importar', methods=['POST'])
+def metas_importar():
+    bloqueio = _exige_modulo('vendas')
+    if bloqueio:
+        return bloqueio
+    from processador_metas import importar_metas_excel
+    f = request.files.get('arquivo')
+    if not f or not f.filename:
+        return jsonify({'status': 'erro', 'mensagem': 'Nenhum arquivo enviado.'}), 400
+    path_xlsx = UPLOADS_DIR / 'metas_import.xlsx'
+    f.save(str(path_xlsx))
+    try:
+        resultado = importar_metas_excel(
+            str(path_xlsx),
+            str(DATA_DIR / 'dados_metas.json'),
+            str(DATA_DIR / 'dados_vendas_carteira.json'),
+            str(DATA_DIR),
+        )
         return jsonify(resultado)
     except Exception as ex:
         traceback.print_exc()
