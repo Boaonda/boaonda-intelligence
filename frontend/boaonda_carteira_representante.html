@@ -144,6 +144,8 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .modal-body{overflow-y:auto;flex:1}
 .modal-body table{font-size:11.5px}
 .modal-body th{position:sticky;top:0;background:var(--card);z-index:1}
+.modal-th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.modal-th-sort:hover{color:var(--txt)}
 .modal-foot{padding:10px 22px;border-top:1px solid var(--line);font-size:10px;color:var(--txt-m);flex-shrink:0;text-align:right}
 </style>
 </head>
@@ -766,6 +768,13 @@ function kpi(cls,label,val,sub){
 
 let _modalData = [];
 let _modalFiltro = 'todos';
+let _modalSort = { key: 'lp', dir: -1 }; // padrão: mais recente primeiro
+
+function sortModal(key){
+  if(_modalSort.key===key) _modalSort.dir=-_modalSort.dir;
+  else { _modalSort.key=key; _modalSort.dir=(key==='st')?1:-1; }
+  renderModalTabela();
+}
 
 function ultimaCompraHolding(h){
   const hd=(CARTEIRA.holdings||{})[h]||{};
@@ -862,10 +871,29 @@ function filtrarModal(f){
 function renderModalTabela(){
   const busca=(document.getElementById('modal-search').value||'').toLowerCase();
   const stLabel={ativo:'Ativo',emrisco:'Em risco',inativo:'Inativo'};
+  const stOrdem={ativo:0, emrisco:1, inativo:2};
   const lista=_modalData.filter(d=>{
     if(_modalFiltro!=='todos' && d.st!==_modalFiltro) return false;
     if(busca && !d.h.toLowerCase().includes(busca)) return false;
     return true;
+  });
+  const {key,dir}=_modalSort;
+  lista.sort((a,b)=>{
+    if(key==='st') return dir*(stOrdem[a.st]-stOrdem[b.st]);
+    if(key==='lp'){
+      if(!a.lp&&!b.lp) return 0;
+      if(!a.lp) return 1;
+      if(!b.lp) return -1;
+      return dir*a.lp.localeCompare(b.lp);
+    }
+    return dir*((a[key]||0)-(b[key]||0));
+  });
+  // atualiza setas nos cabeçalhos
+  ['st','lp','pares','valor'].forEach(k=>{
+    const th=document.getElementById('mth-'+k); if(!th) return;
+    let base=th.getAttribute('data-label');
+    if(!base){base=th.textContent.replace(/[▲▼\s]+$/,'').trim();th.setAttribute('data-label',base);}
+    th.textContent=base+(_modalSort.key===k?(_modalSort.dir===1?' ▲':' ▼'):'');
   });
   let html='';
   lista.forEach(d=>{
@@ -921,10 +949,10 @@ function renderModalTabela(){
       <table>
         <thead><tr>
           <th>Cliente / Holding</th>
-          <th>Status</th>
-          <th>Última compra</th>
-          <th>Pares (12m)</th>
-          <th>Valor R$ (12m)</th>
+          <th class="modal-th-sort" id="mth-st"    onclick="sortModal('st')">Status</th>
+          <th class="modal-th-sort" id="mth-lp"    onclick="sortModal('lp')">Última compra ▼</th>
+          <th class="modal-th-sort" id="mth-pares" onclick="sortModal('pares')">Pares (12m)</th>
+          <th class="modal-th-sort" id="mth-valor" onclick="sortModal('valor')">Valor R$ (12m)</th>
         </tr></thead>
         <tbody id="modal-tbody"></tbody>
       </table>
