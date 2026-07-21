@@ -151,7 +151,7 @@ tr.op-total:hover td{background:var(--card2);color:var(--txt)}
   <div>
     <div class="h-badge">Metas Comerciais</div>
     <div class="h-title">Metas por Representante</div>
-    <div class="h-sub">Definição da meta mensal (planilha) e acompanhamento meta × realizado — canal Mercado Interno (MI)</div>
+    <div class="h-sub">Acompanhamento meta × realizado — operação e por representante · canal Mercado Interno (MI). O registro das metas fica em Configurações › Metas comerciais (admin).</div>
   </div>
   <div style="text-align:right">
     <a href="boaonda_vendas_catalogo.html" class="back-link">← Voltar para Vendas</a>
@@ -160,47 +160,6 @@ tr.op-total:hover td{background:var(--card2);color:var(--txt)}
 </div>
 
 <div class="main">
-
-  <!-- ══ DEFINIR METAS ══════════════════════════════════════════════ -->
-  <div class="stitle">Definir metas do mês <span class="stitle-badge">planilha Excel</span></div>
-  <div class="def-card">
-    <div class="def-desc">
-      Informe a <b>meta global de pares</b> do mês e baixe a planilha: ela já vem com a
-      <b>sugestão de distribuição por representante</b>, ponderada pelo histórico
-      (crescimento 1,5× · estável 1,0× · declínio 0,6×, sempre vs. mesmo mês do ano anterior).
-      Ajuste offline — para <b>travar</b> um rep, marque <b>“S”</b> na coluna <code style="background:var(--card2);padding:1px 5px;border-radius:3px">fixar</code>
-      e o resto se redistribui — e reimporte. A soma das metas individuais <b>pode exceder</b> a meta global
-      (estratégia de <i>spread</i>: atribuir aos reps mais do que a empresa precisa, para folga na realização).
-    </div>
-    <div class="def-steps">
-      <div class="def-step">
-        <div class="def-step-t"><span class="def-step-n">1</span>Baixar planilha</div>
-        <div class="def-step-d">Escolha o mês e a meta global. Se já houver metas gravadas para o mês, elas voltam pré-preenchidas.</div>
-        <div class="def-row">
-          <div class="def-field">
-            <span class="filtro-label">Competência</span>
-            <select class="sel" id="def-comp"></select>
-          </div>
-          <div class="def-field">
-            <span class="filtro-label">Meta global (pares)</span>
-            <input class="inp" id="def-meta" type="number" min="0" step="500" placeholder="ex.: 150000" style="width:150px">
-          </div>
-          <button class="btn" onclick="baixarPlanilha()">⬇ Baixar</button>
-        </div>
-      </div>
-      <div class="def-step">
-        <div class="def-step-t"><span class="def-step-n">2</span>Importar planilha preenchida</div>
-        <div class="def-step-d">Envie o arquivo editado. O sistema valida, faz backup e grava as metas do mês.</div>
-        <div class="def-row">
-          <input type="file" id="def-file" accept=".xlsx" style="display:none" onchange="arqSelecionado()">
-          <button class="btn sec" onclick="document.getElementById('def-file').click()">📄 Escolher arquivo</button>
-          <button class="btn" id="btn-import" onclick="importarPlanilha()" disabled>⬆ Importar</button>
-        </div>
-        <div class="file-name" id="def-fname">Nenhum arquivo selecionado</div>
-      </div>
-    </div>
-    <div class="import-msg" id="import-msg"></div>
-  </div>
 
   <!-- ══ DESEMPENHO MENSAL (OPERAÇÃO) ══════════════════════════════ -->
   <div class="stitle">Desempenho mensal — operação <span class="stitle-badge">meta geral da empresa</span></div>
@@ -607,45 +566,6 @@ function montarDetalhado(){
   renderDetalhado();
 }
 
-// ══ SEÇÃO DEFINIR ══════════════════════════════════════════════════
-function baixarPlanilha(){
-  const comp=document.getElementById('def-comp').value;
-  const meta=document.getElementById('def-meta').value||0;
-  location.href='/api/metas/exportar?competencia='+encodeURIComponent(comp)+'&meta_global='+encodeURIComponent(meta);
-}
-function arqSelecionado(){
-  const f=document.getElementById('def-file').files[0];
-  document.getElementById('def-fname').textContent=f?f.name:'Nenhum arquivo selecionado';
-  document.getElementById('btn-import').disabled=!f;
-}
-async function importarPlanilha(){
-  const f=document.getElementById('def-file').files[0];
-  if(!f) return;
-  const btn=document.getElementById('btn-import'); btn.disabled=true; btn.textContent='Importando…';
-  const msg=document.getElementById('import-msg');
-  try{
-    const fd=new FormData(); fd.append('arquivo',f);
-    const r=await fetch('/api/metas/importar',{method:'POST',body:fd});
-    const j=await r.json();
-    if(j.status==='ok'){
-      msg.className='import-msg ok';
-      msg.textContent='✓ Metas de '+j.competencia_label+' gravadas — '+j.reps+' representantes, '
-        +j.reps_fixados+' fixado(s), total '+fmt(j.total_distribuido)+' pares (meta global '+fmt(j.meta_global)+').';
-      await recarregarMetas(j.competencia);
-    }else{
-      msg.className='import-msg err'; msg.textContent='✗ '+(j.mensagem||'Erro ao importar.');
-    }
-  }catch(e){ msg.className='import-msg err'; msg.textContent='✗ Falha na comunicação: '+e; }
-  btn.disabled=false; btn.textContent='⬆ Importar';
-}
-async function recarregarMetas(){
-  const r=await fetch('dados_metas.json?_='+Date.now());
-  METAS=r.ok?await r.json():null;
-  document.getElementById('hdr-metas').textContent=(METAS&&METAS.gerado_em)||'–';
-  renderOperacao();
-  montarDetalhado();
-}
-
 // ══ CARGA ══════════════════════════════════════════════════════════
 Promise.all([
   fetch('dados_vendas_carteira.json?_='+Date.now()).then(r=>r.ok?r.json():null),
@@ -658,15 +578,6 @@ Promise.all([
   document.getElementById('hdr-data').textContent=CARTEIRA.gerado_em||'–';
   document.getElementById('hdr-metas').textContent=(METAS&&METAS.gerado_em)||'–';
   renderOperacao();
-
-  // Opções de competência para DEFINIR: meses disponíveis + próximos 3
-  const ult=MESES[MESES.length-1];
-  const futuros=[1,2,3].map(n=>mesMenos(ult,-n));
-  const opcoes=[...MESES.slice(-12),...futuros];
-  document.getElementById('def-comp').innerHTML=
-    opcoes.map(c=>'<option value="'+c+'">'+mesLabel(c)+'</option>').join('');
-  document.getElementById('def-comp').value=ult;
-
   montarDetalhado();
 });
 </script>

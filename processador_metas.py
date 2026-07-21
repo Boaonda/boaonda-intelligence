@@ -30,7 +30,7 @@ Saída: dados_metas.json
     }
 """
 
-import json, os, sys
+import json, os, re, sys
 from datetime import datetime
 from collections import defaultdict
 
@@ -593,6 +593,199 @@ def importar_metas_excel(path_excel, dados_metas_path, carteira_path, output_dir
         'total_distribuido': sum(metas.values()),
         'meta_empresa': dados['meta_empresa'].get(competencia),
         'meses_meta_empresa': len(meta_empresa_import) or None,
+        'gerado_em': dados['gerado_em'],
+    }
+
+
+# ═══ REGISTRO FORMAL EM GRADE (planilha das Configurações, admin) ═════════
+# Uma planilha única: linha META EMPRESA + uma linha por representante,
+# colunas = todos os meses com vendas. A planilha é a FONTE COMPLETA: ao
+# importar, dados_metas.json é reconstruído a partir dela (célula em branco =
+# sem meta). Sem sugestão/ponderação aqui — isso é o "apoio para formar metas"
+# (rascunho), separado do registro formal.
+_MESES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun',
+                'jul', 'ago', 'set', 'out', 'nov', 'dez']
+_LABEL_META_EMPRESA = 'META EMPRESA'
+
+
+def _parse_mes_header(v):
+    """Reconhece cabeçalho de mês: 'jan/2025', 'jan/25' ou '202501'."""
+    s = str(v or '').strip().lower()
+    if s.isdigit() and len(s) == 6:
+        return s
+    m = re.match(r'([a-zç]{3})[./\- ]?(\d{2,4})$', s)
+    if m and m.group(1) in _MESES_ABREV:
+        mo = _MESES_ABREV.index(m.group(1)) + 1
+        yr = int(m.group(2))
+        yr = 2000 + yr if yr < 100 else yr
+        return f'{yr:04d}{mo:02d}'
+    return None
+
+
+def _sheet_leia_me_grade(wb, meses):
+    ws = wb.create_sheet('LEIA-ME')
+    ws.column_dimensions['A'].width = 118
+    ini = mes_label(meses[0]) if meses else '-'
+    fim = mes_label(meses[-1]) if meses else '-'
+    linhas = [
+        ('BOAONDA INTELLIGENCE — Registro de Metas Comerciais', True),
+        (f'Planilha única com todos os representantes e a meta da empresa, por mês '
+         f'({ini} a {fim}).', False),
+        ('', False),
+        ('COMO USAR', True),
+        ('1. Na aba METAS, cada coluna é um mês e cada linha é um representante.', False),
+        ('2. A linha "META EMPRESA" (no topo) é a meta global da empresa por mês — '
+         'informada top-down; NÃO é a soma das metas dos representantes.', False),
+        ('3. Cada célula é a meta em pares daquele rep/mês. A soma das metas dos reps '
+         'pode ser maior ou menor que a meta da empresa (spread liberado).', False),
+        ('4. Célula em branco = SEM meta para aquele rep/mês (removida na importação). '
+         'A planilha é a FONTE COMPLETA: o que estiver nela é o que fica gravado.', False),
+        ('5. Não altere a linha de cabeçalho (os meses) nem os nomes dos '
+         'representantes na coluna A.', False),
+        ('6. Salve e importe pelo portal: Configurações › Metas comerciais › '
+         'Importar planilha.', False),
+        ('', False),
+        ('REGRAS', True),
+        ('  valores: inteiros ≥ 0 (pares); vazio = sem meta', False),
+        ('  cabeçalho dos meses no formato "jan/2025" — não editar', False),
+    ]
+    for i, (t, b) in enumerate(linhas, 1):
+        _cel(ws, i, 1, t, bold=b, bg=_CORES['header_bg'] if b else None,
+             ft=_CORES['header_ft'] if b else '000000', size=11 if b else 10, wrap=True)
+
+
+def exportar_metas_grade(dados_metas_path, carteira_path):
+    """Planilha em grade (reps × meses + linha META EMPRESA), pré-preenchida
+    com o que está gravado. Retorna BytesIO."""
+    from io import BytesIO
+    try:
+        import openpyxl
+    except ImportError:
+        raise RuntimeError('openpyxl não instalado. Rode: pip install openpyxl')
+
+    carteira = _carregar_carteira(carteira_path)
+    meses = sorted(carteira.get('meses_disponiveis', []))
+    _v, _a, reps = indice_reps(carteira)
+    reps = sorted(reps)
+
+    dados = {}
+    if os.path.exists(dados_metas_path):
+        with open(dados_metas_path, encoding='utf-8') as f:
+            dados = json.load(f)
+    meta_empresa = dados.get('meta_empresa', {}) or {}
+    metas = dados.get('metas', {}) or {}
+
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    _sheet_leia_me_grade(wb, meses)
+    ws = wb.create_sheet('METAS')
+    ws.column_dimensions['A'].width = 34
+    _cel(ws, 1, 1, 'Representante', bold=True, bg=_CORES['header_bg'],
+         ft=_CORES['header_ft'])
+    for j, m in enumerate(meses, 2):
+        ws.column_dimensions[ws.cell(1, j).column_letter].width = 11
+        _cel(ws, 1, j, mes_label(m), bold=True, bg=_CORES['header_bg'],
+             ft=_CORES['header_ft'], align='center')
+
+    _cel(ws, 2, 1, _LABEL_META_EMPRESA, bold=True, bg=_CORES['travado_bg'])
+    for j, m in enumerate(meses, 2):
+        v = meta_empresa.get(m)
+        _cel(ws, 2, j, int(v) if v not in (None, '') else '',
+             bg=_CORES['travado_bg'], align='center')
+
+    for i, rep in enumerate(reps, 3):
+        bg = _CORES['zebra_a'] if i % 2 == 0 else None
+        _cel(ws, i, 1, rep, bg=bg)
+        for j, m in enumerate(meses, 2):
+            v = (metas.get(m) or {}).get(rep)
+            _cel(ws, i, j, int(v) if v not in (None, '') else '', bg=bg, align='center')
+    ws.freeze_panes = 'B3'
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
+def importar_metas_grade(path_excel, dados_metas_path, output_dir=None):
+    """Reconstrói dados_metas.json a partir da grade (fonte completa; branco =
+    sem meta). Faz backup do anterior. Retorna dict status/detalhes."""
+    try:
+        import openpyxl
+    except ImportError:
+        return {'status': 'erro', 'mensagem': 'openpyxl não instalado.'}
+    if output_dir is None:
+        output_dir = os.path.dirname(dados_metas_path)
+
+    wb = openpyxl.load_workbook(path_excel, data_only=True)
+    nome_aba = 'METAS' if 'METAS' in wb.sheetnames else wb.sheetnames[-1]
+    ws = wb[nome_aba]
+    linhas = list(ws.iter_rows(values_only=True))
+    if not linhas:
+        return {'status': 'erro', 'mensagem': 'Planilha vazia.'}
+
+    col_mes = {}
+    for ci, hv in enumerate(linhas[0]):
+        if ci == 0:
+            continue
+        mm = _parse_mes_header(hv)
+        if mm:
+            col_mes[ci] = mm
+    if not col_mes:
+        return {'status': 'erro',
+                'mensagem': 'Nenhuma coluna de mês reconhecida no cabeçalho '
+                            '(esperado "jan/2025", "202501", …).'}
+
+    meta_empresa, metas, erros = {}, {}, []
+    for ri, row in enumerate(linhas[1:], 2):
+        if not row or row[0] is None or not str(row[0]).strip():
+            continue
+        nome = str(row[0]).strip()
+        eh_empresa = nome.upper().replace(' ', '') == _LABEL_META_EMPRESA.replace(' ', '')
+        for ci, mm in col_mes.items():
+            raw = row[ci] if ci < len(row) else None
+            if raw in (None, ''):
+                continue
+            try:
+                v = int(round(float(raw)))
+            except (TypeError, ValueError):
+                erros.append(f'linha {ri} ({nome}) › {mes_label(mm)}: valor não numérico "{raw}"')
+                continue
+            if v < 0:
+                erros.append(f'linha {ri} ({nome}) › {mes_label(mm)}: valor negativo {v}')
+                continue
+            if eh_empresa:
+                meta_empresa[mm] = v
+            else:
+                metas.setdefault(mm, {})[nome] = v
+    if erros:
+        return {'status': 'erro', 'mensagem': 'Falha na validação:\n' + '\n'.join(erros[:30])}
+
+    metas = {m: d for m, d in metas.items() if d}  # descarta meses sem nenhum rep
+
+    if os.path.exists(dados_metas_path):
+        with open(dados_metas_path, encoding='utf-8') as f:
+            antigo = json.load(f)
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        with open(os.path.join(output_dir, f'dados_metas_backup_{ts}.json'),
+                  'w', encoding='utf-8') as f:
+            json.dump(antigo, f, ensure_ascii=False, default=str)
+
+    dados = {
+        'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        'meta_empresa': meta_empresa,
+        'metas': metas,
+    }
+    with open(dados_metas_path, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, default=str)
+
+    reps_com_meta = len({r for d in metas.values() for r in d})
+    return {
+        'status': 'ok',
+        'meses': len(col_mes),
+        'meses_meta_empresa': len(meta_empresa),
+        'reps_com_meta': reps_com_meta,
+        'celulas': sum(len(d) for d in metas.values()),
         'gerado_em': dados['gerado_em'],
     }
 

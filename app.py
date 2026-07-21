@@ -73,7 +73,8 @@ USUARIOS_FILE = DATA_DIR / 'usuarios.json'
 # público continuam abertos a qualquer usuário logado (ou sem login, no caso
 # do catálogo). Checado por prefixo de path em require_login().
 ADMIN_ONLY_PREFIXES = ('/admin/', '/upload', '/config')
-ADMIN_ONLY_EXATOS = {'/api/capacidade/importar', '/api/metas/importar'}
+ADMIN_ONLY_EXATOS = {'/api/capacidade/importar', '/api/metas/importar',
+                     '/api/metas/exportar'}
 
 
 def _ler_usuarios():
@@ -384,6 +385,7 @@ def serve_file(filename):
 # sem reescrever a lógica de nenhuma delas.
 CONFIG_SECOES = [
     {'id': 'upload',     'icone': '⟳',  'label': 'Atualizar dados',              'url': '/upload'},
+    {'id': 'metas',      'icone': '🎯', 'label': 'Metas comerciais',             'url': '/admin/metas'},
     {'id': 'fotos',      'icone': '🖼', 'label': 'Atualizar fotos do catálogo',   'url': '/admin/fotos'},
     {'id': 'home',       'icone': '🏠', 'label': 'Editar home do catálogo',       'url': '/admin/home'},
     {'id': 'usuarios',   'icone': '👤', 'label': 'Gerenciar usuários',            'url': '/admin/usuarios'},
@@ -997,6 +999,85 @@ p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
 </html>'''
 
 
+_METAS_ADMIN_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Boaonda Intelligence — Metas comerciais</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--coral:#ed6842;--verde:#6c9c37;--verde-dark:#26361e;--bg:#f8f5f1;--card:#fff;--line:#e2ddd8;--txt-s:#71706f;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
+body{background:var(--bg);color:var(--verde-dark);min-height:100vh;padding:32px}
+.wrap{max-width:600px;margin:0 auto}
+.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px;margin-bottom:4px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
+h1{font-size:16px;font-weight:700;margin:24px 0 8px}
+p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px;line-height:1.6}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px;margin-bottom:16px}
+.step-t{font-size:13px;font-weight:800;margin-bottom:6px;display:flex;align-items:center}
+.step-t .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--coral);color:#fff;font-size:11px;margin-right:8px}
+.step-d{font-size:11.5px;color:var(--txt-s);margin-bottom:14px;line-height:1.6}
+.btn{display:inline-block;background:var(--coral);color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:12.5px;font-weight:700;cursor:pointer;text-decoration:none}
+.btn:hover{background:#dd7051}
+.btn.sec{background:#fff;border:1px solid var(--line);color:var(--txt-s)}
+.btn.sec:hover{border-color:var(--coral);color:var(--coral)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.fname{font-size:11px;color:var(--txt-m);margin-top:10px;font-style:italic}
+.msg{border-radius:8px;padding:12px 16px;font-size:12px;margin-top:14px;line-height:1.5;white-space:pre-wrap}
+.msg.ok{background:rgba(108,156,55,.1);color:var(--verde);border:1px solid rgba(108,156,55,.25)}
+.msg.err{background:rgba(239,68,68,.08);color:#c0392b;border:1px solid rgba(239,68,68,.25)}
+.back{display:inline-block;margin-top:8px;font-size:12px;color:var(--txt-s);text-decoration:none}
+.back:hover{color:var(--coral)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">BOAONDA <span>· Intelligence</span></div>
+  <h1>Metas comerciais</h1>
+  <p class="sub">Registro formal das metas — uma planilha única com a <b>meta da empresa</b> e a meta de <b>cada representante</b>, por mês (todos os meses com vendas registradas). Ao importar, os quadros de Vendas (operação e por representante) passam a refletir estes valores.</p>
+
+  <div class="card">
+    <div class="step-t"><span class="n">1</span>Baixar planilha</div>
+    <div class="step-d">Vem pré-preenchida com o que já está gravado: linha <b>META EMPRESA</b> no topo e uma linha por representante, colunas = meses.</div>
+    <a class="btn" href="/api/metas/exportar">⬇ Baixar planilha</a>
+  </div>
+
+  <div class="card">
+    <div class="step-t"><span class="n">2</span>Importar planilha</div>
+    <div class="step-d">Edite as metas e reenvie. <b>A planilha é a fonte completa:</b> cada célula sobrescreve o valor gravado; célula em branco remove a meta. A soma das metas dos reps pode exceder a meta da empresa (spread).</div>
+    <input type="file" id="file" accept=".xlsx" style="display:none" onchange="sel()">
+    <button class="btn sec" onclick="document.getElementById('file').click()">📄 Escolher arquivo</button>
+    <button class="btn" id="imp" onclick="importar()" disabled>⬆ Importar</button>
+    <div class="fname" id="fname">Nenhum arquivo selecionado</div>
+    <div class="msg" id="msg" style="display:none"></div>
+  </div>
+
+  <a class="back" href="/admin/configuracoes" target="_top">← Voltar às Configurações</a>
+</div>
+<script>
+function sel(){ var f=document.getElementById('file').files[0]; document.getElementById('fname').textContent=f?f.name:'Nenhum arquivo selecionado'; document.getElementById('imp').disabled=!f; }
+async function importar(){
+  var f=document.getElementById('file').files[0]; if(!f) return;
+  var b=document.getElementById('imp'); b.disabled=true; b.textContent='Importando…';
+  var m=document.getElementById('msg');
+  try{
+    var fd=new FormData(); fd.append('arquivo',f);
+    var r=await fetch('/api/metas/importar',{method:'POST',body:fd});
+    var j=await r.json();
+    m.style.display='block';
+    if(j.status==='ok'){
+      m.className='msg ok';
+      m.textContent='✓ Metas gravadas — '+j.meses_meta_empresa+' mês(es) com meta da empresa, '+j.reps_com_meta+' representante(s) com meta, '+j.celulas+' célula(s). ('+j.gerado_em+')';
+    }else{ m.className='msg err'; m.textContent='✗ '+(j.mensagem||'Erro ao importar.'); }
+  }catch(e){ m.style.display='block'; m.className='msg err'; m.textContent='✗ Falha na comunicação: '+e; }
+  b.disabled=false; b.textContent='⬆ Importar';
+}
+</script>
+</body>
+</html>'''
+
+
 _FOTOS_HTML = '''<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1413,39 +1494,22 @@ def capacidade_importar():
             path_xlsx.unlink()
 
 
+# Metas comerciais — registro formal via planilha em grade (admin, dentro das
+# Configurações). Ambos os endpoints são admin-only (ADMIN_ONLY_EXATOS).
 @app.route('/api/metas/exportar')
 def metas_exportar():
-    bloqueio = _exige_modulo('vendas')
-    if bloqueio:
-        return bloqueio
-    from processador_metas import exportar_metas_excel, mes_label
+    from processador_metas import exportar_metas_grade
     from flask import send_file
     carteira_path = DATA_DIR / 'dados_vendas_carteira.json'
     if not carteira_path.exists():
         return jsonify({'erro': 'dados_vendas_carteira.json não encontrado'}), 404
-
-    competencia = (request.args.get('competencia') or '').strip()
-    if not (competencia.isdigit() and len(competencia) == 6):
-        # default: mês mais recente disponível nos dados de vendas
-        try:
-            with open(carteira_path, encoding='utf-8') as f:
-                meses = json.load(f).get('meses_disponiveis', [])
-            competencia = sorted(meses)[-1] if meses else datetime.now().strftime('%Y%m')
-        except Exception:
-            competencia = datetime.now().strftime('%Y%m')
     try:
-        meta_global = int(float(request.args.get('meta_global') or 0))
-    except (TypeError, ValueError):
-        meta_global = 0
-
-    try:
-        buf = exportar_metas_excel(str(DATA_DIR / 'dados_metas.json'),
-                                   str(carteira_path), competencia, meta_global)
+        buf = exportar_metas_grade(str(DATA_DIR / 'dados_metas.json'), str(carteira_path))
         return send_file(
             buf,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name=f'Boaonda_Metas_{competencia}.xlsx',
+            download_name='Boaonda_Metas.xlsx',
         )
     except Exception as ex:
         traceback.print_exc()
@@ -1454,20 +1518,16 @@ def metas_exportar():
 
 @app.route('/api/metas/importar', methods=['POST'])
 def metas_importar():
-    bloqueio = _exige_modulo('vendas')
-    if bloqueio:
-        return bloqueio
-    from processador_metas import importar_metas_excel
+    from processador_metas import importar_metas_grade
     f = request.files.get('arquivo')
     if not f or not f.filename:
         return jsonify({'status': 'erro', 'mensagem': 'Nenhum arquivo enviado.'}), 400
     path_xlsx = UPLOADS_DIR / 'metas_import.xlsx'
     f.save(str(path_xlsx))
     try:
-        resultado = importar_metas_excel(
+        resultado = importar_metas_grade(
             str(path_xlsx),
             str(DATA_DIR / 'dados_metas.json'),
-            str(DATA_DIR / 'dados_vendas_carteira.json'),
             str(DATA_DIR),
         )
         return jsonify(resultado)
@@ -1477,6 +1537,11 @@ def metas_importar():
     finally:
         if path_xlsx.exists():
             path_xlsx.unlink()
+
+
+@app.route('/admin/metas')
+def admin_metas():
+    return render_template_string(_METAS_ADMIN_HTML)
 
 
 @app.route('/admin/diag')
