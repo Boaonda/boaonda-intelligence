@@ -252,8 +252,13 @@ def _sheet_leia_me(wb, competencia, meta_global):
         ('4. Os reps SEM "S" em "fixar" têm a meta recalculada automaticamente na '
          'importação — o restante da meta global (após os fixados) é redistribuído '
          'entre eles conforme o histórico (o resto se ajusta ao redor).', False),
-        ('5. Salve e importe pelo portal (botão "Importar planilha" na tela de '
-         'Metas Comerciais). O total sempre fecha na meta global.', False),
+        ('5. A soma das metas individuais PODE exceder a meta global (estratégia de '
+         '"spread": atribuir aos reps mais do que a empresa precisa, criando folga '
+         'na realização). Para isso, aumente a meta global (envelope) OU fixe reps '
+         'com valores altos. Se os fixados já superam a meta global, os reps não '
+         'fixados ficam em 0 — fixe também os que quiser com meta.', False),
+        ('6. Salve e importe pelo portal (botão "Importar planilha" na tela de '
+         'Metas Comerciais).', False),
         ('', False),
         ('ABA META EMPRESA — meta oficial da empresa por mês', True),
         ('  A meta da empresa é informada top-down e NÃO é a soma das metas dos '
@@ -278,7 +283,7 @@ def _sheet_leia_me(wb, competencia, meta_global):
         ('  meta global: inteiro > 0', False),
         ('  competência: AAAAMM (ex.: 202607)', False),
         ('  meta_pares: inteiro ≥ 0', False),
-        ('  soma dos reps fixados não pode exceder a meta global', False),
+        ('  a soma das metas individuais pode exceder a meta global (spread liberado)', False),
         ('', False),
         ('METODOLOGIA (Gestor Comercial Boaonda)', True),
         ('  Base = mesmo mês do ano anterior (deseasonaliza). Tendência compara os '
@@ -475,30 +480,26 @@ def _validar(wb):
     if erros:
         return erros
 
+    # As metas individuais PODEM exceder a meta global (estratégia de spread:
+    # atribuir aos reps mais do que a empresa precisa, criando folga na
+    # realização). Portanto não há trava sobre a soma dos fixados — só se
+    # valida que cada meta_pares é um número não negativo.
     idx = {n: i for i, n in enumerate(header)}
-    soma_fix = 0
     for n_row, row in enumerate(ws.iter_rows(min_row=header_row + 1, values_only=True),
                                 header_row + 1):
         if not row or row[idx['rep']] is None or not str(row[idx['rep']]).strip():
             continue
         rep = str(row[idx['rep']]).strip()
-        fixar = str(row[idx['fixar']] or '').strip().upper()
         raw = row[idx['meta_pares']]
         if raw in (None, ''):
-            mp = 0
-        else:
-            try:
-                mp = float(raw)
-            except (TypeError, ValueError):
-                erros.append(f'METAS › linha {n_row} ({rep}) › meta_pares não numérico: "{raw}"')
-                continue
+            continue
+        try:
+            mp = float(raw)
+        except (TypeError, ValueError):
+            erros.append(f'METAS › linha {n_row} ({rep}) › meta_pares não numérico: "{raw}"')
+            continue
         if mp < 0:
             erros.append(f'METAS › linha {n_row} ({rep}) › meta_pares negativo: {mp}')
-        if fixar in ('S', 'SIM', '1', 'TRUE', 'VERDADEIRO', 'X'):
-            soma_fix += mp
-    if not erros and mg and soma_fix > mg:
-        erros.append(f'Soma dos reps fixados ({int(soma_fix):,}'.replace(',', '.') +
-                     f') excede a meta global ({mg:,})'.replace(',', '.') + '.')
     return erros
 
 
