@@ -1,57 +1,57 @@
 <!--
-  SIDEBAR DE NAVEGAÇÃO — cluster de Vendas (Boaonda Intelligence)
+  NAVEGAÇÃO — cluster de Vendas (Boaonda Intelligence)
   ------------------------------------------------------------------
-  Fonte única de verdade: este arquivo é incluído via Jinja (tag "include")
-  pelas páginas do cluster de Vendas. Qualquer ajuste visual/de itens deve
-  ser feito só aqui — não duplicar em cada página. Servido via
-  render_template() em app.py (serve_file(), PAGINAS_COM_SIDEBAR_VENDAS)
-  em vez de send_from_directory().
+  Barra HORIZONTAL de abas (topo), com rótulo de texto explícito em cada
+  painel. Fonte única de verdade: incluída via Jinja (tag "include") pelas
+  páginas do cluster de Vendas — ajustar só aqui, não duplicar. Servida via
+  render_template() em app.py (serve_file(), PAGINAS_COM_SIDEBAR_VENDAS).
 
   Cada página host declara <body data-active="CHAVE"> (vendas | carteira |
-  representante | uf) para indicar qual item deve ficar destacado — a
-  própria sidebar não recebe nenhuma variável do servidor, só lê esse
-  atributo via JS no carregamento.
+  representante | uf | metas) para indicar qual aba fica destacada — a barra
+  não recebe variável do servidor, só lê esse atributo via JS no carregamento.
 -->
 <style>
-.sidebar-vendas{
-  position:fixed; top:0; left:0; bottom:0; width:64px; z-index:200;
-  background:#161922; border-right:1px solid #262b3a;
-  display:flex; flex-direction:column; align-items:center;
-  padding-top:18px; gap:2px;
+.nav-vendas{
+  position:sticky; top:0; z-index:300;
+  background:#161922; border-bottom:1px solid #262b3a;
+  display:flex; align-items:center; gap:2px; padding:0 20px;
+  overflow-x:auto; scrollbar-width:thin;
 }
-.sidebar-vendas .sb-item{
-  position:relative; width:100%; display:flex; justify-content:center;
-  padding:13px 0; text-decoration:none; border-left:2px solid transparent;
-  cursor:pointer; transition:.15s;
+.nav-vendas::-webkit-scrollbar{ height:0; }
+.nav-vendas .nv-brand{
+  font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+  color:#ed6842; padding-right:18px; margin-right:4px;
+  border-right:1px solid #262b3a; white-space:nowrap;
 }
-.sidebar-vendas .sb-item:hover{ background:rgba(255,255,255,.03); }
-.sidebar-vendas .sb-icon{ font-size:21px; line-height:1; color:#b6b3ac; transition:.15s; }
-.sidebar-vendas .sb-item.ativo{ border-left-color:#ed6842; background:rgba(237,104,66,.06); }
-.sidebar-vendas .sb-item.ativo .sb-icon{ color:#ed6842; }
-.sidebar-vendas .sb-item:hover .sb-icon{ color:#f3f0eb; }
-/* Empurra o conteúdo normal do documento (header/filtros/main) 64px pra
-   direita, sem precisar tocar em cada página — nenhuma delas usa
-   position:fixed/absolute nos containers de topo (confirmado antes de
-   implementar), então padding no body já resolve sem sobreposição. */
-body{ padding-left:64px; }
-@media(max-width:640px){
-  .sidebar-vendas{ width:52px; }
-  .sidebar-vendas .sb-icon{ font-size:18px; }
-  body{ padding-left:52px; }
+.nav-vendas .nv-item{
+  display:flex; align-items:center; gap:7px; padding:15px 15px;
+  text-decoration:none; color:#b6b3ac; font-size:12px; font-weight:700;
+  font-family:'Montserrat',system-ui,sans-serif;
+  border-bottom:2px solid transparent; white-space:nowrap; transition:.15s;
+}
+.nav-vendas .nv-item:hover{ color:#f3f0eb; background:rgba(255,255,255,.03); }
+.nav-vendas .nv-item.ativo{ color:#ed6842; border-bottom-color:#ed6842; }
+.nav-vendas .nv-ic{ font-size:15px; line-height:1; }
+@media(max-width:720px){
+  .nav-vendas{ padding:0 10px; }
+  .nav-vendas .nv-brand{ display:none; }
+  .nav-vendas .nv-item{ padding:13px 11px; font-size:11px; gap:5px; }
+  .nav-vendas .nv-ic{ font-size:14px; }
 }
 </style>
-<nav class="sidebar-vendas" id="sidebar-vendas">
-  <a class="sb-item" data-sb="vendas" href="boaonda_vendas_catalogo.html" title="Vendas — visão geral"><span class="sb-icon">📊</span></a>
-  <a class="sb-item" data-sb="carteira" href="boaonda_carteira_clientes.html" title="Carteira de Clientes"><span class="sb-icon">👥</span></a>
-  <a class="sb-item" data-sb="representante" href="boaonda_carteira_representante.html" title="Por Representante"><span class="sb-icon">🧑‍💼</span></a>
-  <a class="sb-item" data-sb="uf" href="boaonda_carteira_uf.html" title="Por Região"><span class="sb-icon">📍</span></a>
-  <a class="sb-item" data-sb="metas" href="boaonda_metas_comerciais.html" title="Metas Comerciais"><span class="sb-icon">🎯</span></a>
+<nav class="nav-vendas" id="nav-vendas">
+  <span class="nv-brand">Vendas Calçados</span>
+  <a class="nv-item" data-nv="vendas" href="boaonda_vendas_catalogo.html"><span class="nv-ic">📊</span>Visão Geral</a>
+  <a class="nv-item" data-nv="carteira" href="boaonda_carteira_clientes.html"><span class="nv-ic">👥</span>Carteira de Clientes</a>
+  <a class="nv-item" data-nv="representante" href="boaonda_carteira_representante.html"><span class="nv-ic">🧑‍💼</span>Por Representante</a>
+  <a class="nv-item" data-nv="uf" href="boaonda_carteira_uf.html"><span class="nv-ic">📍</span>Por Região</a>
+  <a class="nv-item" data-nv="metas" href="boaonda_metas_comerciais.html"><span class="nv-ic">🎯</span>Metas Comerciais</a>
 </nav>
 <script>
 (function(){
   var ativo = document.body.getAttribute('data-active');
-  document.querySelectorAll('#sidebar-vendas .sb-item').forEach(function(el){
-    if(el.getAttribute('data-sb') === ativo) el.classList.add('ativo');
+  document.querySelectorAll('#nav-vendas .nv-item').forEach(function(el){
+    if(el.getAttribute('data-nv') === ativo) el.classList.add('ativo');
   });
 })();
 </script>
