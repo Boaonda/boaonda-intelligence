@@ -148,17 +148,17 @@ th.sortable .sort-arrow{margin-left:3px;color:var(--coral);opacity:.9}
   <!-- Canal -->
   <div class="dd-wrap" id="ddw-canal">
     <div class="dd-btn" id="ddb-canal" onclick="toggleDD('canal')">
-      <span><span class="dd-label">Canal </span><span id="dd-canal-txt">Todos</span></span>
+      <span><span class="dd-label">Canal </span><span id="dd-canal-txt">Merc. Interno</span></span>
       <span class="dd-arrow">▼</span>
     </div>
     <div class="dd-menu" id="ddm-canal">
       <div class="dd-item all" onclick="ddSelectAll('canal')">
-        <div class="dd-cb checked" id="cb-canal-all"></div>
+        <div class="dd-cb" id="cb-canal-all"></div>
         <span>Todos os canais</span>
       </div>
       <div class="dd-sep"></div>
       <div class="dd-item" onclick="ddToggle('canal','MI')">
-        <div class="dd-cb" id="cb-canal-MI"></div>
+        <div class="dd-cb checked" id="cb-canal-MI"></div>
         <span>Mercado Interno</span>
       </div>
       <div class="dd-item" onclick="ddToggle('canal','ME')">
@@ -392,7 +392,7 @@ Promise.all([
 // ── ESTADO ──────────────────────────────────────────────────────────
 const TIPOS_ALL=['PROG','PE','MISTA'];
 const estado = {
-  canal: new Set(['MI','ME','EC']),  // todos
+  canal: new Set(['MI']),  // padrão: só Mercado Interno (visão principal; ME/EC ativados sob demanda)
   tipo:  new Set(TIPOS_ALL),          // todos
   meses: new Set(),  // preenchido após fetch
   unidade: 'pares',                   // 'pares' ou 'valor'
