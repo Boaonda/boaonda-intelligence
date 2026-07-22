@@ -1,55 +1,64 @@
 <!--
   NAVEGAÇÃO — cluster de Vendas (Boaonda Intelligence)
   ------------------------------------------------------------------
-  Barra HORIZONTAL de abas (topo), com rótulo de texto explícito em cada
-  painel. Fonte única de verdade: incluída via Jinja (tag "include") pelas
-  páginas do cluster de Vendas — ajustar só aqui, não duplicar. Servida via
-  render_template() em app.py (serve_file(), PAGINAS_COM_SIDEBAR_VENDAS).
+  Barra HORIZONTAL de abas (topo), só texto. À esquerda: marca fixa
+  "Vendas Calçados" com o painel atual logo abaixo. Fonte única de verdade:
+  incluída via Jinja (tag "include") pelas páginas do cluster de Vendas —
+  ajustar só aqui, não duplicar. NÃO escrever chaves de Jinja literais neste
+  arquivo (nem em comentário): o Jinja processa o include e quebraria a página.
 
-  Cada página host declara <body data-active="CHAVE"> (vendas | carteira |
-  representante | uf | metas) para indicar qual aba fica destacada — a barra
-  não recebe variável do servidor, só lê esse atributo via JS no carregamento.
+  Cada página host declara <body data-active="CHAVE"> (vendas | metas |
+  carteira | representante | uf); o JS destaca a aba e preenche o painel atual.
 -->
 <style>
 .nav-vendas{
   position:sticky; top:0; z-index:300;
   background:#161922; border-bottom:1px solid #262b3a;
-  display:flex; align-items:center; gap:2px; padding:0 20px;
-  overflow-x:auto; scrollbar-width:thin;
+  display:flex; align-items:stretch; padding:0 20px;
+  overflow-x:auto; scrollbar-width:none;
 }
 .nav-vendas::-webkit-scrollbar{ height:0; }
-.nav-vendas .nv-brand{
-  font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
-  color:#ed6842; padding-right:18px; margin-right:4px;
+.nav-vendas .nv-marca{
+  display:flex; flex-direction:column; justify-content:center;
+  padding:8px 22px 8px 0; margin-right:14px;
   border-right:1px solid #262b3a; white-space:nowrap;
 }
+.nav-vendas .nv-marca .m1{ font-size:13px; font-weight:800; color:#ed6842; }
+.nav-vendas .nv-marca .m2{
+  font-size:9.5px; font-weight:700; color:#7d7c79;
+  text-transform:uppercase; letter-spacing:.1em; margin-top:2px;
+}
 .nav-vendas .nv-item{
-  display:flex; align-items:center; gap:7px; padding:15px 15px;
+  display:flex; align-items:center; padding:0 16px;
   text-decoration:none; color:#b6b3ac; font-size:12px; font-weight:700;
   font-family:'Montserrat',system-ui,sans-serif;
   border-bottom:2px solid transparent; white-space:nowrap; transition:.15s;
 }
 .nav-vendas .nv-item:hover{ color:#f3f0eb; background:rgba(255,255,255,.03); }
 .nav-vendas .nv-item.ativo{ color:#ed6842; border-bottom-color:#ed6842; }
-.nav-vendas .nv-ic{ font-size:15px; line-height:1; }
 @media(max-width:720px){
   .nav-vendas{ padding:0 10px; }
-  .nav-vendas .nv-brand{ display:none; }
-  .nav-vendas .nv-item{ padding:13px 11px; font-size:11px; gap:5px; }
-  .nav-vendas .nv-ic{ font-size:14px; }
+  .nav-vendas .nv-marca{ padding-right:12px; margin-right:8px; }
+  .nav-vendas .nv-marca .m1{ font-size:11px; }
+  .nav-vendas .nv-marca .m2{ font-size:8.5px; }
+  .nav-vendas .nv-item{ padding:0 11px; font-size:11px; }
 }
 </style>
 <nav class="nav-vendas" id="nav-vendas">
-  <span class="nv-brand">Vendas Calçados</span>
-  <a class="nv-item" data-nv="vendas" href="boaonda_vendas_catalogo.html"><span class="nv-ic">📊</span>Visão Geral</a>
-  <a class="nv-item" data-nv="carteira" href="boaonda_carteira_clientes.html"><span class="nv-ic">👥</span>Carteira de Clientes</a>
-  <a class="nv-item" data-nv="representante" href="boaonda_carteira_representante.html"><span class="nv-ic">🧑‍💼</span>Por Representante</a>
-  <a class="nv-item" data-nv="uf" href="boaonda_carteira_uf.html"><span class="nv-ic">📍</span>Por Região</a>
-  <a class="nv-item" data-nv="metas" href="boaonda_metas_comerciais.html"><span class="nv-ic">🎯</span>Metas Comerciais</a>
+  <div class="nv-marca"><span class="m1">Vendas Calçados</span><span class="m2" id="nv-painel">—</span></div>
+  <a class="nv-item" data-nv="vendas" href="boaonda_vendas_catalogo.html">Vendas Geral</a>
+  <a class="nv-item" data-nv="metas" href="boaonda_metas_comerciais.html">Metas</a>
+  <a class="nv-item" data-nv="carteira" href="boaonda_carteira_clientes.html">Carteira de Clientes</a>
+  <a class="nv-item" data-nv="representante" href="boaonda_carteira_representante.html">Representante</a>
+  <a class="nv-item" data-nv="uf" href="boaonda_carteira_uf.html">Região</a>
 </nav>
 <script>
 (function(){
+  var nomes={vendas:'Vendas Geral', metas:'Metas', carteira:'Carteira de Clientes',
+             representante:'Representante', uf:'Região'};
   var ativo = document.body.getAttribute('data-active');
+  var pn = document.getElementById('nv-painel');
+  if(pn) pn.textContent = nomes[ativo] || '—';
   document.querySelectorAll('#nav-vendas .nv-item').forEach(function(el){
     if(el.getAttribute('data-nv') === ativo) el.classList.add('ativo');
   });
