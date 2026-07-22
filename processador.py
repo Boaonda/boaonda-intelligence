@@ -665,7 +665,7 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
 
     Estrutura: {"holdings": {holding: {mes: {"MI_PROG":[pares,valor], ...}}},
     "meta": {holding: {"uf": "RS", "representantes": {"MI": "Fulano", ...}}}}
-    — meta.uf é a UF mais frequente do holding; meta.representantes traz o
+    — meta.uf é a UF com MAIOR VOLUME (pares) do holding; meta.representantes traz o
     representante mais frequente POR CANAL (o mesmo holding pode ter reps
     diferentes por canal, ex.: e-commerce sempre cai no rep "ECOMMERCE").
     Alimenta os filtros de UF e Representante da Análise da Carteira.
@@ -695,7 +695,9 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
         meses_presentes.add(anomes)
         uf_val = g(row, IDX['uf']).strip()
         rep_val = g(row, IDX['representante']).strip()
-        if uf_val: holding_uf[holding][uf_val] += 1
+        # UF do holding = estado com MAIOR VOLUME (pares), não o de mais linhas
+        # de nota — pondera pela quantidade da linha (qtd), não por contagem.
+        if uf_val: holding_uf[holding][uf_val] += qtd
         if rep_val: holding_rep[holding][canal][rep_val] += 1
 
     saida_holdings = {}
