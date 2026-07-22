@@ -639,13 +639,19 @@ function evolucaoConcentracaoTopCliente(hs, idx, nMeses){
   totais.sort((a,b)=>b.v-a.v);
   const top = totais[0];
   if(!top || top.v<=0) return null;
+  // Concentração do PERÍODO inteiro (top cliente ÷ total do rep na janela) —
+  // é a fatia real "X% da carteira". Não usar a fatia do último mês: se o
+  // cliente vende em picos (ex.: grande em jun, zero em jul), o último mês
+  // daria 0% e mascararia a concentração real.
+  const totalPeriodo = volumeHoldings(hs, meses, idx);
+  const pctPeriodo = totalPeriodo ? Math.round(top.v/totalPeriodo*100) : 0;
   const serie = meses.map(m=>{
     const totalRepMes = volumeHoldings(hs, [m], idx);
     const totalTopMes = volumeHoldings([top.h], [m], idx);
     return {mes:m, pct: totalRepMes? Math.round(totalTopMes/totalRepMes*100):0};
   });
   const crescente = serie.length>=2 && serie[serie.length-1].pct > serie[0].pct;
-  return {holding: top.h, serie, crescente};
+  return {holding: top.h, serie, crescente, pctPeriodo};
 }
 
 function renderAlertasRep(rep, linha, hs, idx){
@@ -681,7 +687,7 @@ function renderAlertasRep(rep, linha, hs, idx){
   } else if(evo){
     html += '<div class="card-alerta">'+
       '<div class="titulo-alerta">Concentração no maior cliente</div>'+
-      '<div class="alerta-linha">'+evo.holding+' representa <b>'+evo.serie[evo.serie.length-1].pct+'%</b> da carteira de '+rep+' — concentração estável ou em queda nos últimos '+evo.serie.length+' meses (sem tendência de alta).</div>'+
+      '<div class="alerta-linha">'+evo.holding+' representa <b>'+evo.pctPeriodo+'%</b> da carteira de '+rep+' nos últimos '+evo.serie.length+' meses — concentração estável ou em queda (sem tendência de alta).</div>'+
       '</div>';
   }
 
