@@ -2029,6 +2029,47 @@ def admin_env_check():
         'MYSQL_HOST': {'configurada': bool(os.environ.get('MYSQL_HOST'))},
         'DATA_DIR': os.environ.get('DATA_DIR') or '(default frontend/)',
     })
+@app.route('/admin/db-tunnel-status')
+def admin_db_tunnel_status():
+    """Confirma se o túnel Cloudflare + conexão com o Supabase interno estão
+    funcionando de dentro do Railway. Rota temporária, útil enquanto as
+    tabelas dom_/fact_ ainda não estão prontas — depois que a migração para
+    SQL estiver em uso de verdade, pode virar parte do fluxo normal ou ser
+    removida."""
+    try:
+        import psycopg2
+    except ImportError:
+        return jsonify({'status': 'erro',
+                         'detalhe': "Biblioteca 'psycopg2-binary' não instalada "
+                                    "no servidor (adicionar ao requirements.txt)."}), 500
+
+    try:
+        conexao = psycopg2.connect(
+            host=os.environ.get('DB_HOST', 'localhost'),
+            port=os.environ.get('DB_PORT', '5432'),
+            dbname=os.environ.get('DB_NAME', 'postgres'),
+            user=os.environ.get('DB_USER'),
+            password=os.environ.get('DB_PASSWORD'),
+            connect_timeout=5,
+        )
+        cursor = conexao.cursor()
+        cursor.execute("SELECT version();")
+        versao = cursor.fetchone()[0]
+
+        cursor.execute("""
+            SELECT COUNT(*) FROM information_schema.tables
+            WHERE table_schema = 'public';
+        """)
+        total_tabelas = cursor.fetchone()[0]
+
+        conexao.close()
+        return jsonify({
+            'status': 'ok',
+            'postgres_version': versao,
+            'tabelas_no_schema_public': total_tabelas,
+        })
+    except Exception as ex:
+        return jsonify({'status': 'erro', 'detalhe': str(ex)}), 500
 
 
 @app.route('/version')
