@@ -83,12 +83,15 @@ def _carregar_carteira(carteira_path):
 
 def indice_reps(carteira):
     """Constrói, a partir de dados_vendas_carteira.json:
-        vol[rep][mes]    = pares MI válidos (soma das holdings do rep)
+        vol[rep][mes]    = pares MI válidos (soma das holdings do rep, já
+                           excluída a parcela sem representante — venda
+                           direta/casa não conta como realizado de ninguém)
         ativos[rep][mes] = nº de holdings com pares > 0 no mês
         reps             = set de representantes normalizados (pós-higiene)
     """
     meta = carteira.get('meta', {})
     holdings = carteira.get('holdings', {})
+    sem_rep = carteira.get('holdings_sem_rep', {})
     vol = defaultdict(lambda: defaultdict(float))
     ativos = defaultdict(lambda: defaultdict(int))
     reps = set()
@@ -101,12 +104,20 @@ def indice_reps(carteira):
         if rep in REPS_EXCLUIDOS:
             continue
         reps.add(rep)
+        sem_rep_h = sem_rep.get(h) or {}
         for mes, tipos in (holdings.get(h) or {}).items():
             tot = 0.0
+            sem_rep_mes = sem_rep_h.get(mes) or {}
             for t in TIPOS_MI_VALIDOS:
                 par = tipos.get('MI_' + t)
                 if par:
-                    tot += par[0]
+                    # Subtrai a parcela sem representante (venda direta/casa) —
+                    # sem isso, um pedido vindo sem rep no 3YS seria creditado
+                    # ao rep majoritário do holding (meta.representantes.MI),
+                    # mesmo sem ele ter feito a venda. Distorceria realizado x
+                    # meta do representante.
+                    par_sem_rep = sem_rep_mes.get('MI_' + t)
+                    tot += par[0] - (par_sem_rep[0] if par_sem_rep else 0)
             if tot > 0:
                 vol[rep][mes] += tot
                 ativos[rep][mes] += 1

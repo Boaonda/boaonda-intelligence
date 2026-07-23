@@ -263,6 +263,7 @@ function construirIndice(){
   IDX={}; IDXV={}; REP_HOLD={}; PARES_MES={}; VALOR_MES={}; CLIENTES_MES={}; CLIENTES_DISTINCT=0;
   const reps=new Set();
   const meta=CARTEIRA.meta||{}, holdings=CARTEIRA.holdings||{};
+  const semRepAll=CARTEIRA.holdings_sem_rep||{};
   for(const h in meta){
     const r=(meta[h].representantes||{}).MI;
     if(!r || REPS_EXCLUIDOS.has(r)) continue;
@@ -270,22 +271,40 @@ function construirIndice(){
     if(REPS_EXCLUIDOS.has(rep)) continue;
     reps.add(rep);
     const hm=holdings[h]; if(!hm) continue;
-    const mesesAtivos=[];
+    const semRepH=semRepAll[h]||{};
+    const mesesAtivos=[], mesesAtivosRep=[];
     for(const mes in hm){
-      let pares=0, valor=0; const tipos=hm[mes];
-      for(const t of TIPOS_MI_VALIDOS){ const k='MI_'+t; if(tipos[k]){ pares+=tipos[k][0]; valor+=tipos[k][1]||0; } }
-      if(pares>0){
-        (IDX[rep]=IDX[rep]||{})[mes]=(IDX[rep][mes]||0)+pares;
-        (IDXV[rep]=IDXV[rep]||{})[mes]=(IDXV[rep][mes]||0)+valor;
-        PARES_MES[mes]=(PARES_MES[mes]||0)+pares;
-        VALOR_MES[mes]=(VALOR_MES[mes]||0)+valor;
+      let paresTotal=0, valorTotal=0, paresRep=0, valorRep=0;
+      const tipos=hm[mes], semRepMes=semRepH[mes]||{};
+      for(const t of TIPOS_MI_VALIDOS){
+        const k='MI_'+t; if(!tipos[k]) continue;
+        const pT=tipos[k][0], vT=tipos[k][1]||0;
+        paresTotal+=pT; valorTotal+=vT;
+        // Subtrai a parcela sem representante (venda direta/casa) — sem
+        // isso, um pedido vindo sem rep no 3YS seria creditado ao rep
+        // majoritário do holding (meta.representantes.MI), distorcendo o
+        // realizado dele contra a meta.
+        const sr=semRepMes[k];
+        paresRep += pT-(sr?sr[0]:0); valorRep += vT-(sr?(sr[1]||0):0);
+      }
+      if(paresTotal>0){
+        // Métricas da OPERAÇÃO (independentes de rep) — a empresa vendeu
+        // esses pares, com ou sem representante; usadas no quadro
+        // "Desempenho mensal — operação" contra a meta da empresa.
+        PARES_MES[mes]=(PARES_MES[mes]||0)+paresTotal;
+        VALOR_MES[mes]=(VALOR_MES[mes]||0)+valorTotal;
         CLIENTES_MES[mes]=(CLIENTES_MES[mes]||0)+1;
         mesesAtivos.push(mes);
       }
+      if(paresRep>0){
+        (IDX[rep]=IDX[rep]||{})[mes]=(IDX[rep][mes]||0)+paresRep;
+        (IDXV[rep]=IDXV[rep]||{})[mes]=(IDXV[rep][mes]||0)+valorRep;
+        mesesAtivosRep.push(mes);
+      }
     }
-    if(mesesAtivos.length){
-      CLIENTES_DISTINCT++;
-      (REP_HOLD[rep]=REP_HOLD[rep]||[]).push({first:mesesAtivos.reduce((a,b)=>a<b?a:b), meses:mesesAtivos});
+    if(mesesAtivos.length) CLIENTES_DISTINCT++;
+    if(mesesAtivosRep.length){
+      (REP_HOLD[rep]=REP_HOLD[rep]||[]).push({first:mesesAtivosRep.reduce((a,b)=>a<b?a:b), meses:mesesAtivosRep});
     }
   }
   REPS=[...reps].sort();

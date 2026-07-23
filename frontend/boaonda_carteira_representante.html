@@ -343,13 +343,42 @@ function holdingsPorRep(){
 }
 
 // ── AGREGAÇÃO (canal MI travado, só tipos válidos) ──────────────────────
+// Subtrai a parcela "sem representante" (holdings_sem_rep) de cada célula
+// holding×mês×tipo antes de somar. meta.representantes.MI é o rep mais
+// frequente do holding (voto majoritário) — sem essa subtração, um pedido
+// vindo sem representante no 3YS (venda direta/casa) seria creditado
+// inteiro ao rep majoritário do holding, mesmo sem ele ter feito a venda.
+// Toda chamada desta função já opera no contexto de um representante
+// (hs vem de holdingsPorRep()/todosHoldingsDoRep()), então subtrair aqui
+// corrige automaticamente ranking, KPIs, tendência, portfólio e alertas.
 function volumeHoldings(hs, listaMeses, idx){
   let tot=0;
   const holdings=CARTEIRA.holdings;
+  const semRep=CARTEIRA.holdings_sem_rep||{};
   hs.forEach(h=>{
     const mesesObj=holdings[h]; if(!mesesObj) return;
+    const semRepMeses=semRep[h];
     listaMeses.forEach(m=>{
       const tipos=mesesObj[m]; if(!tipos) return;
+      const semRepTipos=semRepMeses&&semRepMeses[m];
+      TIPOS_MI_VALIDOS.forEach(t=>{
+        const k='MI_'+t; if(!tipos[k]) return;
+        const semRepVal=(semRepTipos&&semRepTipos[k])?semRepTipos[k][idx]:0;
+        tot += tipos[k][idx]-semRepVal;
+      });
+    });
+  });
+  return tot;
+}
+// Volume "sem representante" (venda direta/casa) das holdings/meses dados —
+// para exibir à parte, nunca somado à conta de um rep nomeado.
+function volumeSemRep(hs, listaMeses, idx){
+  let tot=0;
+  const semRep=CARTEIRA.holdings_sem_rep||{};
+  hs.forEach(h=>{
+    const semRepMeses=semRep[h]; if(!semRepMeses) return;
+    listaMeses.forEach(m=>{
+      const tipos=semRepMeses[m]; if(!tipos) return;
       TIPOS_MI_VALIDOS.forEach(t=>{ const k='MI_'+t; if(tipos[k]) tot+=tipos[k][idx]; });
     });
   });
@@ -526,6 +555,7 @@ function construirRanking(idx, cadencia){
 
 function renderRanking(){
   const {idx, cadencia} = getFiltros();
+  const p = periodoAtualAnterior(cadencia);
   const linhas = construirRanking(idx, cadencia);
   ultimaLinhas = linhas;
   aplicarSort(linhas, sortRanking);
@@ -548,19 +578,23 @@ function renderRanking(){
     tb.appendChild(tr);
   });
 
-  renderKpiGeral(linhas, idx);
+  renderKpiGeral(linhas, idx, p);
   renderSumario(linhas, idx);
 }
 
-function renderKpiGeral(linhas, idx){
+function renderKpiGeral(linhas, idx, p){
   const totPares=linhas.reduce((a,x)=>a+x.pares,0), totValor=linhas.reduce((a,x)=>a+x.valor,0);
   const emDeclinio=linhas.filter(x=>x.classificacao==='declinio').length;
   const emCrescimento=linhas.filter(x=>x.classificacao==='crescimento').length;
+  // Venda direta/casa (pedidos sem representante no 3YS) no período — nunca
+  // somada à conta de nenhum rep; exibida à parte para os totais reconciliarem.
+  const semRepVal = volumeSemRep(Object.keys(CARTEIRA.holdings||{}), p.atual, idx);
   document.getElementById('geral-kpi').innerHTML =
     kpi('','Volume total (MI)',fmtIdx(idx===1?totValor:totPares,idx),'somado de todos os representantes') +
     kpi('verde','Em crescimento',f(emCrescimento),'vs. mesmo mês do ano anterior') +
     kpi('coral','Em declínio',f(emDeclinio),'2+ meses consecutivos de queda YoY') +
-    kpi('azul','Representantes ativos',f(linhas.length),'com volume no período selecionado');
+    kpi('azul','Representantes ativos',f(linhas.length),'com volume no período selecionado') +
+    (semRepVal>0 ? kpi('cinza','Venda direta (sem rep.)',fmtIdx(semRepVal,idx),'pedidos sem representante no 3YS — não creditados a nenhum rep') : '');
 }
 
 function renderSumario(linhas, idx){

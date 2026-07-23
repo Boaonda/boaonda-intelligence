@@ -335,6 +335,24 @@ function volumeHoldings(hs, listaMeses, idx){
   return tot;
 }
 
+// Volume "sem representante" (venda direta/casa) de um conjunto de holdings —
+// usado só onde o volume é atribuído a um representante específico (ver
+// renderRepsAtuantes); os demais usos de volumeHoldings nesta página (totais
+// da região, Pareto, mix) continuam somando TUDO, pois a região vendeu esse
+// volume independente de ter ou não representante.
+function volumeSemRep(hs, listaMeses, idx){
+  let tot = 0;
+  const semRep = CARTEIRA.holdings_sem_rep || {};
+  for (const h of hs){
+    const mo = semRep[h]; if (!mo) continue;
+    for (const m of listaMeses){
+      const t = mo[m]; if (!t) continue;
+      for (const tp of TIPOS_MI_VALIDOS){ const k='MI_'+tp; if(t[k]) tot+=t[k][idx]; }
+    }
+  }
+  return tot;
+}
+
 function calcularMix(hs, listaMeses, idx){
   const r = {PROG:0, PE:0, MISTA:0};
   for (const h of hs){
@@ -752,17 +770,21 @@ function renderRepsAtuantes(key, hs, p, idx){
   const repMap={};
   hs.forEach(h=>{
     const rep=repDoHolding(h); if(!rep) return;
-    const vAt=volumeHoldings([h],p.atual,idx);
-    const vAnt=volumeHoldings([h],p.anterior,idx);
+    // Subtrai a parcela sem representante (venda direta/casa) — sem isso, um
+    // pedido do cliente vindo sem rep no 3YS seria creditado ao rep majoritário
+    // do holding, mesmo sem ele ter feito a venda.
+    const vAt=volumeHoldings([h],p.atual,idx)-volumeSemRep([h],p.atual,idx);
+    const vAnt=volumeHoldings([h],p.anterior,idx)-volumeSemRep([h],p.anterior,idx);
     if(vAt===0 && vAnt===0) return;
     if(!repMap[rep]) repMap[rep]={vol:0, volAnt:0};
     repMap[rep].vol+=vAt;
     repMap[rep].volAnt+=vAnt;
   });
   const reps=Object.entries(repMap).filter(([,d])=>d.vol>0).sort((a,b)=>b[1].vol-a[1].vol);
+  const semRepAt=volumeSemRep(hs,p.atual,idx);
   document.getElementById('reps-badge').textContent=reps.length+' ativos no período';
   const el=document.getElementById('lista-reps');
-  if(!reps.length){
+  if(!reps.length && semRepAt<=0){
     el.innerHTML='<div class="bloco-empty">Nenhum representante ativo nesta região no período — território descoberto. Ver alerta acima.</div>';
     return;
   }
@@ -790,6 +812,15 @@ function renderRepsAtuantes(key, hs, p, idx){
       '<td><a href="boaonda_carteira_representante.html?rep='+encodeURIComponent(rep)+'" class="rep-link">↗ Ver painel</a></td>'+
       '</tr>';
   });
+  if(semRepAt>0){
+    html+='<tr>'+
+      '<td class="td-nome" style="color:var(--txt-m)">Venda direta (sem representante)</td>'+
+      '<td class="td-num" style="color:var(--txt-m)">'+fmtIdx(semRepAt,idx)+'</td>'+
+      '<td style="color:var(--txt-m)">–</td>'+
+      '<td style="color:var(--txt-m)">–</td>'+
+      '<td></td>'+
+      '</tr>';
+  }
   html+='</tbody></table>';
   el.innerHTML=html;
 }

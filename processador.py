@@ -664,14 +664,28 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
     como o dados_vendas_clientes.json.
 
     Estrutura: {"holdings": {holding: {mes: {"MI_PROG":[pares,valor], ...}}},
+    "holdings_sem_rep": {holding: {mes: {"MI_PROG":[pares,valor], ...}}},
     "meta": {holding: {"uf": "RS", "representantes": {"MI": "Fulano", ...}}}}
     — meta.uf é a UF com MAIOR VOLUME (pares) do holding; meta.representantes traz o
     representante mais frequente POR CANAL (o mesmo holding pode ter reps
     diferentes por canal, ex.: e-commerce sempre cai no rep "ECOMMERCE").
+    holdings_sem_rep é a PARTE de holdings (mesmas chaves MI_*) que veio de
+    linhas SEM representante no 3YS (venda direta/casa) — consumidores que
+    atribuem volume a um representante (painel por representante, região,
+    metas) devem subtrair essa parte antes de creditar ao rep do holding, para
+    não jogar venda direta na conta de quem não a fez.
     Alimenta os filtros de UF e Representante da Análise da Carteira.
     """
     print("\n  Gerando dados_vendas_carteira.json...")
     holdings = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0, 0.0])))
+    # holdings_sem_rep: mesma forma de "holdings", mas só a PARTE do volume MI
+    # (por holding/mês/tipo) que veio de linhas SEM representante preenchido no
+    # 3YS (venda direta/casa). meta.representantes.MI é o rep mais frequente do
+    # holding (voto majoritário) — sem isso, uma venda direta cai inteira nos
+    # números desse rep majoritário mesmo sem ele ter feito o pedido. Os
+    # consumidores (painel por representante, região, metas) devem subtrair
+    # holdings_sem_rep do total antes de creditar ao rep do holding.
+    holdings_sem_rep = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0, 0.0])))
     meses_presentes = set()
     holding_uf = defaultdict(Counter)
     holding_rep = defaultdict(lambda: defaultdict(Counter))
@@ -698,7 +712,11 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
         # UF do holding = estado com MAIOR VOLUME (pares), não o de mais linhas
         # de nota — pondera pela quantidade da linha (qtd), não por contagem.
         if uf_val: holding_uf[holding][uf_val] += qtd
-        if rep_val: holding_rep[holding][canal][rep_val] += 1
+        if rep_val:
+            holding_rep[holding][canal][rep_val] += 1
+        elif canal == 'MI':
+            dsr = holdings_sem_rep[holding][anomes][chave]
+            dsr[0] += qtd; dsr[1] += valor
 
     saida_holdings = {}
     for h, meses in holdings.items():
@@ -706,6 +724,11 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
             m: {k: [q, round(v, 2)] for k, (q, v) in tipos.items()}
             for m, tipos in meses.items()
         }
+    saida_sem_rep = {
+        h: {m: {k: [q, round(v, 2)] for k, (q, v) in tipos.items()}
+            for m, tipos in meses.items()}
+        for h, meses in holdings_sem_rep.items()
+    }
     meta = {}
     for h in holdings:
         uf_top = holding_uf[h].most_common(1)
@@ -715,6 +738,7 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
         'meses_disponiveis': sorted(meses_presentes),
         'holdings': saida_holdings,
+        'holdings_sem_rep': saida_sem_rep,
         'meta': meta,
     }
     with open(os.path.join(output_dir, 'dados_vendas_carteira.json'), 'w', encoding='utf-8') as f_:
