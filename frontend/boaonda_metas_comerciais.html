@@ -117,9 +117,22 @@ tr.op-total td{border-top:2px solid var(--line2);font-weight:800;color:var(--txt
 tr.op-total:hover td{background:var(--card2);color:var(--txt)}
 
 /* ── Detalhado por representante ──────────────────────────────────── */
-.det-link{color:var(--azul);text-decoration:none;font-weight:700}
+.det-link{color:var(--azul);text-decoration:none;font-weight:700;font-size:11px;margin-left:8px}
 .det-link:hover{color:var(--coral);text-decoration:underline}
 .det-qtde{white-space:nowrap}
+.tr-rep-det{cursor:pointer}
+.tr-rep-det:hover td{background:var(--card2)}
+.tr-rep-det.aberto td.td-nome{color:var(--coral)}
+.det-arrow{display:inline-block;width:14px;color:var(--txt-m);font-size:9px}
+.tr-sub td{background:rgba(255,255,255,.015)}
+.tr-sub-inner{padding:10px 8px 14px 30px}
+.det-mini-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.det-mini-table th{padding:5px 10px;font-size:8.5px;text-align:left;color:var(--txt-m);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line)}
+.det-mini-table td{padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.03)}
+.det-mini-row{cursor:pointer}
+.det-mini-row:hover td{background:var(--card2)}
+.det-mini-row.aberto td{color:var(--coral)}
+.det-star{color:var(--amarelo)}
 .det-bar{display:inline-block;width:96px;height:12px;vertical-align:middle;margin-left:8px}
 .rep-rep-wrap{display:flex;align-items:center;gap:8px;min-width:90px}
 .rep-pct-num{font-size:11px;font-weight:700;color:var(--txt-s);min-width:34px}
@@ -200,7 +213,7 @@ tr.op-total:hover td{background:var(--card2);color:var(--txt)}
         <span class="filtro-label">Mês / período</span>
         <select class="sel" id="det-periodo" onchange="renderDetalhado()"></select>
       </div>
-      <span class="det-legenda"><span class="star">★</span> Cli. Novos = 1ª compra do cliente dentro do período · nome do rep abre o painel "Por Representante"</span>
+      <span class="det-legenda"><span class="star">★</span> Cli. Novos = 1ª compra do cliente dentro do período · clique no representante para ver os clientes que compraram no período · clique no cliente para ver os itens dos pedidos · <span style="color:var(--azul)">↗</span> abre o painel "Por Representante"</span>
     </div>
     <div class="tcard" style="overflow-x:auto">
       <table class="op-table">
@@ -233,6 +246,8 @@ tr.op-total:hover td{background:var(--card2);color:var(--txt)}
       <li><b>Sugestão de meta:</b> distribui a meta global proporcional a <i>base × peso</i>, onde base = pares no mesmo mês do ano anterior (deseasonaliza) e peso = tendência (1,5 / 1,0 / 0,6).</li>
       <li><b>Meta geral da empresa:</b> valor informado top-down (aba META EMPRESA da planilha), independente da soma das metas dos representantes.</li>
       <li><b>Mês parcial:</b> o mês mais recente é marcado como parcial; a Meta Proporcional pró-rateia a meta pelos dias úteis decorridos — nunca comparado como fechado sem aviso.</li>
+      <li><b>Venda direta/sem representante:</b> pedidos sem representante preenchido no 3YS não são creditados a nenhum rep (ver painéis Por Representante/Por Região).</li>
+      <li><b>Itens de pedido (drill-down cliente):</b> vêm de <code>dados_vendas_clientes.json</code>, que cobre só o ano-calendário corrente — meses de anos anteriores têm o volume agregado, mas não o detalhe de linha por pedido. A lista de itens já filtra pela linha ser deste representante — pedidos sem representante (venda direta) não aparecem no detalhe dele, mesmo sendo do mesmo cliente.</li>
     </ul>
   </div>
 </div>
@@ -241,6 +256,8 @@ tr.op-total:hover td{background:var(--card2);color:var(--txt)}
 // ── Estado ──────────────────────────────────────────────────────────
 let CARTEIRA=null, METAS=null, IDX={}, IDXV={}, REP_HOLD={}, REPS=[], MESES=[];
 let PARES_MES={}, VALOR_MES={}, CLIENTES_MES={}, CLIENTES_DISTINCT=0;
+let CLIENTES_DATA=null, CLIENTES_DATA_OK=false;
+let _detExpandRep=null, _detExpandCliente=null;
 
 // ── Higiene (espelho do painel por representante) ───────────────────
 const REPS_EXCLUIDOS=new Set(['ATEND. COMERCIAL - OUTRAS MARCAS','ECOMMERCE']);
@@ -272,7 +289,8 @@ function construirIndice(){
     reps.add(rep);
     const hm=holdings[h]; if(!hm) continue;
     const semRepH=semRepAll[h]||{};
-    const mesesAtivos=[], mesesAtivosRep=[];
+    const mesesAtivos=[];
+    const porMesRep={};  // mes -> [paresRep, valorRep] SÓ deste holding — base do drill-down de clientes
     for(const mes in hm){
       let paresTotal=0, valorTotal=0, paresRep=0, valorRep=0;
       const tipos=hm[mes], semRepMes=semRepH[mes]||{};
@@ -299,12 +317,19 @@ function construirIndice(){
       if(paresRep>0){
         (IDX[rep]=IDX[rep]||{})[mes]=(IDX[rep][mes]||0)+paresRep;
         (IDXV[rep]=IDXV[rep]||{})[mes]=(IDXV[rep][mes]||0)+valorRep;
-        mesesAtivosRep.push(mes);
+        porMesRep[mes]=[paresRep,valorRep];
       }
     }
     if(mesesAtivos.length) CLIENTES_DISTINCT++;
-    if(mesesAtivosRep.length){
-      (REP_HOLD[rep]=REP_HOLD[rep]||[]).push({first:mesesAtivosRep.reduce((a,b)=>a<b?a:b), meses:mesesAtivosRep});
+    const mesesRepArr=Object.keys(porMesRep);
+    if(mesesRepArr.length){
+      // REP_HOLD[rep] é um dict POR HOLDING (não mais array anônimo) — guarda
+      // o volume rep-atribuído mês a mês, para o drill-down "clientes deste
+      // representante no período" (ver clientesDoRepNoPeriodo).
+      (REP_HOLD[rep]=REP_HOLD[rep]||{})[h]={
+        first: mesesRepArr.reduce((a,b)=>a<b?a:b),
+        porMes: porMesRep,
+      };
     }
   }
   REPS=[...reps].sort();
@@ -313,11 +338,24 @@ function volRep(rep,meses){ let t=0; const m=IDX[rep]||{}; meses.forEach(x=>t+=(
 function volValorRep(rep,meses){ let t=0; const m=IDXV[rep]||{}; meses.forEach(x=>t+=(m[x]||0)); return t; }
 function clientesRep(rep,mesesSet){
   let atend=0, novos=0;
-  (REP_HOLD[rep]||[]).forEach(hh=>{
-    if(hh.meses.some(m=>mesesSet.has(m))) atend++;
+  Object.values(REP_HOLD[rep]||{}).forEach(hh=>{
+    if(Object.keys(hh.porMes).some(m=>mesesSet.has(m))) atend++;
     if(mesesSet.has(hh.first)) novos++;
   });
   return {atend, novos};
+}
+// Clientes deste representante com compra CREDITADA A ELE (já excluída venda
+// direta/sem rep) no período selecionado — base do drill-down nível 2.
+function clientesDoRepNoPeriodo(rep, meses){
+  const out=[];
+  const hs=REP_HOLD[rep]||{};
+  for(const h in hs){
+    let pares=0, valor=0;
+    meses.forEach(m=>{ const v=hs[h].porMes[m]; if(v){ pares+=v[0]; valor+=v[1]; } });
+    if(pares>0) out.push({h, pares, valor, novo: meses.includes(hs[h].first)});
+  }
+  out.sort((a,b)=>b.pares-a.pares);
+  return out;
 }
 
 // ── Parcial / projeção ──────────────────────────────────────────────
@@ -496,6 +534,97 @@ function iconStatus(l){
   if(l.metaProp==null) return '';
   return l.realizado>=l.metaProp ? '<span class="op-status ok">✓</span>' : '<span class="op-status miss">❗</span>';
 }
+
+// ── DRILL-DOWN: representante → clientes → itens do pedido ──────────
+function toggleDetRep(rep){
+  _detExpandRep = _detExpandRep===rep ? null : rep;
+  _detExpandCliente = null;  // fecha qualquer cliente aberto do rep anterior
+  renderDetalhado();
+}
+function toggleDetCliente(ev, holding){
+  ev.stopPropagation();  // não deixa o clique borbulhar pro <tr> do rep
+  _detExpandCliente = _detExpandCliente===holding ? null : holding;
+  renderDetalhado();
+}
+function labelTipo(t){ return {PROG:'Programado', PE:'Pronta Entrega', MISTA:'Venda Mista'}[t]||t; }
+// Interpreta "DD/MM/AA" de dados_vendas_clientes.json em {anomes, chave} —
+// chave numérica p/ ordenar cronologicamente (a string DD/MM/AA não ordena certo).
+function dtInfo(dt){
+  const p=(dt||'').split('/'); if(p.length!==3) return null;
+  const dia=+p[0], mes=+p[1], ano=2000+ +p[2];
+  if(!dia||!mes||!ano) return null;
+  return {anomes:String(ano)+String(mes).padStart(2,'0'), chave:ano*10000+mes*100+dia};
+}
+function periodoDesdeAnomes(){
+  const p=((CLIENTES_DATA&&CLIENTES_DATA.periodo_desde)||'').split('/');
+  return p.length===3 ? p[2]+p[1] : '000000';
+}
+// Itens de pedido (linha a linha) de UM cliente, de UM representante, no
+// período — só canal MI e só os 3 tipos válidos (mesma higiene do resto do
+// painel). Filtra pelo `rep` da própria linha (normalizado) para não misturar,
+// no detalhe deste cliente, pedidos do representante com vendas diretas do
+// mesmo holding (linha sem rep no 3YS nunca entra aqui). dados_vendas_clientes.json
+// cobre só o ano-calendário corrente; meses de anos anteriores voltam vazios
+// (aviso mostrado à parte, ver renderItensClienteHtml).
+function itensClienteNoPeriodo(holding, meses, rep){
+  const refs=(CLIENTES_DATA && CLIENTES_DATA.holdings && CLIENTES_DATA.holdings[holding]) || null;
+  if(!refs) return [];
+  const mesesSet=new Set(meses);
+  const itens=[];
+  for(const ref in refs){
+    refs[ref].forEach(linha=>{
+      const [pedido,dt,canal,tipo,qtd,valor,numLinha,cor,repLinha]=linha;
+      if(canal!=='MI' || !TIPOS_MI_VALIDOS.includes(tipo)) return;
+      if(!repLinha || normalizarRep(repLinha)!==rep) return;  // exclui sem-rep e reps diferentes
+      const info=dtInfo(dt); if(!info || !mesesSet.has(info.anomes)) return;
+      itens.push({pedido,dt,chave:info.chave,ref,tipo,qtd,valor,numLinha,cor});
+    });
+  }
+  itens.sort((a,b)=>b.chave-a.chave);
+  return itens;
+}
+function renderItensClienteHtml(holding, meses, rep){
+  let inner;
+  if(!CLIENTES_DATA_OK){
+    inner='<div style="color:var(--txt-m);font-size:11px;padding:8px 4px">Detalhe de itens indisponível (dados_vendas_clientes.json não carregou).</div>';
+  } else {
+    const itens=itensClienteNoPeriodo(holding, meses, rep);
+    const corpo = itens.length
+      ? itens.map(it=>'<tr><td>'+it.pedido+'</td><td>'+it.dt+'</td><td>'+it.ref+'</td><td>'+it.numLinha+'</td><td>'+it.cor+'</td>'
+          +'<td>'+labelTipo(it.tipo)+'</td><td>'+fmt(it.qtd)+'</td><td>'+fmtRS(it.valor)+'</td></tr>').join('')
+      : '<tr><td colspan="8" style="color:var(--txt-m);padding:8px">Nenhum item neste período.</td></tr>';
+    inner='<table class="det-mini-table" style="background:var(--bg)"><thead><tr>'
+      +'<th>Pedido</th><th>Data</th><th>Referência</th><th>Linha</th><th>Cor</th><th>Modalidade</th><th>Qtd</th><th>Valor</th>'
+      +'</tr></thead><tbody>'+corpo+'</tbody></table>';
+    if(meses[0]<periodoDesdeAnomes() && CLIENTES_DATA && CLIENTES_DATA.periodo_desde){
+      inner+='<div style="padding:6px 4px 0;color:var(--txt-m);font-size:10px">Itens disponíveis apenas a partir de '+CLIENTES_DATA.periodo_desde+' — meses anteriores só têm o volume agregado.</div>';
+    }
+  }
+  return '<tr><td colspan="4" style="padding:6px 8px 10px 24px">'+inner+'</td></tr>';
+}
+function renderClientesDoRepHtml(rep, meses, numCols){
+  const clientes=clientesDoRepNoPeriodo(rep, meses);
+  let corpo;
+  if(!clientes.length){
+    corpo='<tr><td colspan="4" style="color:var(--txt-m);padding:10px">Nenhum cliente com compra creditada a este representante no período.</td></tr>';
+  } else {
+    corpo=clientes.map(c=>{
+      const hEsc=c.h.replace(/'/g,"\\'");
+      const aberto=_detExpandCliente===c.h;
+      let linha='<tr class="det-mini-row'+(aberto?' aberto':'')+'" onclick="toggleDetCliente(event,\''+hEsc+'\')">'
+        +'<td><span class="det-arrow">'+(aberto?'▾':'▸')+'</span> '+c.h+(c.novo?' <span class="det-star" title="1ª compra deste cliente no período">★</span>':'')+'</td>'
+        +'<td>'+fmt(c.pares)+'</td>'
+        +'<td>'+fmtRS(c.valor)+'</td>'
+        +'<td></td></tr>';
+      if(aberto) linha+=renderItensClienteHtml(c.h, meses, rep);
+      return linha;
+    }).join('');
+  }
+  const inner='<div class="tr-sub-inner"><table class="det-mini-table"><thead><tr>'
+    +'<th>Cliente</th><th>Pares</th><th>Vendas (R$)</th><th></th></tr></thead><tbody>'+corpo+'</tbody></table></div>';
+  return '<tr class="tr-sub"><td colspan="'+numCols+'">'+inner+'</td></tr>';
+}
+
 function renderDetalhado(){
   if(!CARTEIRA || !REPS.length) return;
   const meses=mesesSelecionados(), mesesSet=new Set(meses);
@@ -527,6 +656,7 @@ function renderDetalhado(){
   marcarSortDet();
 
   let tMeta=0,tFalt=0,tMetaP=0,tReal=0,tVen=0,tAt=0,tNov=0;
+  const NUM_COLS=11;
   const html=linhas.map(l=>{
     tReal+=l.realizado; tVen+=l.vendas; tAt+=l.atend; tNov+=l.novos;
     if(l.meta!=null){ tMeta+=l.meta; tFalt+=l.faltando; tMetaP+=l.metaProp; }
@@ -534,8 +664,11 @@ function renderDetalhado(){
       ? '<span style="color:var(--'+({verde:'verde',amarelo:'amarelo',coral:'coral'}[corAting(l.pct)])+');font-weight:800">'+fmtRS(l.pct,1)+'%</span>'
       : '<span class="op-na">–</span>';
     const repEnc=encodeURIComponent(l.rep);
-    return '<tr>'
-      +'<td class="td-nome"><a class="det-link" href="boaonda_carteira_representante.html?rep='+repEnc+'" title="Abrir painel do representante">'+l.rep+'</a></td>'
+    const repEsc=l.rep.replace(/'/g,"\\'");
+    const aberto=_detExpandRep===l.rep;
+    const linhaRep='<tr class="tr-rep-det'+(aberto?' aberto':'')+'" onclick="toggleDetRep(\''+repEsc+'\')">'
+      +'<td class="td-nome"><span class="det-arrow">'+(aberto?'▾':'▸')+'</span> '+l.rep
+        +'<a class="det-link" href="boaonda_carteira_representante.html?rep='+repEnc+'" onclick="event.stopPropagation()" title="Abrir painel do representante">↗</a></td>'
       +'<td class="td-num">'+(l.meta!=null?fmt(l.meta):'<span class="op-na">–</span>')+'</td>'
       +'<td class="td-num">'+(l.faltando!=null?(l.faltando>0?fmt(l.faltando):'0'):'<span class="op-na">–</span>')+'</td>'
       +'<td class="td-num">'+(l.metaProp!=null?fmt(l.metaProp):'<span class="op-na">–</span>')+'</td>'
@@ -547,6 +680,7 @@ function renderDetalhado(){
       +'<td class="td-num">'+(l.novos>0?'<span class="star">★</span> '+fmt(l.novos):'0')+'</td>'
       +'<td>'+sparkline(l.rep)+'</td>'
       +'</tr>';
+    return linhaRep + (aberto ? renderClientesDoRepHtml(l.rep, meses, NUM_COLS) : '');
   }).join('');
   const totPct=tMetaP?tReal/tMetaP*100:null;
   document.getElementById('det-tbody').innerHTML=html;
@@ -589,8 +723,11 @@ function montarDetalhado(){
 Promise.all([
   fetch('dados_vendas_carteira.json?_='+Date.now()).then(r=>r.ok?r.json():null),
   fetch('dados_metas.json?_='+Date.now()).then(r=>r.ok?r.json():null),
-]).then(([cart,metas])=>{
-  CARTEIRA=cart; METAS=metas;
+  // Itens de pedido (drill-down cliente) — cobre só o ano-calendário
+  // corrente; ausência não quebra o resto do painel (CLIENTES_DATA_OK=false).
+  fetch('dados_vendas_clientes.json?_='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
+]).then(([cart,metas,cliDet])=>{
+  CARTEIRA=cart; METAS=metas; CLIENTES_DATA=cliDet; CLIENTES_DATA_OK=!!cliDet;
   if(!CARTEIRA){ document.querySelector('.main').innerHTML='<div class="empty">Não foi possível carregar os dados de vendas.</div>'; return; }
   construirIndice();
   MESES=(CARTEIRA.meses_disponiveis||[]).slice().sort();

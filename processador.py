@@ -613,7 +613,11 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
     entre parênteses na coluna Descricao do 3YS (ex.: "SANDALIA FEM TR
     (200)" -> "200"); `cor` é o texto de cor entre parênteses da coluna
     Combinacao, sem o prefixo "[FL]" nem o código numérico (ex.:
-    "[FL] 002 (ACAI/ALOHA)" -> "ACAI/ALOHA").
+    "[FL] 002 (ACAI/ALOHA)" -> "ACAI/ALOHA"). `rep` é o representante CRU
+    daquela linha (vazio = venda direta/casa, sem rep no 3YS) — usado pelo
+    drill-down de itens do painel de Metas para não misturar, no detalhe de
+    um cliente, pedidos de um representante com vendas diretas do mesmo
+    holding (ver holdings_sem_rep em gerar_dados_vendas_carteira).
     """
     print("\n  Gerando dados_vendas_clientes.json...")
     ano_atual = datetime.now().strftime('%Y')
@@ -639,13 +643,18 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
         pedido = g(row, IDX['pedido'])
         num_linha = _extrair_num_linha(g(row, IDX['descr'])) or '(sem linha)'
         cor = _extrair_cor(corrigir_mojibake(g(row, IDX['forma']))) or '(sem cor)'
-        holdings[holding][ref].append([pedido, dt_ent, canal, tipo, qtd, valor, num_linha, cor])
+        rep_val = g(row, IDX['representante']).strip()
+        holdings[holding][ref].append([pedido, dt_ent, canal, tipo, qtd, valor, num_linha, cor, rep_val])
         n += 1
 
     saida = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
         'periodo_desde': f'01/01/{ano_atual}',
-        'campos': ['pedido', 'dt_ent', 'canal', 'tipo', 'qtd', 'valor', 'linha', 'cor'],
+        # 'rep' (representante da LINHA, cru — '' quando vier em branco no 3YS,
+        # venda direta/casa) permite ao drill-down por representante excluir
+        # itens que não pertencem a ele, mesmo que o holding tenha outro rep
+        # majoritário (ver holdings_sem_rep em gerar_dados_vendas_carteira).
+        'campos': ['pedido', 'dt_ent', 'canal', 'tipo', 'qtd', 'valor', 'linha', 'cor', 'rep'],
         'holdings': {h: dict(refs) for h, refs in holdings.items()},
     }
     with open(os.path.join(output_dir, 'dados_vendas_clientes.json'), 'w', encoding='utf-8') as f_:
