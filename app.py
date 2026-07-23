@@ -3,6 +3,7 @@ from datetime import datetime
 import io
 import json
 import os
+import re
 import shutil
 import threading
 import traceback
@@ -273,12 +274,143 @@ input:focus{border-color:#ed6842}
 </html>'''
 
 
+_CATALOGO_ENTRAR_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Catálogo BOAONDA — Acesso</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--coral:#ed6842;--verde-dark:#26361e;--bg:#f8f5f1;--border:#e2ddd8;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);min-height:100vh;
+     display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:40px 36px;
+      max-width:380px;width:100%;box-shadow:0 8px 32px rgba(38,54,30,.08)}
+.mark{font-size:20px;font-weight:800;letter-spacing:2px;color:var(--coral);margin-bottom:6px}
+h1{font-size:18px;font-weight:700;color:var(--verde-dark);margin-bottom:8px}
+p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:22px;line-height:1.5}
+label{font-size:11px;font-weight:600;color:var(--verde-dark);display:block;margin-bottom:5px}
+input{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:8px;
+      font-family:inherit;font-size:14px;outline:none;transition:.15s}
+input:focus{border-color:var(--coral)}
+.btn{width:100%;margin-top:16px;padding:12px;border:none;border-radius:8px;background:var(--coral);
+     color:#fff;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;transition:.15s}
+.btn:hover{background:#dd5a34}
+.erro{background:rgba(221,112,81,.1);color:#b8462a;font-size:12px;padding:9px 12px;
+      border-radius:7px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="mark">BOAONDA</div>
+  <h1>Acesse o catálogo</h1>
+  <p class="sub">Informe o CNPJ da sua empresa. Se for a primeira vez, pediremos mais alguns dados rapidinho.</p>
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  <form method="POST">
+    <label>CNPJ</label>
+    <input type="text" name="cnpj" id="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required autofocus/>
+    <button class="btn" type="submit">Entrar</button>
+  </form>
+</div>
+<script>
+document.getElementById('cnpj').addEventListener('input', function(){
+  let v = this.value.replace(/\\D/g,'').substring(0,14);
+  if      (v.length > 12) v = v.replace(/^(\\d{2})(\\d{3})(\\d{3})(\\d{4})(\\d{0,2})$/,'$1.$2.$3/$4-$5');
+  else if (v.length >  8) v = v.replace(/^(\\d{2})(\\d{3})(\\d{3})(\\d{0,4})$/,'$1.$2.$3/$4');
+  else if (v.length >  5) v = v.replace(/^(\\d{2})(\\d{3})(\\d{0,3})$/,'$1.$2.$3');
+  else if (v.length >  2) v = v.replace(/^(\\d{2})(\\d{0,3})$/,'$1.$2');
+  this.value = v;
+});
+</script>
+</body>
+</html>'''
+
+
+_CATALOGO_CADASTRO_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Catálogo BOAONDA — Cadastro</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--coral:#ed6842;--verde-dark:#26361e;--bg:#f8f5f1;--border:#e2ddd8;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);min-height:100vh;
+     display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:36px;
+      max-width:440px;width:100%;box-shadow:0 8px 32px rgba(38,54,30,.08)}
+.mark{font-size:20px;font-weight:800;letter-spacing:2px;color:var(--coral);margin-bottom:6px}
+h1{font-size:18px;font-weight:700;color:var(--verde-dark);margin-bottom:6px}
+p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:20px;line-height:1.5}
+.row{display:flex;gap:10px}
+.row > div{flex:1}
+label{font-size:11px;font-weight:600;color:var(--verde-dark);display:block;margin:12px 0 5px}
+input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;
+      font-family:inherit;font-size:13.5px;outline:none;transition:.15s;background:#fff}
+input:focus,select:focus{border-color:var(--coral)}
+.termos{display:flex;align-items:flex-start;gap:8px;margin-top:18px}
+.termos input{width:auto;margin-top:2px}
+.termos label{font-size:11.5px;font-weight:400;color:var(--txt-m);margin:0;line-height:1.4}
+.btn{width:100%;margin-top:20px;padding:12px;border:none;border-radius:8px;background:var(--coral);
+     color:#fff;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.btn:hover{background:#dd5a34}
+.erro{background:rgba(221,112,81,.1);color:#b8462a;font-size:12px;padding:9px 12px;
+      border-radius:7px;margin-bottom:14px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="mark">BOAONDA</div>
+  <h1>Primeiro acesso — complete seu cadastro</h1>
+  <p class="sub">CNPJ {{ cnpj }} ainda não cadastrado. Preencha os dados abaixo para liberar o catálogo.</p>
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  <form method="POST" action="/catalogo/cadastrar">
+    <input type="hidden" name="cnpj" value="{{ cnpj }}"/>
+    <label>Nome completo *</label>
+    <input type="text" name="nome" required autofocus/>
+    <label>Empresa</label>
+    <input type="text" name="empresa"/>
+    <div class="row">
+      <div>
+        <label>Telefone *</label>
+        <input type="text" name="telefone" required/>
+      </div>
+      <div>
+        <label>E-mail *</label>
+        <input type="email" name="email" required/>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Cidade</label>
+        <input type="text" name="cidade"/>
+      </div>
+      <div>
+        <label>UF</label>
+        <input type="text" name="uf" maxlength="2" style="text-transform:uppercase"/>
+      </div>
+    </div>
+    <label>Representante</label>
+    <input type="text" name="representante" placeholder="Nome do representante, ou &quot;sem representante&quot;"/>
+    <div class="termos">
+      <input type="checkbox" name="aceite_termos" id="aceite" required/>
+      <label for="aceite">Concordo com o uso dos meus dados para contato comercial da BOAONDA, conforme a política de privacidade.</label>
+    </div>
+    <button class="btn" type="submit">Concluir cadastro e entrar</button>
+  </form>
+</div>
+</body>
+</html>'''
+
+
 @app.before_request
 def require_login():
     """Bloqueia todas as rotas exceto /login, /logout e o catálogo público.
     Também bloqueia rotas admin-only (ADMIN_ONLY_PREFIXES/EXATOS) para
     usuários com role != 'admin'."""
-    public_endpoints = {'login', 'logout', 'catalogo', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx'}
+    public_endpoints = {'login', 'logout', 'catalogo', 'catalogo_entrar', 'catalogo_cadastrar',
+                        'api_catalogo_pedido', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx'}
     if request.endpoint in public_endpoints:
         return None
     # JSONs necessários para o catálogo público não exigem autenticação
@@ -343,10 +475,144 @@ def index():
     return send_from_directory(FRONTEND_DIR, 'index.html')
 
 
+def _conectar_catalogo_db():
+    """Conexão com o Supabase, reaproveitada pelas rotas do catálogo.
+    Mesma lógica da rota /admin/db-tunnel-status."""
+    import psycopg2
+    return psycopg2.connect(
+        host=os.environ.get('DB_HOST', 'localhost'),
+        port=os.environ.get('DB_PORT', '5432'),
+        dbname=os.environ.get('DB_NAME', 'postgres'),
+        user=os.environ.get('DB_USER'),
+        password=os.environ.get('DB_PASSWORD'),
+        connect_timeout=5,
+    )
+
+
 @app.route('/catalogo')
 def catalogo():
-    """Catálogo público de produtos — sem autenticação."""
+    """Catálogo público de produtos — acesso liberado somente após
+    cadastro (CNPJ) confirmado nesta sessão."""
+    if not session.get('catalogo_cadastro_id'):
+        return redirect(url_for('catalogo_entrar'))
     return send_from_directory(FRONTEND_DIR, 'catalogo.html')
+
+
+@app.route('/catalogo/entrar', methods=['GET', 'POST'])
+def catalogo_entrar():
+    """Primeira tela: pede só o CNPJ. Se já cadastrado, libera direto.
+    Se não, encaminha para o cadastro completo."""
+    erro = None
+    if request.method == 'POST':
+        cnpj = re.sub(r'\D', '', request.form.get('cnpj', ''))
+        if len(cnpj) != 14:
+            erro = 'CNPJ inválido — confira os números digitados.'
+        else:
+            try:
+                conexao = _conectar_catalogo_db()
+                cursor = conexao.cursor()
+                cursor.execute(
+                    "SELECT id, nome, empresa, representante FROM catalogo_cadastros WHERE cnpj = %s",
+                    (cnpj,)
+                )
+                row = cursor.fetchone()
+                conexao.close()
+                if row:
+                    session['catalogo_cadastro_id'] = str(row[0])
+                    session['catalogo_cliente'] = {
+                        'nome': row[1], 'empresa': row[2] or '', 'representante': row[3],
+                    }
+                    return redirect(url_for('catalogo'))
+                # CNPJ não encontrado: mostra o formulário completo, já com o CNPJ preenchido
+                return render_template_string(_CATALOGO_CADASTRO_HTML, cnpj=cnpj, erro=None)
+            except Exception as ex:
+                erro = f'Não foi possível consultar o cadastro agora. Tente novamente. ({ex})'
+    return render_template_string(_CATALOGO_ENTRAR_HTML, erro=erro)
+
+
+@app.route('/catalogo/cadastrar', methods=['POST'])
+def catalogo_cadastrar():
+    """Grava um cadastro novo (CNPJ não encontrado na etapa anterior)."""
+    nome         = request.form.get('nome', '').strip()
+    empresa      = request.form.get('empresa', '').strip() or None
+    cnpj         = re.sub(r'\D', '', request.form.get('cnpj', ''))
+    telefone     = request.form.get('telefone', '').strip()
+    email        = request.form.get('email', '').strip()
+    cidade       = request.form.get('cidade', '').strip() or None
+    uf           = (request.form.get('uf', '').strip() or None)
+    representante = request.form.get('representante', '').strip() or 'sem representante'
+    aceite       = request.form.get('aceite_termos') == 'on'
+
+    def _erro(msg):
+        return render_template_string(_CATALOGO_CADASTRO_HTML, cnpj=cnpj, erro=msg)
+
+    if not (nome and telefone and email and len(cnpj) == 14):
+        return _erro('Preencha nome, telefone, e-mail e um CNPJ válido.')
+    if not aceite:
+        return _erro('É necessário aceitar os termos para continuar.')
+
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("""
+            INSERT INTO catalogo_cadastros
+                (nome, empresa, cnpj, telefone, email, cidade, uf, representante, aceite_termos)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            RETURNING id
+        """, (nome, empresa, cnpj, telefone, email, cidade, uf, representante, aceite))
+        novo_id = cursor.fetchone()[0]
+        conexao.commit()
+        conexao.close()
+        session['catalogo_cadastro_id'] = str(novo_id)
+        session['catalogo_cliente'] = {'nome': nome, 'empresa': empresa or '', 'representante': representante}
+        return redirect(url_for('catalogo'))
+    except Exception as ex:
+        # Erro de UNIQUE (cnpj) cai aqui também — psycopg2.IntegrityError é subclasse de Exception
+        if 'unique' in str(ex).lower() or 'duplicate' in str(ex).lower():
+            return _erro('Esse CNPJ já está cadastrado — volte e informe só o CNPJ para entrar.')
+        return _erro(f'Erro ao cadastrar: {ex}')
+
+
+@app.route('/api/catalogo/pedido', methods=['POST'])
+def api_catalogo_pedido():
+    """Chamada pelo catalogo.html (dentro de idConfirmar/gerarPDF) para
+    gravar a intenção de compra no banco, além do PDF já gerado localmente."""
+    cadastro_id = session.get('catalogo_cadastro_id')
+    if not cadastro_id:
+        return jsonify({'erro': 'Sessão do catálogo expirada. Recarregue a página.'}), 401
+
+    payload      = request.get_json(silent=True) or {}
+    itens        = payload.get('itens') or []
+    observacoes  = (payload.get('observacoes') or '').strip() or None
+
+    if not itens:
+        return jsonify({'erro': 'Carrinho vazio.'}), 400
+
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("""
+            INSERT INTO catalogo_pedidos (cadastro_id, observacoes)
+            VALUES (%s, %s) RETURNING id
+        """, (cadastro_id, observacoes))
+        pedido_id = cursor.fetchone()[0]
+        for item in itens:
+            cursor.execute("""
+                INSERT INTO catalogo_pedidos_itens
+                    (pedido_id, produto_referencia, produto_nome, grade_tamanho, quantidade)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                pedido_id,
+                item.get('referencia'),
+                item.get('nome'),
+                item.get('grade'),
+                item.get('quantidade'),
+            ))
+        conexao.commit()
+        conexao.close()
+        return jsonify({'status': 'ok', 'pedido_id': str(pedido_id)})
+    except Exception as ex:
+        return jsonify({'erro': f'Erro ao salvar o pedido: {ex}'}), 500
 
 
 @app.route('/<path:filename>')

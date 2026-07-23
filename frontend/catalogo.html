@@ -1967,7 +1967,7 @@ function fecharModalId() {
 
 function idBgClick(e) { if (e.target.id === 'id-over') fecharModalId(); }
 
-function idConfirmar() {
+async function idConfirmar() {
   const nome    = document.getElementById('id-nome').value.trim();
   const empresa = document.getElementById('id-empresa').value.trim();
   const cnpj    = document.getElementById('id-cnpj').value.trim();
@@ -1978,6 +1978,28 @@ function idConfirmar() {
     try { localStorage.setItem(ID_KEY, JSON.stringify({ nome, empresa, cnpj })); } catch(e) {}
   }
   fecharModalId();
+
+  // Novo: grava o pedido no banco antes/junto de gerar o PDF.
+  // Se falhar, não trava o PDF (cliente ainda leva o arquivo) —
+  // só perde o registro no banco, e isso fica no console pra depurar depois.
+  try {
+    await fetch('/api/catalogo/pedido', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        observacoes: obs,
+        itens: carrinho.itens.map(i => ({
+          referencia: i.ref,
+          nome: i.descricao,
+          grade: i.grade_tamanhos ? i.grade_tamanhos.join('/') : i.grade_code,
+          quantidade: i.qtd_pares,
+        })),
+      }),
+    });
+  } catch (e) {
+    console.error('Falha ao salvar pedido no banco:', e);
+  }
+
   gerarPDF();
 }
 
