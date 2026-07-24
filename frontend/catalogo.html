@@ -704,6 +704,7 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
         <a href="/catalogo/representante/painel" id="hdr-link-meus-clientes" style="display:none">👤 Meus clientes</a>
         <a href="/catalogo/sair" id="hdr-link-trocar">↪ Trocar CNPJ / Sair</a>
         <a href="/catalogo/representante/sair" id="hdr-link-sair-rep" class="sair" style="display:none">🚪 Sair (representante)</a>
+        <a href="/catalogo/equipe/sair" id="hdr-link-sair-equipe" class="sair" style="display:none">🚪 Sair</a>
       </div>
     </div>
   </div>
@@ -2000,27 +2001,32 @@ function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").repl
 function mostrarErro(msg){ document.getElementById('grid').innerHTML=`<div class="empty"><p>${msg}</p></div>`; }
 
 // ── Sessão do catálogo: identidade e fechamento de pedido ──────────
-// Representante NUNCA assume a identidade de um cliente — navega sempre
-// como ele mesmo; a escolha de cliente acontece só no modal de fechamento.
-let EH_REPRESENTANTE = false;
+// Representante e equipe Boaonda NUNCA assumem a identidade de um
+// cliente — navegam sempre como eles mesmos; a escolha de cliente
+// acontece só no modal de fechamento do pedido.
+let TIPO_SESSAO = 'cliente'; // 'cliente' | 'representante' | 'equipe'
 
 async function carregarIdentidade() {
   try {
     const r = await fetch('/api/catalogo/quem-sou-eu');
     const d = await r.json();
     if (!d.logado) return;
-    EH_REPRESENTANTE = !!d.rep_nome;
+    TIPO_SESSAO = d.tipo || 'cliente';
     const c = d.cliente || {};
-    const label = EH_REPRESENTANTE ? d.rep_nome : (c.empresa || c.nome || 'Cadastro');
+    const label = TIPO_SESSAO === 'cliente' ? (c.empresa || c.nome || 'Cadastro') : d.nome;
     const el = document.getElementById('hdr-user-nome');
     const box = document.getElementById('hdr-user');
     if (el) el.textContent = label;
     if (box) box.classList.add('vis');
-    if (EH_REPRESENTANTE) {
+    if (TIPO_SESSAO === 'representante') {
       document.getElementById('hdr-btn-meus-pedidos').style.display = 'none';
       document.getElementById('hdr-link-trocar').style.display = 'none';
       document.getElementById('hdr-link-meus-clientes').style.display = 'block';
       document.getElementById('hdr-link-sair-rep').style.display = 'block';
+    } else if (TIPO_SESSAO === 'equipe') {
+      document.getElementById('hdr-btn-meus-pedidos').style.display = 'none';
+      document.getElementById('hdr-link-trocar').style.display = 'none';
+      document.getElementById('hdr-link-sair-equipe').style.display = 'block';
     }
   } catch(e) { /* card só não aparece — não é crítico pro catálogo funcionar */ }
 }
@@ -2075,6 +2081,8 @@ function fecharMeusPedidos() {
 // ── Modal Identificação (Passo 4) ──────────────────────────────────
 const ID_KEY = 'boaonda_cliente';
 
+function ehSessaoInterna() { return TIPO_SESSAO === 'representante' || TIPO_SESSAO === 'equipe'; }
+
 async function abrirModalId() {
   fecharDrawer();
   const saved = JSON.parse(localStorage.getItem(ID_KEY) || '{}');
@@ -2082,13 +2090,13 @@ async function abrirModalId() {
   document.getElementById('id-empresa').value = saved.empresa || '';
   document.getElementById('id-cnpj').value    = saved.cnpj    || '';
   document.getElementById('id-obs').value     = '';
-  if (EH_REPRESENTANTE) {
+  if (ehSessaoInterna()) {
     document.getElementById('id-cliente-wrap').style.display = 'block';
     await carregarClientesDoRepresentante();
   }
   document.getElementById('id-over').style.display = 'flex';
   document.body.style.overflow = 'hidden';
-  setTimeout(() => document.getElementById(EH_REPRESENTANTE ? 'id-cliente' : 'id-nome').focus(), 80);
+  setTimeout(() => document.getElementById(ehSessaoInterna() ? 'id-cliente' : 'id-nome').focus(), 80);
 }
 
 async function carregarClientesDoRepresentante() {
@@ -2127,7 +2135,7 @@ async function idConfirmar() {
   // Novo: grava o pedido no banco antes/junto de gerar o PDF.
   // Se falhar, não trava o PDF (cliente ainda leva o arquivo) —
   // só perde o registro no banco, e isso fica no console pra depurar depois.
-  const clienteId = EH_REPRESENTANTE ? (document.getElementById('id-cliente').value || null) : null;
+  const clienteId = ehSessaoInterna() ? (document.getElementById('id-cliente').value || null) : null;
   try {
     const resp = await fetch('/api/catalogo/pedido', {
       method: 'POST',

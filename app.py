@@ -284,6 +284,13 @@ input:focus{border-color:#ed6842}
 </html>'''
 
 
+# Login de cliente por CNPJ (auto-cadastro) temporariamente desligado —
+# por ora só representante e equipe Boaonda (usuário do portal) entram no
+# catálogo. Reverter é só voltar essa flag pra True (tela e rotas de
+# cliente continuam implementadas, só ficam bloqueadas enquanto isso).
+CATALOGO_CLIENTE_HABILITADO = False
+
+
 _CATALOGO_ENTRAR_HTML = '''<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -322,10 +329,14 @@ input:focus{border-color:var(--coral)}
   <div class="mark">BOAONDA</div>
   <h1>Acesse o catálogo</h1>
   <div class="tabs">
+    {% if cliente_habilitado %}
     <button type="button" class="tab-btn" id="tabbtn-cliente" onclick="mostrarTab('cliente')">Sou cliente</button>
-    <button type="button" class="tab-btn" id="tabbtn-rep" onclick="mostrarTab('representante')">Sou representante</button>
+    {% endif %}
+    <button type="button" class="tab-btn" id="tabbtn-representante" onclick="mostrarTab('representante')">Sou representante</button>
+    <button type="button" class="tab-btn" id="tabbtn-equipe" onclick="mostrarTab('equipe')">Equipe Boaonda</button>
   </div>
 
+  {% if cliente_habilitado %}
   <div class="tab-pane" id="tab-cliente">
     <p class="sub">Informe o CNPJ da sua empresa. Se for a primeira vez, pediremos mais alguns dados rapidinho.</p>
     {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
@@ -335,6 +346,7 @@ input:focus{border-color:var(--coral)}
       <button class="btn" type="submit">Entrar</button>
     </form>
   </div>
+  {% endif %}
 
   <div class="tab-pane" id="tab-representante">
     <p class="sub">Acesso restrito a representantes cadastrados pela BOAONDA.</p>
@@ -347,13 +359,25 @@ input:focus{border-color:var(--coral)}
       <button class="btn" type="submit">Entrar</button>
     </form>
   </div>
+
+  <div class="tab-pane" id="tab-equipe">
+    <p class="sub">Login com o mesmo usuário e senha do portal Boaonda Intelligence.</p>
+    {% if erro_equipe %}<div class="erro">{{ erro_equipe }}</div>{% endif %}
+    <form method="POST" action="/catalogo/equipe/entrar">
+      <label>Usuário</label>
+      <input type="text" name="username" autocomplete="off" required/>
+      <label style="margin-top:12px">Senha</label>
+      <input type="password" name="senha" required/>
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </div>
 </div>
 <script>
 function mostrarTab(tab){
   document.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
-  document.getElementById(tab==='cliente'?'tabbtn-cliente':'tabbtn-rep').classList.add('active');
+  document.getElementById('tabbtn-'+tab).classList.add('active');
 }
 mostrarTab('{{ tab_ativa }}');
 document.getElementById('cnpj')?.addEventListener('input', function(){
@@ -456,7 +480,8 @@ def require_login():
                         'api_catalogo_meu_historico', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx',
                         'catalogo_representante_entrar', 'catalogo_representante_sair',
                         'catalogo_representante_painel', 'api_catalogo_representante_clientes',
-                        'catalogo_representante_cadastrar_cliente'}
+                        'catalogo_representante_cadastrar_cliente',
+                        'catalogo_equipe_entrar', 'catalogo_equipe_sair'}
     if request.endpoint in public_endpoints:
         return None
     # JSONs necessários para o catálogo público não exigem autenticação
@@ -541,7 +566,8 @@ def catalogo():
     confirmado; representante pode navegar livremente assim que loga —
     só é obrigado a escolher/cadastrar um cliente na hora de fechar o
     pedido (checado em /api/catalogo/pedido), não pra só olhar o catálogo."""
-    if session.get('catalogo_cadastro_id') or session.get('catalogo_rep_id'):
+    if (session.get('catalogo_cadastro_id') or session.get('catalogo_rep_id')
+            or session.get('catalogo_equipe_username')):
         return send_from_directory(FRONTEND_DIR, 'catalogo.html')
     return redirect(url_for('catalogo_entrar'))
 
@@ -564,6 +590,8 @@ def catalogo_entrar():
     """Primeira tela: pede só o CNPJ. Se já cadastrado, libera direto.
     Se não, encaminha para o cadastro completo."""
     erro = None
+    if request.method == 'POST' and not CATALOGO_CLIENTE_HABILITADO:
+        return redirect(url_for('catalogo_entrar'))
     if request.method == 'POST':
         cnpj = re.sub(r'\D', '', request.form.get('cnpj', ''))
         if len(cnpj) != 14:
@@ -588,7 +616,10 @@ def catalogo_entrar():
                 return render_template_string(_CATALOGO_CADASTRO_HTML, cnpj=cnpj, erro=None)
             except Exception as ex:
                 erro = f'Não foi possível consultar o cadastro agora. Tente novamente. ({ex})'
-    return render_template_string(_CATALOGO_ENTRAR_HTML, erro=erro, erro_rep=None, tab_ativa='cliente')
+    return render_template_string(
+        _CATALOGO_ENTRAR_HTML, erro=erro, erro_rep=None, erro_equipe=None,
+        cliente_habilitado=CATALOGO_CLIENTE_HABILITADO,
+        tab_ativa='cliente' if CATALOGO_CLIENTE_HABILITADO else 'representante')
 
 
 @app.route('/catalogo/cadastrar', methods=['POST'])
@@ -825,9 +856,11 @@ def catalogo_representante_entrar():
         conexao.close()
     except Exception as ex:
         return render_template_string(_CATALOGO_ENTRAR_HTML, erro=None, tab_ativa='representante',
+                                       cliente_habilitado=CATALOGO_CLIENTE_HABILITADO, erro_equipe=None,
                                        erro_rep=f'Não foi possível validar o login agora. ({ex})')
     if not row or not row[3] or not check_password_hash(row[2], senha):
         return render_template_string(_CATALOGO_ENTRAR_HTML, erro=None, tab_ativa='representante',
+                                       cliente_habilitado=CATALOGO_CLIENTE_HABILITADO, erro_equipe=None,
                                        erro_rep='E-mail ou senha incorretos.')
     session['catalogo_rep_id'] = str(row[0])
     session['catalogo_rep_nome'] = row[1]
@@ -841,6 +874,28 @@ def catalogo_representante_sair():
     """Logout completo do representante."""
     session.pop('catalogo_rep_id', None)
     session.pop('catalogo_rep_nome', None)
+    return redirect(url_for('catalogo_entrar'))
+
+
+@app.route('/catalogo/equipe/entrar', methods=['POST'])
+def catalogo_equipe_entrar():
+    """Login com o mesmo usuário/senha do portal Boaonda Intelligence —
+    pra alguém da equipe (admin, gestor comercial) navegar/testar o
+    catálogo sem precisar de um cadastro de representante à parte."""
+    username = request.form.get('username', '').strip()
+    senha = request.form.get('senha', '')
+    usuario = _achar_usuario(username)
+    if not usuario or not check_password_hash(usuario['senha_hash'], senha):
+        return render_template_string(_CATALOGO_ENTRAR_HTML, erro=None, erro_rep=None, tab_ativa='equipe',
+                                       cliente_habilitado=CATALOGO_CLIENTE_HABILITADO,
+                                       erro_equipe='Usuário ou senha incorretos.')
+    session['catalogo_equipe_username'] = usuario['username']
+    return redirect(url_for('catalogo'))
+
+
+@app.route('/catalogo/equipe/sair')
+def catalogo_equipe_sair():
+    session.pop('catalogo_equipe_username', None)
     return redirect(url_for('catalogo_entrar'))
 
 
@@ -894,19 +949,28 @@ def catalogo_representante_painel():
 
 @app.route('/api/catalogo/representante/clientes')
 def api_catalogo_representante_clientes():
-    """Lista enxuta (id/nome/empresa) dos clientes do representante logado,
-    pro seletor do modal de fechamento de pedido no catalogo.html."""
-    if not session.get('catalogo_rep_id'):
-        return jsonify({'erro': 'Sessão de representante expirada.'}), 401
+    """Lista enxuta (id/nome/empresa) pro seletor do modal de fechamento
+    de pedido no catalogo.html. Representante vê só a própria carteira;
+    equipe Boaonda (usuário do portal) vê todos os clientes cadastrados,
+    já que não tem uma carteira própria."""
+    if not (session.get('catalogo_rep_id') or session.get('catalogo_equipe_username')):
+        return jsonify({'erro': 'Sessão expirada.'}), 401
     try:
         conexao = _conectar_catalogo_db()
         cursor = conexao.cursor()
-        cursor.execute("""
-            SELECT id, nome, empresa
-            FROM catalogo_cadastros
-            WHERE representante_id = %s
-            ORDER BY empresa NULLS LAST, nome
-        """, (session['catalogo_rep_id'],))
+        if session.get('catalogo_rep_id'):
+            cursor.execute("""
+                SELECT id, nome, empresa
+                FROM catalogo_cadastros
+                WHERE representante_id = %s
+                ORDER BY empresa NULLS LAST, nome
+            """, (session['catalogo_rep_id'],))
+        else:
+            cursor.execute("""
+                SELECT id, nome, empresa
+                FROM catalogo_cadastros
+                ORDER BY empresa NULLS LAST, nome
+            """)
         cols = [d[0] for d in cursor.description]
         clientes = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
                     for row in cursor.fetchall()]
@@ -963,25 +1027,28 @@ def api_catalogo_pedido():
     """Chamada pelo catalogo.html (dentro de idConfirmar/gerarPDF) para
     gravar a intenção de compra no banco, além do PDF já gerado localmente.
     Cliente comum: cadastro_id vem sempre da sessão (nunca do payload).
-    Representante: ele mesmo nunca "é" um cliente — escolhe no modal de
-    fechamento a quem o pedido pertence (ou deixa em branco, virando um
+    Representante/equipe: nunca "são" um cliente — escolhem no modal de
+    fechamento a quem o pedido pertence (ou deixam em branco, virando um
     pedido de teste sem cliente vinculado)."""
     payload      = request.get_json(silent=True) or {}
     itens        = payload.get('itens') or []
     observacoes  = (payload.get('observacoes') or '').strip() or None
     representante_responsavel = None
 
-    if session.get('catalogo_rep_id'):
-        representante_responsavel = session.get('catalogo_rep_nome')
+    if session.get('catalogo_rep_id') or session.get('catalogo_equipe_username'):
+        representante_responsavel = session.get('catalogo_rep_nome') or f"Equipe · {session.get('catalogo_equipe_username')}"
         cadastro_id = (payload.get('cadastro_id') or '').strip() or None
         if cadastro_id:
             try:
                 conexao = _conectar_catalogo_db()
                 cursor = conexao.cursor()
-                cursor.execute(
-                    "SELECT 1 FROM catalogo_cadastros WHERE id = %s AND representante_id = %s",
-                    (cadastro_id, session['catalogo_rep_id'])
-                )
+                if session.get('catalogo_rep_id'):
+                    cursor.execute(
+                        "SELECT 1 FROM catalogo_cadastros WHERE id = %s AND representante_id = %s",
+                        (cadastro_id, session['catalogo_rep_id'])
+                    )
+                else:
+                    cursor.execute("SELECT 1 FROM catalogo_cadastros WHERE id = %s", (cadastro_id,))
                 valido = cursor.fetchone()
                 conexao.close()
             except Exception as ex:
@@ -1041,11 +1108,14 @@ def api_catalogo_quem_sou_eu():
     a identidade de um cliente) — a escolha do cliente é só no fechamento
     do pedido, ver /api/catalogo/pedido."""
     if session.get('catalogo_rep_id'):
-        return jsonify({'logado': True, 'rep_nome': session.get('catalogo_rep_nome')})
+        return jsonify({'logado': True, 'tipo': 'representante', 'nome': session.get('catalogo_rep_nome')})
+    if session.get('catalogo_equipe_username'):
+        return jsonify({'logado': True, 'tipo': 'equipe', 'nome': session.get('catalogo_equipe_username')})
     if not session.get('catalogo_cadastro_id'):
         return jsonify({'logado': False})
     return jsonify({
         'logado': True,
+        'tipo': 'cliente',
         'cliente': session.get('catalogo_cliente') or {},
     })
 
