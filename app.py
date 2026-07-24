@@ -537,14 +537,13 @@ def _conectar_catalogo_db():
 
 @app.route('/catalogo')
 def catalogo():
-    """Catálogo público de produtos — acesso liberado somente após
-    cadastro (CNPJ) confirmado nesta sessão, ou após um representante
-    escolher em nome de qual cliente vai atuar."""
-    if not session.get('catalogo_cadastro_id'):
-        if session.get('catalogo_rep_id'):
-            return redirect(url_for('catalogo_representante_painel'))
-        return redirect(url_for('catalogo_entrar'))
-    return send_from_directory(FRONTEND_DIR, 'catalogo.html')
+    """Catálogo público de produtos. Cliente comum só entra com CNPJ
+    confirmado; representante pode navegar livremente assim que loga —
+    só é obrigado a escolher/cadastrar um cliente na hora de fechar o
+    pedido (checado em /api/catalogo/pedido), não pra só olhar o catálogo."""
+    if session.get('catalogo_cadastro_id') or session.get('catalogo_rep_id'):
+        return send_from_directory(FRONTEND_DIR, 'catalogo.html')
+    return redirect(url_for('catalogo_entrar'))
 
 
 @app.route('/catalogo/sair')
@@ -963,6 +962,9 @@ def api_catalogo_pedido():
     gravar a intenção de compra no banco, além do PDF já gerado localmente."""
     cadastro_id = session.get('catalogo_cadastro_id')
     if not cadastro_id:
+        if session.get('catalogo_rep_id'):
+            return jsonify({'erro': 'Selecione ou cadastre um cliente para fechar este pedido.',
+                             'sem_cliente': True}), 409
         return jsonify({'erro': 'Sessão do catálogo expirada. Recarregue a página.'}), 401
 
     payload      = request.get_json(silent=True) or {}
@@ -1016,6 +1018,11 @@ def api_catalogo_quem_sou_eu():
     do catalogo.html pra mostrar "logado como X" e habilitar o botão de
     troca. catalogo.html é servido como arquivo estático (send_from_directory),
     por isso a identidade chega via fetch em vez de Jinja."""
+    if session.get('catalogo_rep_id') and not session.get('catalogo_cadastro_id'):
+        # Representante navegando no catálogo sem ter escolhido um cliente
+        # ainda — estado válido agora, só barra na hora de fechar pedido.
+        return jsonify({'logado': True, 'cliente': {}, 'rep_nome': session.get('catalogo_rep_nome'),
+                         'sem_cliente': True})
     if not session.get('catalogo_cadastro_id'):
         return jsonify({'logado': False})
     return jsonify({
