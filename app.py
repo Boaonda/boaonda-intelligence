@@ -169,7 +169,7 @@ MODULOS = {
         'ia': ['faturamento'],
     },
     'catalogo_leads': {
-        'label': 'Cadastros do Catálogo',
+        'label': 'Pedidos de Pronta Entrega',
         'htmls': ['boaonda_catalogo_leads.html'],
         # Sem JSON estático — os dados vêm ao vivo do Supabase via
         # /api/catalogo/dados e /api/catalogo/resumo (ver rotas abaixo), não

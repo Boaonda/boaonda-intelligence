@@ -371,26 +371,6 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-cta">Analisar programação →</div>
     </div>
 
-    <!-- NÓ: CADASTROS DO CATÁLOGO (captação pública — CNPJ/leads/pedidos;
-         sem seta de conexão com os demais nós, pois ainda não alimenta o
-         fluxo interno de vendas/produção, é uma entrada separada) -->
-    <div class="nó" style="right:40px;top:276px" onclick="abrirModulo('catalogo_leads')">
-      <span class="nó-icon">📇</span>
-      <div class="nó-title">Cadastros do Catálogo</div>
-      <div class="nó-desc">CNPJ · leads · pedidos do catálogo público</div>
-      <div class="nó-kpi-row">
-        <div>
-          <div class="nó-kpi" id="kpi-cat-cadastros">–</div>
-          <div class="nó-kpi-label">cadastros/mês</div>
-        </div>
-        <div>
-          <div class="nó-kpi" id="kpi-cat-pedidos">–</div>
-          <div class="nó-kpi-label">pedidos/mês</div>
-        </div>
-      </div>
-      <div class="nó-cta">Ver cadastros e pedidos →</div>
-    </div>
-
     <!-- NÓ: CAPACIDADE FABRIL (abaixo da programação — futura ligação p/ ocupação/eficiência) -->
     <div class="nó" style="right:40px;top:494px" onclick="abrirModulo('capacidade')">
       <span class="nó-icon">⚙️</span>
@@ -430,6 +410,29 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
            onclick="event.stopPropagation()"
            style="margin-top:4px;font-size:10px;color:var(--bo-azul,#4994c7);opacity:.8">
           Catálogo público →</a>
+      </div>
+    </div>
+
+    <!-- NÓ: PEDIDOS DE PRONTA ENTREGA (captação pública do catálogo — CNPJ/
+         leads/pedidos vendidos do estoque disponível, não programado; sem
+         seta de conexão com os demais nós, pois ainda não alimenta o fluxo
+         interno de vendas/produção representado no mapa; card bem compacto
+         — sem desc nem cta — pra caber no vão apertado entre Estoque e a
+         IA (~123px de altura disponível) -->
+    <div class="nó" style="left:40px;top:625px;padding:9px 18px" onclick="abrirModulo('catalogo_leads')">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span class="nó-icon" style="margin-bottom:0;font-size:16px">🧾</span>
+        <div class="nó-title" style="margin-bottom:0;font-size:11px">Pedidos de Pronta Entrega</div>
+      </div>
+      <div class="nó-kpi-row" style="margin-bottom:0">
+        <div>
+          <div class="nó-kpi" id="kpi-cat-pedidos" style="font-size:17px">–</div>
+          <div class="nó-kpi-label">pedidos/mês</div>
+        </div>
+        <div>
+          <div class="nó-kpi" id="kpi-cat-cadastros" style="font-size:17px">–</div>
+          <div class="nó-kpi-label">cadastros/mês</div>
+        </div>
       </div>
     </div>
 
@@ -529,7 +532,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   <iframe class="mod-frame" id="frame-faturamento" src="" title="Faturamento"></iframe>
 </div>
 <div class="page" id="page-catalogo_leads">
-  <iframe class="mod-frame" id="frame-catalogo_leads" src="" title="Cadastros do Catálogo"></iframe>
+  <iframe class="mod-frame" id="frame-catalogo_leads" src="" title="Pedidos de Pronta Entrega"></iframe>
 </div>
 <div class="page" id="page-inteligencia">
   <iframe class="mod-frame" id="frame-inteligencia" src="" title="IA Intelligence"></iframe>
@@ -556,7 +559,7 @@ const MODS={
   carteira:{file:'boaonda_carteira.html',label:'Pedido em Carteira'},
   capacidade:{file:'boaonda_capacidade_fabril.html',label:'Capacidade Fabril'},
   faturamento:{file:'boaonda_faturamento.html',label:'Faturamento'},
-  catalogo_leads:{file:'boaonda_catalogo_leads.html',label:'Cadastros do Catálogo'},
+  catalogo_leads:{file:'boaonda_catalogo_leads.html',label:'Pedidos de Pronta Entrega'},
   inteligencia:{file:'boaonda_inteligencia.html',label:'IA Intelligence'},
   equilibrio:{file:null,label:'Equilíbrio'},
 };
