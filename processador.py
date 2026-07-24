@@ -877,6 +877,15 @@ def processar_programacao(linhas, output_dir='.'):
         if not any(p in abr for p in GRUPOS_OK): continue
         plano = g(row, IDX['plano'])
         if not plano or plano in ('Não se aplica','NÃ£o se aplica',''): continue
+        # LocalEstoque == '30' é o único local que efetivamente vira produção
+        # (linha de fábrica). Qualquer outro local é produto já pronto sendo
+        # atendido por estoque — não deveria contar como pauta de programação
+        # de fábrica. Mesma regra já aplicada em processar_carteira(); antes
+        # desse filtro, itens de armazém/pronta-entrega inflavam o total de
+        # "Semanas de Produção" e destoavam da programação real da empresa.
+        # (Auditoria 2026-07-25, a pedido do usuário.)
+        local = g(row, IDX['local'])
+        if local != '30': continue
         # NÃO excluir pos_item='Cancelado' aqui: ~94% desses itens são GRUPO
         # MOULD (armazém / pronta entrega) — produção real de reposição de
         # estoque, deliberadamente contada como volume 'pe' na programação.
