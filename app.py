@@ -455,7 +455,7 @@ def require_login():
                         'catalogo_sair', 'api_catalogo_pedido', 'api_catalogo_quem_sou_eu',
                         'api_catalogo_meu_historico', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx',
                         'catalogo_representante_entrar', 'catalogo_representante_sair',
-                        'catalogo_representante_painel', 'catalogo_representante_atuar',
+                        'catalogo_representante_painel', 'api_catalogo_representante_clientes',
                         'catalogo_representante_cadastrar_cliente'}
     if request.endpoint in public_endpoints:
         return None
@@ -659,6 +659,7 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);min-heig
 h1{font-size:16px;font-weight:700;color:var(--verde-dark);margin-bottom:4px}
 p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:18px}
 .erro{background:rgba(221,112,81,.1);color:#b8462a;font-size:12px;padding:9px 12px;border-radius:7px;margin-bottom:16px}
+.msg{background:rgba(108,156,55,.1);color:#4c7a1f;font-size:12px;padding:9px 12px;border-radius:7px;margin-bottom:16px}
 .btn{display:inline-block;background:var(--coral);color:#fff;font-weight:700;font-size:12.5px;
      text-decoration:none;padding:10px 18px;border-radius:8px;margin-bottom:20px}
 .btn:hover{background:#dd5a34}
@@ -684,7 +685,8 @@ p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:18px}
     <a class="sair" href="/catalogo/representante/sair">↪ Sair</a>
   </div>
   <h1>Olá, {{ rep_nome }}</h1>
-  <p class="sub">Clientes que você cadastrou. Escolha um para digitar o pedido em nome dele.</p>
+  <p class="sub">Clientes que você cadastrou. Ao fechar um pedido no catálogo, você escolhe entre eles.</p>
+  {% if msg %}<div class="msg">{{ msg }}</div>{% endif %}
   {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
     <a class="btn" href="/catalogo/representante/cadastrar-cliente">+ Cadastrar novo cliente</a>
@@ -703,7 +705,6 @@ p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:18px}
           <span class="pedidos">Nenhum pedido ainda</span>
           {% endif %}
         </div>
-        <a class="cli-btn" href="/catalogo/representante/atuar/{{ c.id }}">Digitar pedido</a>
       </div>
       {% endfor %}
     {% else %}
@@ -786,7 +787,7 @@ input:focus{border-color:var(--coral)}
       <input type="checkbox" name="aceite_termos" id="aceite" required/>
       <label for="aceite">Confirmo que o cliente concorda com o uso dos seus dados para contato comercial da BOAONDA, conforme a política de privacidade.</label>
     </div>
-    <button class="btn" type="submit">Cadastrar e digitar pedido</button>
+    <button class="btn" type="submit">Cadastrar cliente</button>
   </form>
   <div style="display:flex;justify-content:space-between;margin-top:16px">
     <a class="voltar" href="/catalogo/representante/painel">← Voltar aos meus clientes</a>
@@ -837,12 +838,9 @@ def catalogo_representante_entrar():
 
 @app.route('/catalogo/representante/sair')
 def catalogo_representante_sair():
-    """Logout completo do representante — encerra também qualquer cliente
-    em cujo nome ele estivesse atuando no momento."""
+    """Logout completo do representante."""
     session.pop('catalogo_rep_id', None)
     session.pop('catalogo_rep_nome', None)
-    session.pop('catalogo_cadastro_id', None)
-    session.pop('catalogo_cliente', None)
     return redirect(url_for('catalogo_entrar'))
 
 
@@ -851,6 +849,7 @@ def catalogo_representante_painel():
     if not session.get('catalogo_rep_id'):
         return redirect(url_for('catalogo_entrar'))
     erro = request.args.get('erro')
+    msg = request.args.get('msg')
     clientes = []
     try:
         conexao = _conectar_catalogo_db()
@@ -890,34 +889,31 @@ def catalogo_representante_painel():
     except Exception as ex:
         erro = erro or f'Não foi possível carregar seus clientes agora. ({ex})'
     return render_template_string(_CATALOGO_REP_PAINEL_HTML, clientes=clientes,
-                                   rep_nome=session.get('catalogo_rep_nome'), erro=erro)
+                                   rep_nome=session.get('catalogo_rep_nome'), erro=erro, msg=msg)
 
 
-@app.route('/catalogo/representante/atuar/<cadastro_id>')
-def catalogo_representante_atuar(cadastro_id):
-    """Coloca a sessão no contexto do cliente escolhido — só permite se o
-    cliente pertence à carteira deste representante (representante_id
-    bate com a sessão), nunca por confiança no valor recebido na URL."""
+@app.route('/api/catalogo/representante/clientes')
+def api_catalogo_representante_clientes():
+    """Lista enxuta (id/nome/empresa) dos clientes do representante logado,
+    pro seletor do modal de fechamento de pedido no catalogo.html."""
     if not session.get('catalogo_rep_id'):
-        return redirect(url_for('catalogo_entrar'))
+        return jsonify({'erro': 'Sessão de representante expirada.'}), 401
     try:
         conexao = _conectar_catalogo_db()
         cursor = conexao.cursor()
         cursor.execute("""
-            SELECT id, nome, empresa, representante
+            SELECT id, nome, empresa
             FROM catalogo_cadastros
-            WHERE id = %s AND representante_id = %s
-        """, (cadastro_id, session['catalogo_rep_id']))
-        row = cursor.fetchone()
+            WHERE representante_id = %s
+            ORDER BY empresa NULLS LAST, nome
+        """, (session['catalogo_rep_id'],))
+        cols = [d[0] for d in cursor.description]
+        clientes = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
+                    for row in cursor.fetchall()]
         conexao.close()
+        return jsonify({'clientes': clientes})
     except Exception as ex:
-        return redirect(url_for('catalogo_representante_painel', erro=str(ex)))
-    if not row:
-        return redirect(url_for('catalogo_representante_painel',
-                                 erro='Cliente não encontrado ou fora da sua carteira.'))
-    session['catalogo_cadastro_id'] = str(row[0])
-    session['catalogo_cliente'] = {'nome': row[1], 'empresa': row[2] or '', 'representante': row[3]}
-    return redirect(url_for('catalogo'))
+        return jsonify({'erro': str(ex)}), 500
 
 
 @app.route('/catalogo/representante/cadastrar-cliente', methods=['GET', 'POST'])
@@ -949,13 +945,11 @@ def catalogo_representante_cadastrar_cliente():
                     RETURNING id
                 """, (nome, empresa, cnpj, telefone, email, cidade, uf,
                       session.get('catalogo_rep_nome'), session['catalogo_rep_id'], aceite))
-                novo_id = cursor.fetchone()[0]
+                cursor.fetchone()
                 conexao.commit()
                 conexao.close()
-                session['catalogo_cadastro_id'] = str(novo_id)
-                session['catalogo_cliente'] = {'nome': nome, 'empresa': empresa or '',
-                                                'representante': session.get('catalogo_rep_nome')}
-                return redirect(url_for('catalogo'))
+                return redirect(url_for('catalogo_representante_painel',
+                                         msg=f'Cliente "{nome}" cadastrado. Ele já aparece pra escolher na hora de fechar um pedido.'))
             except Exception as ex:
                 if 'unique' in str(ex).lower() or 'duplicate' in str(ex).lower():
                     erro = 'Esse CNPJ já está cadastrado — volte e procure o cliente na sua lista.'
@@ -967,22 +961,40 @@ def catalogo_representante_cadastrar_cliente():
 @app.route('/api/catalogo/pedido', methods=['POST'])
 def api_catalogo_pedido():
     """Chamada pelo catalogo.html (dentro de idConfirmar/gerarPDF) para
-    gravar a intenção de compra no banco, além do PDF já gerado localmente."""
-    cadastro_id = session.get('catalogo_cadastro_id')
-    if not cadastro_id:
-        if session.get('catalogo_rep_id'):
-            return jsonify({'erro': 'Selecione ou cadastre um cliente para fechar este pedido.',
-                             'sem_cliente': True}), 409
-        return jsonify({'erro': 'Sessão do catálogo expirada. Recarregue a página.'}), 401
-
+    gravar a intenção de compra no banco, além do PDF já gerado localmente.
+    Cliente comum: cadastro_id vem sempre da sessão (nunca do payload).
+    Representante: ele mesmo nunca "é" um cliente — escolhe no modal de
+    fechamento a quem o pedido pertence (ou deixa em branco, virando um
+    pedido de teste sem cliente vinculado)."""
     payload      = request.get_json(silent=True) or {}
     itens        = payload.get('itens') or []
     observacoes  = (payload.get('observacoes') or '').strip() or None
+    representante_responsavel = None
+
+    if session.get('catalogo_rep_id'):
+        representante_responsavel = session.get('catalogo_rep_nome')
+        cadastro_id = (payload.get('cadastro_id') or '').strip() or None
+        if cadastro_id:
+            try:
+                conexao = _conectar_catalogo_db()
+                cursor = conexao.cursor()
+                cursor.execute(
+                    "SELECT 1 FROM catalogo_cadastros WHERE id = %s AND representante_id = %s",
+                    (cadastro_id, session['catalogo_rep_id'])
+                )
+                valido = cursor.fetchone()
+                conexao.close()
+            except Exception as ex:
+                return jsonify({'erro': f'Não foi possível validar o cliente. ({ex})'}), 500
+            if not valido:
+                return jsonify({'erro': 'Cliente inválido — fora da sua carteira.'}), 403
+    else:
+        cadastro_id = session.get('catalogo_cadastro_id')
+        if not cadastro_id:
+            return jsonify({'erro': 'Sessão do catálogo expirada. Recarregue a página.'}), 401
 
     if not itens:
         return jsonify({'erro': 'Carrinho vazio.'}), 400
-
-    representante_responsavel = session.get('catalogo_rep_nome') if session.get('catalogo_rep_id') else None
 
     try:
         conexao = _conectar_catalogo_db()
@@ -1023,20 +1035,18 @@ def _catalogo_valor_json_seguro(v):
 @app.route('/api/catalogo/quem-sou-eu')
 def api_catalogo_quem_sou_eu():
     """Identidade da sessão atual do catálogo público — usado pelo header
-    do catalogo.html pra mostrar "logado como X" e habilitar o botão de
-    troca. catalogo.html é servido como arquivo estático (send_from_directory),
-    por isso a identidade chega via fetch em vez de Jinja."""
-    if session.get('catalogo_rep_id') and not session.get('catalogo_cadastro_id'):
-        # Representante navegando no catálogo sem ter escolhido um cliente
-        # ainda — estado válido agora, só barra na hora de fechar pedido.
-        return jsonify({'logado': True, 'cliente': {}, 'rep_nome': session.get('catalogo_rep_nome'),
-                         'sem_cliente': True})
+    do catalogo.html. catalogo.html é servido como arquivo estático
+    (send_from_directory), por isso a identidade chega via fetch em vez
+    de Jinja. Representante SEMPRE aparece como ele mesmo (nunca assume
+    a identidade de um cliente) — a escolha do cliente é só no fechamento
+    do pedido, ver /api/catalogo/pedido."""
+    if session.get('catalogo_rep_id'):
+        return jsonify({'logado': True, 'rep_nome': session.get('catalogo_rep_nome')})
     if not session.get('catalogo_cadastro_id'):
         return jsonify({'logado': False})
     return jsonify({
         'logado': True,
         'cliente': session.get('catalogo_cliente') or {},
-        'rep_nome': session.get('catalogo_rep_nome'),
     })
 
 

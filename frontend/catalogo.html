@@ -701,6 +701,7 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
       <span class="hdr-user-caret">▾</span>
       <div class="hdr-user-menu" id="hdr-user-menu">
         <button type="button" id="hdr-btn-meus-pedidos" onclick="abrirMeusPedidos(event)">📦 Meus pedidos</button>
+        <a href="/catalogo/representante/painel" id="hdr-link-meus-clientes" style="display:none">👤 Meus clientes</a>
         <a href="/catalogo/sair" id="hdr-link-trocar">↪ Trocar CNPJ / Sair</a>
         <a href="/catalogo/representante/sair" id="hdr-link-sair-rep" class="sair" style="display:none">🚪 Sair (representante)</a>
       </div>
@@ -805,6 +806,12 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
       <div class="id-sub">Opcional — para identificação no PDF do pedido</div>
     </div>
     <div class="id-body">
+      <div class="id-field" id="id-cliente-wrap" style="display:none">
+        <label class="id-label" for="id-cliente">Cliente</label>
+        <select class="id-input" id="id-cliente">
+          <option value="">Pedido de teste (sem cliente vinculado)</option>
+        </select>
+      </div>
       <div class="id-row2">
         <div class="id-field">
           <label class="id-label" for="id-nome">Seu nome</label>
@@ -1992,29 +1999,28 @@ function fBRL(n){ return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:
 function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function mostrarErro(msg){ document.getElementById('grid').innerHTML=`<div class="empty"><p>${msg}</p></div>`; }
 
-// ── Sessão do catálogo: identidade, troca de CNPJ e histórico ──────
-let SEM_CLIENTE_SELECIONADO = false;
+// ── Sessão do catálogo: identidade e fechamento de pedido ──────────
+// Representante NUNCA assume a identidade de um cliente — navega sempre
+// como ele mesmo; a escolha de cliente acontece só no modal de fechamento.
+let EH_REPRESENTANTE = false;
 
 async function carregarIdentidade() {
   try {
     const r = await fetch('/api/catalogo/quem-sou-eu');
     const d = await r.json();
     if (!d.logado) return;
-    SEM_CLIENTE_SELECIONADO = !!d.sem_cliente;
+    EH_REPRESENTANTE = !!d.rep_nome;
     const c = d.cliente || {};
-    const label = d.sem_cliente ? (d.rep_nome + ' · nenhum cliente') : (c.empresa || c.nome || 'Cadastro');
+    const label = EH_REPRESENTANTE ? d.rep_nome : (c.empresa || c.nome || 'Cadastro');
     const el = document.getElementById('hdr-user-nome');
     const box = document.getElementById('hdr-user');
     if (el) el.textContent = label;
     if (box) box.classList.add('vis');
-    const linkTrocar = document.getElementById('hdr-link-trocar');
-    const linkSairRep = document.getElementById('hdr-link-sair-rep');
-    const btnMeusPedidos = document.getElementById('hdr-btn-meus-pedidos');
-    if (d.rep_nome) {
-      if (linkTrocar) linkTrocar.textContent = d.sem_cliente ? '👤 Escolher cliente' : '← Trocar de cliente';
-      if (linkTrocar) linkTrocar.href = d.sem_cliente ? '/catalogo/representante/painel' : '/catalogo/sair';
-      if (linkSairRep) linkSairRep.style.display = 'block';
-      if (btnMeusPedidos) btnMeusPedidos.style.display = d.sem_cliente ? 'none' : 'block';
+    if (EH_REPRESENTANTE) {
+      document.getElementById('hdr-btn-meus-pedidos').style.display = 'none';
+      document.getElementById('hdr-link-trocar').style.display = 'none';
+      document.getElementById('hdr-link-meus-clientes').style.display = 'block';
+      document.getElementById('hdr-link-sair-rep').style.display = 'block';
     }
   } catch(e) { /* card só não aparece — não é crítico pro catálogo funcionar */ }
 }
@@ -2069,22 +2075,34 @@ function fecharMeusPedidos() {
 // ── Modal Identificação (Passo 4) ──────────────────────────────────
 const ID_KEY = 'boaonda_cliente';
 
-function abrirModalId() {
-  if (SEM_CLIENTE_SELECIONADO) {
-    if (confirm('Este pedido precisa estar vinculado a um cliente. Escolher ou cadastrar um cliente agora? (o carrinho fica salvo)')) {
-      window.location.href = '/catalogo/representante/painel';
-    }
-    return;
-  }
+async function abrirModalId() {
   fecharDrawer();
   const saved = JSON.parse(localStorage.getItem(ID_KEY) || '{}');
   document.getElementById('id-nome').value    = saved.nome    || '';
   document.getElementById('id-empresa').value = saved.empresa || '';
   document.getElementById('id-cnpj').value    = saved.cnpj    || '';
   document.getElementById('id-obs').value     = '';
+  if (EH_REPRESENTANTE) {
+    document.getElementById('id-cliente-wrap').style.display = 'block';
+    await carregarClientesDoRepresentante();
+  }
   document.getElementById('id-over').style.display = 'flex';
   document.body.style.overflow = 'hidden';
-  setTimeout(() => document.getElementById('id-nome').focus(), 80);
+  setTimeout(() => document.getElementById(EH_REPRESENTANTE ? 'id-cliente' : 'id-nome').focus(), 80);
+}
+
+async function carregarClientesDoRepresentante() {
+  const sel = document.getElementById('id-cliente');
+  try {
+    const r = await fetch('/api/catalogo/representante/clientes');
+    const d = await r.json();
+    const opcoes = ['<option value="">Pedido de teste (sem cliente vinculado)</option>']
+      .concat((d.clientes || []).map(c =>
+        `<option value="${esc(c.id)}">${esc(c.empresa || c.nome)}</option>`));
+    sel.innerHTML = opcoes.join('');
+  } catch(e) {
+    console.error('Falha ao carregar clientes do representante:', e);
+  }
 }
 
 function fecharModalId() {
@@ -2109,12 +2127,14 @@ async function idConfirmar() {
   // Novo: grava o pedido no banco antes/junto de gerar o PDF.
   // Se falhar, não trava o PDF (cliente ainda leva o arquivo) —
   // só perde o registro no banco, e isso fica no console pra depurar depois.
+  const clienteId = EH_REPRESENTANTE ? (document.getElementById('id-cliente').value || null) : null;
   try {
     const resp = await fetch('/api/catalogo/pedido', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         observacoes: obs,
+        cadastro_id: clienteId,
         itens: carrinho.itens.map(i => ({
           referencia: i.ref,
           nome: i.descricao,
@@ -2123,14 +2143,9 @@ async function idConfirmar() {
         })),
       }),
     });
-    if (resp.status === 409) {
-      const d = await resp.json().catch(() => ({}));
-      if (d.sem_cliente) {
-        if (confirm('Este pedido precisa estar vinculado a um cliente. Escolher ou cadastrar um cliente agora? (o carrinho fica salvo)')) {
-          window.location.href = '/catalogo/representante/painel';
-        }
-        return;
-      }
+    if (resp.status === 403) {
+      alert('O cliente selecionado não é válido — atualize a página e tente novamente.');
+      return;
     }
   } catch (e) {
     console.error('Falha ao salvar pedido no banco:', e);
