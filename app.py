@@ -168,6 +168,15 @@ MODULOS = {
         'jsons': ['dados_faturamento.json'],
         'ia': ['faturamento'],
     },
+    'catalogo_leads': {
+        'label': 'Cadastros do Catálogo',
+        'htmls': ['boaonda_catalogo_leads.html'],
+        # Sem JSON estático — os dados vêm ao vivo do Supabase via
+        # /api/catalogo/dados e /api/catalogo/resumo (ver rotas abaixo), não
+        # de um arquivo pré-gerado como os demais módulos.
+        'jsons': [],
+        'ia': [],
+    },
 }
 MODULOS_KEYS = list(MODULOS.keys())
 
@@ -614,6 +623,111 @@ def api_catalogo_pedido():
         return jsonify({'status': 'ok', 'pedido_id': str(pedido_id)})
     except Exception as ex:
         return jsonify({'erro': f'Erro ao salvar o pedido: {ex}'}), 500
+
+
+def _catalogo_valor_json_seguro(v):
+    """psycopg2 devolve uuid.UUID (colunas id) e datetime (colunas *_em) —
+    nenhum dos dois é serializável por jsonify() sem conversão. Números,
+    texto e bool passam direto; qualquer outra coisa vira string."""
+    if v is None or isinstance(v, (int, float, str, bool)):
+        return v
+    return str(v)
+
+
+@app.route('/api/catalogo/resumo')
+def api_catalogo_resumo():
+    """KPI leve pro nó "Cadastros do Catálogo" na Home — só contagens do
+    mês. Nunca derruba a Home: qualquer falha volta como disponivel=False
+    (200), pro card mostrar "–" em vez de quebrar o carregamento da página."""
+    usuario = _achar_usuario(session.get('username'))
+    if 'catalogo_leads' not in _modulos_do_usuario(usuario):
+        return jsonify({'disponivel': False, 'erro': 'sem acesso'}), 403
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("SELECT COUNT(*) FROM catalogo_cadastros")
+        total_cadastros = cursor.fetchone()[0]
+        cursor.execute("""
+            SELECT COUNT(*) FROM catalogo_cadastros
+            WHERE date_trunc('month', criado_em) = date_trunc('month', now())
+        """)
+        cadastros_mes = cursor.fetchone()[0]
+        cursor.execute("""
+            SELECT COUNT(*) FROM catalogo_pedidos
+            WHERE date_trunc('month', criado_em) = date_trunc('month', now())
+        """)
+        pedidos_mes = cursor.fetchone()[0]
+        conexao.close()
+        return jsonify({
+            'disponivel': True,
+            'total_cadastros': total_cadastros,
+            'cadastros_mes': cadastros_mes,
+            'pedidos_mes': pedidos_mes,
+        })
+    except Exception:
+        return jsonify({'disponivel': False})
+
+
+@app.route('/api/catalogo/dados')
+def api_catalogo_dados():
+    """Dados completos (cadastros, pedidos, itens) pro dashboard "Cadastros
+    do Catálogo" — consulta o Supabase ao vivo a cada chamada, diferente dos
+    demais módulos (que leem JSON pré-gerado pelo processador.py a partir do
+    MySQL). Volume esperado é baixo (leads do catálogo público), por isso a
+    consulta direta é aceitável sem uma camada de cache."""
+    usuario = _achar_usuario(session.get('username'))
+    if 'catalogo_leads' not in _modulos_do_usuario(usuario):
+        return jsonify({'erro': 'Você não tem acesso a este módulo.'}), 403
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+
+        cursor.execute("""
+            SELECT id, nome, empresa, cnpj, telefone, email, cidade, uf,
+                   representante, criado_em
+            FROM catalogo_cadastros
+            ORDER BY criado_em DESC
+            LIMIT 500
+        """)
+        cols = [d[0] for d in cursor.description]
+        cadastros = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
+                     for row in cursor.fetchall()]
+
+        cursor.execute("""
+            SELECT p.id, p.cadastro_id, p.status, p.representante_responsavel,
+                   p.observacoes, p.criado_em,
+                   c.nome AS cli_nome, c.empresa AS cli_empresa, c.cnpj AS cli_cnpj
+            FROM catalogo_pedidos p
+            LEFT JOIN catalogo_cadastros c ON c.id = p.cadastro_id
+            ORDER BY p.criado_em DESC
+            LIMIT 500
+        """)
+        cols = [d[0] for d in cursor.description]
+        pedidos = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
+                   for row in cursor.fetchall()]
+
+        cursor.execute("""
+            SELECT id, pedido_id, produto_referencia, produto_nome,
+                   grade_tamanho, quantidade, criado_em
+            FROM catalogo_pedidos_itens
+            ORDER BY criado_em DESC
+            LIMIT 2000
+        """)
+        cols = [d[0] for d in cursor.description]
+        itens = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
+                 for row in cursor.fetchall()]
+
+        conexao.close()
+        return jsonify({
+            'disponivel': True,
+            'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+            'cadastros': cadastros,
+            'pedidos': pedidos,
+            'itens': itens,
+        })
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'disponivel': False, 'erro': str(ex)}), 500
 
 
 @app.route('/<path:filename>')

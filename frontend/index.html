@@ -371,6 +371,26 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
       <div class="nó-cta">Analisar programação →</div>
     </div>
 
+    <!-- NÓ: CADASTROS DO CATÁLOGO (captação pública — CNPJ/leads/pedidos;
+         sem seta de conexão com os demais nós, pois ainda não alimenta o
+         fluxo interno de vendas/produção, é uma entrada separada) -->
+    <div class="nó" style="right:40px;top:276px" onclick="abrirModulo('catalogo_leads')">
+      <span class="nó-icon">📇</span>
+      <div class="nó-title">Cadastros do Catálogo</div>
+      <div class="nó-desc">CNPJ · leads · pedidos do catálogo público</div>
+      <div class="nó-kpi-row">
+        <div>
+          <div class="nó-kpi" id="kpi-cat-cadastros">–</div>
+          <div class="nó-kpi-label">cadastros/mês</div>
+        </div>
+        <div>
+          <div class="nó-kpi" id="kpi-cat-pedidos">–</div>
+          <div class="nó-kpi-label">pedidos/mês</div>
+        </div>
+      </div>
+      <div class="nó-cta">Ver cadastros e pedidos →</div>
+    </div>
+
     <!-- NÓ: CAPACIDADE FABRIL (abaixo da programação — futura ligação p/ ocupação/eficiência) -->
     <div class="nó" style="right:40px;top:494px" onclick="abrirModulo('capacidade')">
       <span class="nó-icon">⚙️</span>
@@ -508,6 +528,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
 <div class="page" id="page-faturamento">
   <iframe class="mod-frame" id="frame-faturamento" src="" title="Faturamento"></iframe>
 </div>
+<div class="page" id="page-catalogo_leads">
+  <iframe class="mod-frame" id="frame-catalogo_leads" src="" title="Cadastros do Catálogo"></iframe>
+</div>
 <div class="page" id="page-inteligencia">
   <iframe class="mod-frame" id="frame-inteligencia" src="" title="IA Intelligence"></iframe>
 </div>
@@ -533,6 +556,7 @@ const MODS={
   carteira:{file:'boaonda_carteira.html',label:'Pedido em Carteira'},
   capacidade:{file:'boaonda_capacidade_fabril.html',label:'Capacidade Fabril'},
   faturamento:{file:'boaonda_faturamento.html',label:'Faturamento'},
+  catalogo_leads:{file:'boaonda_catalogo_leads.html',label:'Cadastros do Catálogo'},
   inteligencia:{file:'boaonda_inteligencia.html',label:'IA Intelligence'},
   equilibrio:{file:null,label:'Equilíbrio'},
 };
@@ -584,6 +608,16 @@ fetch('dados_faturamento.json?_='+Date.now())
     const fK=n=>{const v=Math.round(n||0);return v>=1e6?'R$'+(v/1e6).toFixed(1).replace('.',',')+'M':v>=1e3?'R$'+(v/1e3).toFixed(0)+'k':'R$'+v.toLocaleString('pt-BR')};
     document.getElementById('kpi-fat-real').textContent=fK(miR+meR+ecR);
     document.getElementById('kpi-fat-prev').textContent=fK(miP+meP+ecP);
+  }).catch(()=>{});
+
+// Cadastros do Catálogo — KPI do mês atual (consulta o Supabase ao vivo,
+// diferente dos demais nós que leem JSON pré-gerado; se o banco não
+// responder, o card fica com "–" em vez de quebrar a Home).
+fetch('/api/catalogo/resumo?_='+Date.now())
+  .then(r=>r.json()).then(d=>{
+    if(!d || !d.disponivel) return;
+    document.getElementById('kpi-cat-cadastros').textContent=f(d.cadastros_mes);
+    document.getElementById('kpi-cat-pedidos').textContent=f(d.pedidos_mes);
   }).catch(()=>{});
 
 // Vendas Composto EVA — KPI do mês atual (mercado separado de calçados)

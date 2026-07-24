@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boaonda — Cadastros do Catálogo</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --coral:#ed6842;--coral2:#dd7051;--cinza:#9b9a98;
+  --verde:#6c9c37;--verde-dark:#26361e;--azul:#4994c7;--amarelo:#d9a441;
+  --bg:#0e1014;--card:#161922;--card2:#1c2030;
+  --line:#262b3a;--line2:#333a4d;
+  --txt:#f3f0eb;--txt-s:#b6b3ac;--txt-m:#7d7c79;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh}
+
+.header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.h-badge{display:inline-block;background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);color:var(--coral);padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px}
+.h-title{font-size:19px;font-weight:800;color:var(--txt)}
+.h-sub{font-size:10.5px;color:var(--txt-m);margin-top:3px}
+.h-meta{font-size:10px;color:var(--txt-m);text-align:right;line-height:1.7}
+
+.main{padding:24px 32px;max-width:1400px;margin:0 auto}
+.stitle{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--txt-m);margin:28px 0 14px;display:flex;align-items:center;gap:12px}
+.stitle:first-child{margin-top:0}
+.stitle::after{content:'';flex:1;height:1px;background:var(--line)}
+.stitle-badge{font-size:9px;background:rgba(237,104,66,.1);color:var(--coral);padding:2px 8px;border-radius:4px;font-weight:700;text-transform:none;letter-spacing:0}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--coral);border-radius:10px;padding:14px}
+.kpi.verde{border-top-color:var(--verde)}.kpi.azul{border-top-color:var(--azul)}
+.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.kpi-v{font-size:1.5rem;font-weight:800;color:var(--coral)}
+.kpi-v.verde{color:var(--verde)}.kpi-v.azul{color:var(--azul)}
+.kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px}
+
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.inp{background:var(--card2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:8px 14px;font-size:12px;font-family:'Montserrat',sans-serif;outline:none;min-width:240px}
+.inp:focus{border-color:var(--coral)}
+.filtro-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-m)}
+
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:8px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:8px 12px;text-align:left;color:var(--txt-m);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--txt-s);white-space:nowrap}
+tr:last-child td{border:none}
+tr:hover td{background:var(--card2);color:var(--txt)}
+.td-nome{font-weight:700;color:var(--txt)}
+.th-sort{cursor:pointer;user-select:none}
+.th-sort:hover{color:var(--txt)}
+.th-sort.on{color:var(--coral)}
+.th-sort .arr{font-size:9px;font-weight:700}
+
+.badge-status{display:inline-block;font-size:9px;font-weight:700;padding:3px 10px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em;background:rgba(73,148,199,.14);color:var(--azul)}
+.badge-status.novo{background:rgba(217,164,65,.14);color:var(--amarelo)}
+
+.tr-pedido{cursor:pointer}
+.tr-pedido:hover td{background:var(--card2)}
+.tr-pedido.aberto td.td-nome{color:var(--coral)}
+.arrow{display:inline-block;width:14px;color:var(--txt-m);font-size:9px}
+.tr-sub td{background:rgba(255,255,255,.015)}
+.tr-sub-inner{padding:10px 8px 14px 26px}
+.mini-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.mini-table th{padding:5px 10px;font-size:8.5px}
+.mini-table td{padding:5px 10px}
+
+.empty{background:var(--card);border:1px dashed var(--line2);border-radius:12px;padding:40px 24px;text-align:center;color:var(--txt-m);font-size:13px;line-height:1.7}
+.bloco-desc{font-size:11px;color:var(--txt-m);margin-bottom:12px;line-height:1.5}
+.rodape-nota{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-top:28px;font-size:11px;color:var(--txt-m);line-height:1.8}
+.rodape-nota h3{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-s);margin-bottom:8px}
+.rodape-nota code{background:var(--card2);padding:1px 5px;border-radius:3px;color:var(--txt-s)}
+@media(max-width:900px){.main{padding:14px}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="h-badge">Cadastros do Catálogo</div>
+    <div class="h-title">Cadastros e Pedidos — Catálogo Público</div>
+    <div class="h-sub">Leads captados pelo gate de CNPJ do catálogo (/catalogo) e as intenções de compra registradas — dados ao vivo do Supabase.</div>
+  </div>
+  <div class="h-meta">Consultado em: <strong id="hdr-data">–</strong></div>
+</div>
+
+<div class="main">
+
+  <div class="kpi-row" id="kpi-row"></div>
+
+  <div id="ind-vazio" class="empty" style="display:none">
+    Não foi possível carregar os dados agora — o banco pode estar indisponível no momento. Atualize a página (F5) para tentar de novo.
+  </div>
+
+  <div id="conteudo" style="display:none">
+    <div class="stitle">Cadastros <span class="stitle-badge" id="badge-cadastros">–</span></div>
+    <div class="toolbar">
+      <span class="filtro-label">Buscar</span>
+      <input class="inp" id="busca-cad" placeholder="Nome, empresa ou CNPJ..." oninput="renderCadastros()">
+    </div>
+    <div class="tcard">
+      <table>
+        <thead><tr>
+          <th class="th-sort" id="th-c-nome" onclick="sortCad('nome')">Nome<span class="arr"></span></th>
+          <th class="th-sort" id="th-c-empresa" onclick="sortCad('empresa')">Empresa<span class="arr"></span></th>
+          <th>CNPJ</th>
+          <th>Telefone</th>
+          <th>E-mail</th>
+          <th class="th-sort" id="th-c-cidade" onclick="sortCad('cidade')">Cidade/UF<span class="arr"></span></th>
+          <th>Representante</th>
+          <th class="th-sort" id="th-c-data" onclick="sortCad('criado_em')">Cadastrado em<span class="arr"></span></th>
+        </tr></thead>
+        <tbody id="tb-cadastros"></tbody>
+      </table>
+    </div>
+
+    <div class="stitle">Pedidos <span class="stitle-badge" id="badge-pedidos">–</span></div>
+    <div class="bloco-desc">Clique num pedido para ver os itens.</div>
+    <div class="tcard">
+      <table>
+        <thead><tr>
+          <th class="th-sort" id="th-p-nome" onclick="sortPed('cli_nome')">Cliente<span class="arr"></span></th>
+          <th>Empresa</th>
+          <th>CNPJ</th>
+          <th>Status</th>
+          <th>Representante</th>
+          <th class="th-sort" id="th-p-data" onclick="sortPed('criado_em')">Data<span class="arr"></span></th>
+          <th class="th-sort" id="th-p-itens" onclick="sortPed('n_itens')">Itens<span class="arr"></span></th>
+          <th class="th-sort" id="th-p-pares" onclick="sortPed('total_pares')">Pares<span class="arr"></span></th>
+        </tr></thead>
+        <tbody id="tb-pedidos"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="rodape-nota">
+    <h3>Metodologia</h3>
+    <ul style="margin-left:16px">
+      <li>Fonte: tabelas <code>catalogo_cadastros</code>, <code>catalogo_pedidos</code> e <code>catalogo_pedidos_itens</code> no Supabase, via <code>/api/catalogo/dados</code>.</li>
+      <li>Diferente dos demais módulos do Intelligence (que leem JSON pré-gerado pelo <code>processador.py</code> a partir do MySQL), esta página consulta o Supabase <b>ao vivo</b> a cada carregamento — atualize a página (F5) para ver registros novos.</li>
+      <li>Limite de exibição: últimos 500 cadastros, 500 pedidos e 2.000 itens (por volume esperado ser baixo, isso cobre a prática normal).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+let DADOS=null;
+let sortCadState={key:'criado_em', dir:-1};
+let sortPedState={key:'criado_em', dir:-1};
+let pedidoAberto=null;
+
+function f(n){ return (n||0).toLocaleString('pt-BR'); }
+function maskCnpj(v){
+  v=(v||'').replace(/\D/g,'');
+  if(v.length!==14) return v||'–';
+  return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+}
+function fmtData(v){
+  if(!v) return '–';
+  // "2026-07-24 10:05:00" ou variantes ISO — mostra DD/MM/AAAA HH:MM
+  const m=/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(v);
+  if(m) return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
+  return v;
+}
+function mesAtualChave(){
+  const d=new Date();
+  return String(d.getFullYear())+String(d.getMonth()+1).padStart(2,'0');
+}
+function anomes(v){
+  const m=/^(\d{4})-(\d{2})/.exec(v||'');
+  return m ? m[1]+m[2] : null;
+}
+
+function kpi(cls,label,val,sub){
+  return `<div class="kpi ${cls}"><div class="kpi-l">${label}</div><div class="kpi-v ${cls}">${val}</div><div class="kpi-s">${sub||''}</div></div>`;
+}
+
+function renderKpis(){
+  const mesRef=mesAtualChave();
+  const cadastrosMes=DADOS.cadastros.filter(c=>anomes(c.criado_em)===mesRef).length;
+  const pedidosMes=DADOS.pedidos.filter(p=>anomes(p.criado_em)===mesRef);
+  const pedidoIdsMes=new Set(pedidosMes.map(p=>p.id));
+  const paresMes=DADOS.itens.filter(i=>pedidoIdsMes.has(i.pedido_id)).reduce((a,i)=>a+(i.quantidade||0),0);
+  document.getElementById('kpi-row').innerHTML=
+    kpi('','Cadastros (total)',f(DADOS.cadastros.length),'desde o início do catálogo') +
+    kpi('azul','Cadastros (mês)',f(cadastrosMes),'novos neste mês') +
+    kpi('verde','Pedidos (mês)',f(pedidosMes.length),'intenções de compra') +
+    kpi('','Pares pedidos (mês)',f(paresMes),'somado de todos os itens');
+}
+
+function sortCad(key){
+  if(sortCadState.key===key) sortCadState.dir*=-1;
+  else sortCadState={key, dir:1};
+  renderCadastros();
+}
+function sortPed(key){
+  if(sortPedState.key===key) sortPedState.dir*=-1;
+  else sortPedState={key, dir:-1};
+  renderPedidos();
+}
+function marcarSort(prefixo, state){
+  document.querySelectorAll(`[id^="th-${prefixo}-"]`).forEach(th=>{
+    th.classList.remove('on'); const a=th.querySelector('.arr'); if(a) a.textContent='';
+  });
+  const mapa={nome:'nome',empresa:'empresa',cidade:'cidade',criado_em:'data',cli_nome:'nome',n_itens:'itens',total_pares:'pares'};
+  const th=document.getElementById(`th-${prefixo}-${mapa[state.key]||state.key}`);
+  if(th){ th.classList.add('on'); const a=th.querySelector('.arr'); if(a) a.textContent=state.dir<0?' ▼':' ▲'; }
+}
+
+function renderCadastros(){
+  const busca=(document.getElementById('busca-cad').value||'').toLowerCase();
+  const buscaDigitos=busca.replace(/\D/g,'');
+  let lista=DADOS.cadastros.filter(c=>{
+    if(!busca) return true;
+    const matchTexto=(c.nome||'').toLowerCase().includes(busca) || (c.empresa||'').toLowerCase().includes(busca);
+    // só testa CNPJ se a busca tiver algum dígito — senão ''.includes('') dá
+    // sempre true e o filtro de texto fica sem efeito nenhum.
+    const matchCnpj=buscaDigitos.length>0 && (c.cnpj||'').includes(buscaDigitos);
+    return matchTexto || matchCnpj;
+  });
+  const {key,dir}=sortCadState;
+  lista=lista.slice().sort((a,b)=>{
+    const av=(a[key]||''), bv=(b[key]||'');
+    return dir*String(av).localeCompare(String(bv),'pt');
+  });
+  marcarSort('c', sortCadState);
+  document.getElementById('badge-cadastros').textContent=lista.length+' de '+DADOS.cadastros.length;
+  document.getElementById('tb-cadastros').innerHTML=lista.map(c=>
+    `<tr>
+      <td class="td-nome">${c.nome||'–'}</td>
+      <td>${c.empresa||'–'}</td>
+      <td>${maskCnpj(c.cnpj)}</td>
+      <td>${c.telefone||'–'}</td>
+      <td>${c.email||'–'}</td>
+      <td>${c.cidade||'–'}${c.uf?' / '+String(c.uf).toUpperCase():''}</td>
+      <td>${c.representante||'–'}</td>
+      <td>${fmtData(c.criado_em)}</td>
+    </tr>`
+  ).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--txt-m);padding:20px">Nenhum cadastro encontrado.</td></tr>';
+}
+
+function itensDoPedido(pedidoId){
+  return DADOS.itens.filter(i=>i.pedido_id===pedidoId);
+}
+
+function renderPedidos(){
+  const linhas=DADOS.pedidos.map(p=>{
+    const itens=itensDoPedido(p.id);
+    return {...p, n_itens:itens.length, total_pares:itens.reduce((a,i)=>a+(i.quantidade||0),0)};
+  });
+  const {key,dir}=sortPedState;
+  linhas.sort((a,b)=>{
+    const av=a[key], bv=b[key];
+    if(typeof av==='number' || typeof bv==='number') return dir*((av||0)-(bv||0));
+    return dir*String(av||'').localeCompare(String(bv||''),'pt');
+  });
+  marcarSort('p', sortPedState);
+  document.getElementById('badge-pedidos').textContent=linhas.length+' pedidos';
+
+  const html=linhas.map(p=>{
+    const aberto=pedidoAberto===p.id;
+    const statusCls=p.status==='novo'?'novo':'';
+    const linhaPrincipal=`<tr class="tr-pedido${aberto?' aberto':''}" onclick="togglePedido('${p.id}')">
+      <td class="td-nome"><span class="arrow">${aberto?'▾':'▸'}</span> ${p.cli_nome||'–'}</td>
+      <td>${p.cli_empresa||'–'}</td>
+      <td>${maskCnpj(p.cli_cnpj)}</td>
+      <td><span class="badge-status ${statusCls}">${p.status||'–'}</span></td>
+      <td>${p.representante_responsavel||'–'}</td>
+      <td>${fmtData(p.criado_em)}</td>
+      <td>${f(p.n_itens)}</td>
+      <td>${f(p.total_pares)}</td>
+    </tr>`;
+    if(!aberto) return linhaPrincipal;
+    const itens=itensDoPedido(p.id);
+    const corpoItens=itens.length
+      ? itens.map(i=>`<tr><td>${i.produto_referencia||'–'}</td><td>${i.produto_nome||'–'}</td><td>${i.grade_tamanho||'–'}</td><td>${f(i.quantidade)}</td></tr>`).join('')
+      : '<tr><td colspan="4" style="color:var(--txt-m)">Nenhum item registrado.</td></tr>';
+    const subLinha=`<tr class="tr-sub"><td colspan="8"><div class="tr-sub-inner">
+      <table class="mini-table"><thead><tr><th>Referência</th><th>Produto</th><th>Grade</th><th>Qtd (pares)</th></tr></thead>
+      <tbody>${corpoItens}</tbody></table>
+    </div></td></tr>`;
+    return linhaPrincipal + subLinha;
+  }).join('');
+  document.getElementById('tb-pedidos').innerHTML=html ||
+    '<tr><td colspan="8" style="text-align:center;color:var(--txt-m);padding:20px">Nenhum pedido registrado ainda.</td></tr>';
+}
+
+function togglePedido(id){
+  pedidoAberto = pedidoAberto===id ? null : id;
+  renderPedidos();
+}
+
+fetch('/api/catalogo/dados?_='+Date.now())
+  .then(r=>r.json())
+  .then(d=>{
+    if(!d || !d.disponivel){
+      document.getElementById('ind-vazio').style.display='block';
+      return;
+    }
+    DADOS=d;
+    document.getElementById('hdr-data').textContent=d.gerado_em||'–';
+    document.getElementById('conteudo').style.display='block';
+    renderKpis();
+    renderCadastros();
+    renderPedidos();
+  })
+  .catch(()=>{ document.getElementById('ind-vazio').style.display='block'; });
+</script>
+</body>
+</html>
