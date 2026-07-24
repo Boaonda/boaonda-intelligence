@@ -30,6 +30,25 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 .hdr-mark{font-size:18px;font-weight:800;letter-spacing:2px;color:var(--coral)}
 .hdr-sub{font-size:10px;font-weight:400;color:rgba(255,255,255,.4);letter-spacing:1px}
 .hdr-tag{font-size:10px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase}
+.hdr-right{display:flex;align-items:center;gap:14px}
+.hdr-user{position:relative;display:none;align-items:center;gap:6px;cursor:pointer;
+  padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.05);transition:.15s;max-width:160px}
+.hdr-user.vis{display:flex}
+.hdr-user:hover{background:rgba(255,255,255,.1)}
+.hdr-user-nome{font-size:11px;font-weight:600;color:rgba(255,255,255,.85);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr-user-caret{font-size:9px;color:rgba(255,255,255,.4)}
+.hdr-user-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:180px;
+  background:var(--card,#fff);border:1px solid var(--border,#e2e2e2);border-radius:9px;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:300;overflow:hidden}
+.hdr-user.aberto .hdr-user-menu{display:block}
+.hdr-user-menu button,.hdr-user-menu a{display:block;width:100%;text-align:left;padding:10px 14px;
+  font-family:inherit;font-size:12.5px;font-weight:600;color:#333;background:none;border:none;
+  cursor:pointer;text-decoration:none;box-sizing:border-box}
+.hdr-user-menu button:hover,.hdr-user-menu a:hover{background:rgba(0,0,0,.05)}
+.hdr-user-menu .sair{color:var(--coral)}
+@media(max-width:640px){.hdr-user-nome{max-width:74px}.hdr-tag{display:none}}
 
 /* ── Filter bar ── */
 .filter-bar{background:var(--card);border-bottom:1px solid var(--border);padding:8px 14px;
@@ -675,7 +694,17 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
     <span class="hdr-mark">BOAONDA</span>
     <span class="hdr-sub">Calçados</span>
   </div>
-  <span class="hdr-tag">Catálogo de Produtos</span>
+  <div class="hdr-right">
+    <span class="hdr-tag">Catálogo de Produtos</span>
+    <div class="hdr-user" id="hdr-user" onclick="toggleUserMenu(event)">
+      <span class="hdr-user-nome" id="hdr-user-nome">…</span>
+      <span class="hdr-user-caret">▾</span>
+      <div class="hdr-user-menu" id="hdr-user-menu">
+        <button type="button" onclick="abrirMeusPedidos(event)">📦 Meus pedidos</button>
+        <a href="/catalogo/sair">↪ Trocar CNPJ / Sair</a>
+      </div>
+    </div>
+  </div>
 </header>
 
 <div class="filter-bar">
@@ -800,6 +829,22 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         Gerar PDF
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Meus Pedidos (histórico do cadastro logado) -->
+<div class="id-over" id="hist-over" onclick="if(event.target.id==='hist-over')fecharMeusPedidos()" style="display:none">
+  <div class="id-box">
+    <div class="id-header">
+      <div class="id-title">Meus pedidos</div>
+      <div class="id-sub" id="hist-sub">Pedidos feitos com este cadastro</div>
+    </div>
+    <div class="id-body" id="hist-body" style="max-height:60vh;overflow-y:auto">
+      <p style="font-size:12.5px;color:#888">Carregando…</p>
+    </div>
+    <div class="id-footer">
+      <button class="id-btn-cancel" onclick="fecharMeusPedidos()">Fechar</button>
     </div>
   </div>
 </div>
@@ -996,6 +1041,7 @@ async function init() {
   if (!ESTOQUE) { mostrarErro('Dados indisponíveis.'); return; }
   if (ESTOQUE.gerado_em) document.getElementById('footer-data').textContent = ESTOQUE.gerado_em;
   carregarCarrinho();
+  carregarIdentidade();
   prepararRefs();
   renderSidebar();
   popularFiltros();
@@ -1944,6 +1990,68 @@ function fN(n){ return Math.round(n).toLocaleString('pt-BR'); }
 function fBRL(n){ return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function mostrarErro(msg){ document.getElementById('grid').innerHTML=`<div class="empty"><p>${msg}</p></div>`; }
+
+// ── Sessão do catálogo: identidade, troca de CNPJ e histórico ──────
+async function carregarIdentidade() {
+  try {
+    const r = await fetch('/api/catalogo/quem-sou-eu');
+    const d = await r.json();
+    if (!d.logado) return;
+    const c = d.cliente || {};
+    const label = c.empresa || c.nome || 'Cadastro';
+    const el = document.getElementById('hdr-user-nome');
+    const box = document.getElementById('hdr-user');
+    if (el) el.textContent = label;
+    if (box) box.classList.add('vis');
+  } catch(e) { /* card só não aparece — não é crítico pro catálogo funcionar */ }
+}
+
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  document.getElementById('hdr-user').classList.toggle('aberto');
+}
+document.addEventListener('click', () => document.getElementById('hdr-user')?.classList.remove('aberto'));
+
+async function abrirMeusPedidos(e) {
+  e.stopPropagation();
+  document.getElementById('hdr-user').classList.remove('aberto');
+  const over = document.getElementById('hist-over');
+  const body = document.getElementById('hist-body');
+  body.innerHTML = '<p style="font-size:12.5px;color:#888">Carregando…</p>';
+  over.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  try {
+    const r = await fetch('/api/catalogo/meu-historico');
+    const d = await r.json();
+    if (!d.disponivel || !(d.pedidos||[]).length) {
+      body.innerHTML = '<p style="font-size:12.5px;color:#888">Nenhum pedido encontrado ainda para este cadastro.</p>';
+      return;
+    }
+    body.innerHTML = d.pedidos.map(p => {
+      const data = (p.criado_em||'').toString().slice(0,10).split('-').reverse().join('/');
+      const itens = (p.itens||[]).map(it =>
+        `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;border-top:1px solid #f0f0f0">
+           <span>${esc(it.produto_nome||it.produto_referencia||'')} ${it.grade_tamanho?('· '+esc(it.grade_tamanho)):''}</span>
+           <span style="color:#888">${it.quantidade||0} un.</span>
+         </div>`).join('');
+      return `<div style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong style="font-size:12.5px">Pedido ${data||''}</strong>
+          <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#888">${esc(p.status||'novo')}</span>
+        </div>
+        ${p.observacoes ? `<div style="font-size:11.5px;color:#888;margin-top:4px">${esc(p.observacoes)}</div>` : ''}
+        ${itens}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    body.innerHTML = '<p style="font-size:12.5px;color:#888">Não foi possível carregar seus pedidos agora.</p>';
+  }
+}
+
+function fecharMeusPedidos() {
+  document.getElementById('hist-over').style.display = 'none';
+  document.body.style.overflow = '';
+}
 
 // ── Modal Identificação (Passo 4) ──────────────────────────────────
 const ID_KEY = 'boaonda_cliente';

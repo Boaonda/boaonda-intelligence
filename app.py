@@ -420,7 +420,8 @@ def require_login():
     Também bloqueia rotas admin-only (ADMIN_ONLY_PREFIXES/EXATOS) para
     usuários com role != 'admin'."""
     public_endpoints = {'login', 'logout', 'catalogo', 'catalogo_entrar', 'catalogo_cadastrar',
-                        'api_catalogo_pedido', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx'}
+                        'catalogo_sair', 'api_catalogo_pedido', 'api_catalogo_quem_sou_eu',
+                        'api_catalogo_meu_historico', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx'}
     if request.endpoint in public_endpoints:
         return None
     # JSONs necessários para o catálogo público não exigem autenticação
@@ -506,6 +507,16 @@ def catalogo():
     if not session.get('catalogo_cadastro_id'):
         return redirect(url_for('catalogo_entrar'))
     return send_from_directory(FRONTEND_DIR, 'catalogo.html')
+
+
+@app.route('/catalogo/sair')
+def catalogo_sair():
+    """Encerra a sessão do CNPJ atual — usado tanto pelo cliente que quer
+    sair quanto pelo representante que precisa trocar de cliente no mesmo
+    dispositivo antes de digitar o próximo pedido."""
+    session.pop('catalogo_cadastro_id', None)
+    session.pop('catalogo_cliente', None)
+    return redirect(url_for('catalogo_entrar'))
 
 
 @app.route('/catalogo/entrar', methods=['GET', 'POST'])
@@ -632,6 +643,62 @@ def _catalogo_valor_json_seguro(v):
     if v is None or isinstance(v, (int, float, str, bool)):
         return v
     return str(v)
+
+
+@app.route('/api/catalogo/quem-sou-eu')
+def api_catalogo_quem_sou_eu():
+    """Identidade da sessão atual do catálogo público — usado pelo header
+    do catalogo.html pra mostrar "logado como X" e habilitar o botão de
+    troca. catalogo.html é servido como arquivo estático (send_from_directory),
+    por isso a identidade chega via fetch em vez de Jinja."""
+    if not session.get('catalogo_cadastro_id'):
+        return jsonify({'logado': False})
+    return jsonify({'logado': True, 'cliente': session.get('catalogo_cliente') or {}})
+
+
+@app.route('/api/catalogo/meu-historico')
+def api_catalogo_meu_historico():
+    """Pedidos do PRÓPRIO cadastro logado na sessão (nunca de outro CNPJ) —
+    histórico self-service exibido no catalogo.html, escopado sempre por
+    catalogo_cadastro_id da sessão, nunca por parâmetro vindo do cliente."""
+    cadastro_id = session.get('catalogo_cadastro_id')
+    if not cadastro_id:
+        return jsonify({'erro': 'Sessão do catálogo expirada. Recarregue a página.'}), 401
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("""
+            SELECT id, status, observacoes, criado_em
+            FROM catalogo_pedidos
+            WHERE cadastro_id = %s
+            ORDER BY criado_em DESC
+            LIMIT 200
+        """, (cadastro_id,))
+        cols = [d[0] for d in cursor.description]
+        linhas = cursor.fetchall()
+        pedido_ids_raw = [row[0] for row in linhas]  # uuid.UUID original, p/ usar no JOIN abaixo
+        pedidos = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
+                   for row in linhas]
+
+        itens_por_pedido = {}
+        if pedido_ids_raw:
+            cursor.execute("""
+                SELECT pedido_id, produto_referencia, produto_nome, grade_tamanho, quantidade
+                FROM catalogo_pedidos_itens
+                WHERE pedido_id = ANY(%s)
+                ORDER BY criado_em
+            """, (pedido_ids_raw,))
+            cols = [d[0] for d in cursor.description]
+            for row in cursor.fetchall():
+                item = dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
+                itens_por_pedido.setdefault(item['pedido_id'], []).append(item)
+        conexao.close()
+
+        for p in pedidos:
+            p['itens'] = itens_por_pedido.get(p['id'], [])
+        return jsonify({'disponivel': True, 'pedidos': pedidos})
+    except Exception as ex:
+        return jsonify({'disponivel': False, 'erro': str(ex)}), 500
 
 
 @app.route('/api/catalogo/resumo')
