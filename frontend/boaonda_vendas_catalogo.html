@@ -298,13 +298,7 @@ td.seg-ecom-ecom, .cl-mini-table td.seg-ecom-ecom{background:#d9a44114}
   <div class="tcard">
     <div class="cl-scroll">
       <table>
-        <thead><tr>
-          <th>#</th>
-          <th class="sortable" onclick="refsSetSort('r')">Referência<span id="arrow-refs-r"></span></th>
-          <th class="sortable" onclick="refsSetSort('pares')">Pares<span id="arrow-refs-pares"></span></th>
-          <th class="sortable" onclick="refsSetSort('valor')">Valor (R$)<span id="arrow-refs-valor"></span></th>
-          <th class="sortable" onclick="refsSetSort('clientes')">Clientes com compra<span id="arrow-refs-clientes"></span></th>
-        </tr></thead>
+        <thead><tr id="refs-thead"></tr></thead>
         <tbody id="tb-refs"></tbody>
       </table>
     </div>
@@ -872,12 +866,18 @@ function refsAgregarPorReferencia(canais, tipos){
         if(canal==='MI'   && !(canais.has('MI') && tipos.has(tipo))) return;
         if(canal==='ME'   && !canais.has('ME')) return;
         if(canal==='ECOM' && !canais.has('EC')) return;
-        if(!out[r]) out[r]={pares:0, valor:0, clientes:new Set(), combos:{}};
+        if(!out[r]) out[r]={pares:0, valor:0, clientes:new Set(), combos:{}, cols:{}};
         const o=out[r];
         o.pares+=qtd; o.valor+=valor; o.clientes.add(h);
         const ck=(ln||'(sem linha)')+'|||'+(cor||'(sem cor)');
         if(!o.combos[ck]) o.combos[ck]={linha:ln||'(sem linha)', cor:cor||'(sem cor)', pares:0, valor:0};
         o.combos[ck].pares+=qtd; o.combos[ck].valor+=valor;
+        // Volume por espécie de venda (Prog./PE/Mista/ME/E-com) — mesma
+        // chave de coluna usada em "Clientes com compra", pra manter o
+        // mesmo contraste visual entre os dois quadros.
+        const colk=clColKey(canal,tipo);
+        if(!o.cols[colk]) o.cols[colk]=[0,0];
+        o.cols[colk][0]+=qtd; o.cols[colk][1]+=valor;
       });
     }
   }
@@ -885,22 +885,30 @@ function refsAgregarPorReferencia(canais, tipos){
 }
 
 function renderRefsMix(){
+  const thead=document.getElementById('refs-thead');
   const tb=document.getElementById('tb-refs');
   const emptyEl=document.getElementById('refs-empty');
   const badge=document.getElementById('refs-badge');
-  if(!tb) return;
+  if(!tb||!thead) return;
   const canais=estado.canal, tipos=estado.tipo;
+  const cols = clColunasAtivas(canais, tipos);
   const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',ano:'ano corrente'}[clPeriodo];
   if(badge) badge.textContent=periodoLabel;
 
-  ['r','pares','valor','clientes'].forEach(k=>{
-    const el=document.getElementById('arrow-refs-'+k);
-    if(el) el.innerHTML=refsSortArrow(k);
+  let theadHtml = '<th>#</th><th class="sortable" onclick="refsSetSort(\'r\')">Referência'+refsSortArrow('r')+'</th>';
+  cols.forEach(c=>{
+    const thStyle = ' style="'+segThStyle(c.cor)+'"';
+    theadHtml += '<th class="sortable"'+thStyle+' onclick="refsSetSort(\''+c.k+'|p\')">'+c.label+' (par)'+refsSortArrow(c.k+'|p')+'</th>';
+    theadHtml += '<th class="sortable"'+thStyle+' onclick="refsSetSort(\''+c.k+'|v\')">'+c.label+' (R$)'+refsSortArrow(c.k+'|v')+'</th>';
   });
+  theadHtml += '<th class="sortable" onclick="refsSetSort(\'pares\')">Total (par)'+refsSortArrow('pares')+'</th>';
+  theadHtml += '<th class="sortable" onclick="refsSetSort(\'valor\')">Total (R$)'+refsSortArrow('valor')+'</th>';
+  theadHtml += '<th class="sortable" onclick="refsSetSort(\'clientes\')">Clientes com compra'+refsSortArrow('clientes')+'</th>';
+  thead.innerHTML = theadHtml;
 
   const agg = refsAgregarPorReferencia(canais, tipos);
   let lista = Object.entries(agg).map(([r,v])=>({
-    r, pares:v.pares, valor:v.valor, clientes:v.clientes.size, combos:v.combos,
+    r, pares:v.pares, valor:v.valor, clientes:v.clientes.size, combos:v.combos, cols:v.cols,
   }));
   if(refsBusca) lista = lista.filter(x=>x.r.toLowerCase().includes(refsBusca));
   lista.sort((a,b)=>{
@@ -908,7 +916,13 @@ function renderRefsMix(){
       const c=a.r.toLowerCase().localeCompare(b.r.toLowerCase());
       return refsSort.dir==='asc' ? c : -c;
     }
-    const av=a[refsSort.key], bv=b[refsSort.key];
+    let av,bv;
+    if(refsSort.key==='pares'||refsSort.key==='valor'||refsSort.key==='clientes'){ av=a[refsSort.key]; bv=b[refsSort.key]; }
+    else{
+      const [colKey,tipo]=refsSort.key.split('|');
+      const iv = tipo==='v' ? 1 : 0;
+      av=(a.cols[colKey]||[0,0])[iv]; bv=(b.cols[colKey]||[0,0])[iv];
+    }
     return refsSort.dir==='asc' ? av-bv : bv-av;
   });
 
@@ -919,19 +933,25 @@ function renderRefsMix(){
     tr.className='tr-cliente'+(refsAberta===item.r?' aberto':'');
     tr.onclick=()=>refsToggle(item.r);
     const arrow = refsAberta===item.r ? '▾' : '▸';
-    tr.innerHTML='<td style="color:var(--txt-m);font-size:10px">'+(i+1)+'</td>'+
-      '<td class="td-nome"><span class="cl-arrow">'+arrow+'</span>'+item.r+'</td>'+
-      '<td class="td-num">'+f(item.pares)+'</td>'+
+    let cells = '<td style="color:var(--txt-m);font-size:10px">'+(i+1)+'</td>'+
+      '<td class="td-nome"><span class="cl-arrow">'+arrow+'</span>'+item.r+'</td>';
+    cols.forEach(c=>{
+      const v=item.cols[c.k];
+      const segCls=segTdClass(c.k);
+      cells += '<td class="'+segCls+'">'+(v?f(v[0]):'–')+'</td><td class="td-sub '+segCls+'">'+(v?fmoeda(v[1]):'–')+'</td>';
+    });
+    cells += '<td class="td-num">'+f(item.pares)+'</td>'+
       '<td class="td-num td-sub">'+fmoeda(item.valor)+'</td>'+
       '<td class="td-num">'+f(item.clientes)+'</td>';
+    tr.innerHTML = cells;
     tb.appendChild(tr);
-    if(refsAberta===item.r) tb.appendChild(refsDrillRow(item));
+    if(refsAberta===item.r) tb.appendChild(refsDrillRow(item, cols));
   });
 }
 
-function refsDrillRow(item){
+function refsDrillRow(item, cols){
   const tr=document.createElement('tr'); tr.className='tr-sub';
-  const td=document.createElement('td'); td.colSpan=5;
+  const td=document.createElement('td'); td.colSpan=cols.length*2+5;
   const combos = Object.values(item.combos).sort((a,b)=>b.pares-a.pares);
   let html = '<div class="tr-sub-inner"><table class="cl-mini-table"><thead><tr>'+
     '<th>Linha</th><th>Cor</th><th>Pares</th><th>Valor (R$)</th></tr></thead><tbody>';
