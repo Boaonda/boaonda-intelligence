@@ -668,6 +668,8 @@ p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:18px}
 .cli:last-child{border-bottom:none}
 .cli-info b{font-size:13px;color:var(--verde-dark);display:block}
 .cli-info span{font-size:11.5px;color:var(--txt-m)}
+.cli-info .pedidos{display:block;margin-top:2px;font-size:11px;color:var(--txt-m)}
+.cli-info .pedidos.tem{color:#6c9c37;font-weight:600}
 .cli-btn{font-size:12px;font-weight:700;color:var(--coral);text-decoration:none;border:1px solid var(--coral);
          border-radius:7px;padding:7px 14px;white-space:nowrap}
 .cli-btn:hover{background:var(--coral);color:#fff}
@@ -691,6 +693,11 @@ p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:18px}
         <div class="cli-info">
           <b>{{ c.empresa or c.nome }}</b>
           <span>{{ c.nome }}{% if c.cidade %} · {{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %}{% endif %}</span>
+          {% if c.total_pedidos %}
+          <span class="pedidos tem">{{ c.total_pedidos }} pedido{{ 's' if c.total_pedidos != 1 else '' }} · último em {{ c.ultimo_pedido }}</span>
+          {% else %}
+          <span class="pedidos">Nenhum pedido ainda</span>
+          {% endif %}
         </div>
         <a class="cli-btn" href="/catalogo/representante/atuar/{{ c.id }}">Digitar pedido</a>
       </div>
@@ -848,9 +855,31 @@ def catalogo_representante_painel():
             ORDER BY criado_em DESC
         """, (session['catalogo_rep_id'],))
         cols = [d[0] for d in cursor.description]
+        linhas = cursor.fetchall()
+        ids_raw = [row[0] for row in linhas]  # uuid.UUID original, p/ o JOIN de pedidos abaixo
         clientes = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
-                    for row in cursor.fetchall()]
+                    for row in linhas]
+
+        resumo_pedidos = {}
+        if ids_raw:
+            cursor.execute("""
+                SELECT cadastro_id, COUNT(*), MAX(criado_em)
+                FROM catalogo_pedidos
+                WHERE cadastro_id = ANY(%s)
+                GROUP BY cadastro_id
+            """, (ids_raw,))
+            for cadastro_id, total, ultimo in cursor.fetchall():
+                resumo_pedidos[str(cadastro_id)] = {
+                    'total': total,
+                    'ultimo': _catalogo_valor_json_seguro(ultimo),
+                }
         conexao.close()
+
+        for c in clientes:
+            r = resumo_pedidos.get(c['id'])
+            c['total_pedidos'] = r['total'] if r else 0
+            data_iso = (r['ultimo'] or '')[:10] if r else None
+            c['ultimo_pedido'] = '/'.join(reversed(data_iso.split('-'))) if data_iso else None
     except Exception as ex:
         erro = erro or f'Não foi possível carregar seus clientes agora. ({ex})'
     return render_template_string(_CATALOGO_REP_PAINEL_HTML, clientes=clientes,
