@@ -877,15 +877,22 @@ def processar_programacao(linhas, output_dir='.'):
         if not any(p in abr for p in GRUPOS_OK): continue
         plano = g(row, IDX['plano'])
         if not plano or plano in ('Não se aplica','NÃ£o se aplica',''): continue
-        # LocalEstoque == '30' é o único local que efetivamente vira produção
-        # (linha de fábrica). Qualquer outro local é produto já pronto sendo
-        # atendido por estoque — não deveria contar como pauta de programação
-        # de fábrica. Mesma regra já aplicada em processar_carteira(); antes
-        # desse filtro, itens de armazém/pronta-entrega inflavam o total de
-        # "Semanas de Produção" e destoavam da programação real da empresa.
-        # (Auditoria 2026-07-25, a pedido do usuário.)
+        razao = g(row, IDX['razao']).upper().strip()
+        is_pe = 'MOULD' in abr and 'ARMAZEM PRONTA ENTREGA' in razao
+        # LocalEstoque == '30' é o local-padrão de produção pra pedido
+        # programado normal. Pedidos de armazém/pronta-entrega (is_pe) são
+        # produção real também, mas gravados no local PRÓPRIO de cada
+        # armazém — nunca no 30 — por isso `is_pe` entra como exceção aqui.
+        # Corrigido em 2026-07-25: a 1ª versão desse filtro exigia local=='30'
+        # sem essa exceção e acabou excluindo os pedidos de armazém inteiros
+        # da programação, o que também estava errado (perdemos volume real).
+        # O que continua de fora: qualquer outro local que não seja nem 30
+        # nem armazém — esse sim é produto pronto sendo atendido por estoque
+        # sem passar pela fábrica. Mesma regra-base de processar_carteira(),
+        # que ainda não tem a exceção is_pe (carteira não lista pedido de
+        # armazém, então não precisou até agora).
         local = g(row, IDX['local'])
-        if local != '30': continue
+        if local != '30' and not is_pe: continue
         # NÃO excluir pos_item='Cancelado' aqui: ~94% desses itens são GRUPO
         # MOULD (armazém / pronta entrega) — produção real de reposição de
         # estoque, deliberadamente contada como volume 'pe' na programação.
@@ -900,11 +907,9 @@ def processar_programacao(linhas, output_dir='.'):
 
         linha = g(row, IDX['linha'])
         ln = linha if linha in ('CLASSIC','EVA','WORKS','FIT','DAY BY DAY') else 'OUTROS'
-        razao = g(row, IDX['razao']).upper().strip()
         pedido = g(row, IDX['pedido'])
         ref = g(row, IDX['ref'])
         is_export = 'EXPORTA' in abr
-        is_pe     = 'MOULD' in abr and 'ARMAZEM PRONTA ENTREGA' in razao
         is_mi     = ('MERCADO INTERNO' in abr or 'ISENTO' in abr) and not is_export and not is_pe
         # Tipo de montagem
         tp = g(row, IDX['tipomontagem']).upper()
