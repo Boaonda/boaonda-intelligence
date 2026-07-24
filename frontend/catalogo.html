@@ -701,7 +701,8 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
       <span class="hdr-user-caret">▾</span>
       <div class="hdr-user-menu" id="hdr-user-menu">
         <button type="button" onclick="abrirMeusPedidos(event)">📦 Meus pedidos</button>
-        <a href="/catalogo/sair">↪ Trocar CNPJ / Sair</a>
+        <a href="/catalogo/sair" id="hdr-link-trocar">↪ Trocar CNPJ / Sair</a>
+        <a href="/catalogo/representante/sair" id="hdr-link-sair-rep" class="sair" style="display:none">🚪 Sair (representante)</a>
       </div>
     </div>
   </div>
@@ -2003,6 +2004,12 @@ async function carregarIdentidade() {
     const box = document.getElementById('hdr-user');
     if (el) el.textContent = label;
     if (box) box.classList.add('vis');
+    const linkTrocar = document.getElementById('hdr-link-trocar');
+    const linkSairRep = document.getElementById('hdr-link-sair-rep');
+    if (d.rep_nome) {
+      if (linkTrocar) linkTrocar.textContent = '← Trocar de cliente';
+      if (linkSairRep) linkSairRep.style.display = 'block';
+    }
   } catch(e) { /* card só não aparece — não é crítico pro catálogo funcionar */ }
 }
 

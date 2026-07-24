@@ -309,26 +309,58 @@ input:focus{border-color:var(--coral)}
 .btn:hover{background:#dd5a34}
 .erro{background:rgba(221,112,81,.1);color:#b8462a;font-size:12px;padding:9px 12px;
       border-radius:7px;margin-bottom:16px}
+.tabs{display:flex;gap:6px;margin-bottom:22px;background:var(--bg);border-radius:9px;padding:4px}
+.tab-btn{flex:1;text-align:center;padding:9px 6px;font-size:12px;font-weight:700;color:var(--txt-m);
+  background:none;border:none;border-radius:7px;cursor:pointer;font-family:inherit;transition:.15s}
+.tab-btn.active{background:#fff;color:var(--verde-dark);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
 </style>
 </head>
 <body>
 <div class="card">
   <div class="mark">BOAONDA</div>
   <h1>Acesse o catálogo</h1>
-  <p class="sub">Informe o CNPJ da sua empresa. Se for a primeira vez, pediremos mais alguns dados rapidinho.</p>
-  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
-  <form method="POST">
-    <label>CNPJ</label>
-    <input type="text" name="cnpj" id="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required autofocus/>
-    <button class="btn" type="submit">Entrar</button>
-  </form>
+  <div class="tabs">
+    <button type="button" class="tab-btn" id="tabbtn-cliente" onclick="mostrarTab('cliente')">Sou cliente</button>
+    <button type="button" class="tab-btn" id="tabbtn-rep" onclick="mostrarTab('representante')">Sou representante</button>
+  </div>
+
+  <div class="tab-pane" id="tab-cliente">
+    <p class="sub">Informe o CNPJ da sua empresa. Se for a primeira vez, pediremos mais alguns dados rapidinho.</p>
+    {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+    <form method="POST" action="/catalogo/entrar">
+      <label>CNPJ</label>
+      <input type="text" name="cnpj" id="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required/>
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </div>
+
+  <div class="tab-pane" id="tab-representante">
+    <p class="sub">Acesso restrito a representantes cadastrados pela BOAONDA.</p>
+    {% if erro_rep %}<div class="erro">{{ erro_rep }}</div>{% endif %}
+    <form method="POST" action="/catalogo/representante/entrar">
+      <label>E-mail</label>
+      <input type="email" name="email" required/>
+      <label style="margin-top:12px">Senha</label>
+      <input type="password" name="senha" required/>
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </div>
 </div>
 <script>
-document.getElementById('cnpj').addEventListener('input', function(){
+function mostrarTab(tab){
+  document.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById(tab==='cliente'?'tabbtn-cliente':'tabbtn-rep').classList.add('active');
+}
+mostrarTab('{{ tab_ativa }}');
+document.getElementById('cnpj')?.addEventListener('input', function(){
   let v = this.value.replace(/\\D/g,'').substring(0,14);
   if      (v.length > 12) v = v.replace(/^(\\d{2})(\\d{3})(\\d{3})(\\d{4})(\\d{0,2})$/,'$1.$2.$3/$4-$5');
   else if (v.length >  8) v = v.replace(/^(\\d{2})(\\d{3})(\\d{3})(\\d{0,4})$/,'$1.$2.$3/$4');
-  else if (v.length >  5) v = v.replace(/^(\\d{2})(\\d{3})(\\d{0,3})$/,'$1.$2.$3');
+  else if (v.length >  5) v = v.replace(/^(\\d{2})(\\d{0,3})$/,'$1.$2.$3');
   else if (v.length >  2) v = v.replace(/^(\\d{2})(\\d{0,3})$/,'$1.$2');
   this.value = v;
 });
@@ -421,7 +453,10 @@ def require_login():
     usuários com role != 'admin'."""
     public_endpoints = {'login', 'logout', 'catalogo', 'catalogo_entrar', 'catalogo_cadastrar',
                         'catalogo_sair', 'api_catalogo_pedido', 'api_catalogo_quem_sou_eu',
-                        'api_catalogo_meu_historico', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx'}
+                        'api_catalogo_meu_historico', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx',
+                        'catalogo_representante_entrar', 'catalogo_representante_sair',
+                        'catalogo_representante_painel', 'catalogo_representante_atuar',
+                        'catalogo_representante_cadastrar_cliente'}
     if request.endpoint in public_endpoints:
         return None
     # JSONs necessários para o catálogo público não exigem autenticação
@@ -503,19 +538,25 @@ def _conectar_catalogo_db():
 @app.route('/catalogo')
 def catalogo():
     """Catálogo público de produtos — acesso liberado somente após
-    cadastro (CNPJ) confirmado nesta sessão."""
+    cadastro (CNPJ) confirmado nesta sessão, ou após um representante
+    escolher em nome de qual cliente vai atuar."""
     if not session.get('catalogo_cadastro_id'):
+        if session.get('catalogo_rep_id'):
+            return redirect(url_for('catalogo_representante_painel'))
         return redirect(url_for('catalogo_entrar'))
     return send_from_directory(FRONTEND_DIR, 'catalogo.html')
 
 
 @app.route('/catalogo/sair')
 def catalogo_sair():
-    """Encerra a sessão do CNPJ atual — usado tanto pelo cliente que quer
-    sair quanto pelo representante que precisa trocar de cliente no mesmo
-    dispositivo antes de digitar o próximo pedido."""
+    """Encerra o contexto do CNPJ atual. Se a sessão pertence a um
+    representante atuando em nome de um cliente, volta pro painel dele
+    (sem derrubar o login do representante) — só um cliente puro (sem
+    representante por trás) volta pra tela de entrada."""
     session.pop('catalogo_cadastro_id', None)
     session.pop('catalogo_cliente', None)
+    if session.get('catalogo_rep_id'):
+        return redirect(url_for('catalogo_representante_painel'))
     return redirect(url_for('catalogo_entrar'))
 
 
@@ -548,7 +589,7 @@ def catalogo_entrar():
                 return render_template_string(_CATALOGO_CADASTRO_HTML, cnpj=cnpj, erro=None)
             except Exception as ex:
                 erro = f'Não foi possível consultar o cadastro agora. Tente novamente. ({ex})'
-    return render_template_string(_CATALOGO_ENTRAR_HTML, erro=erro)
+    return render_template_string(_CATALOGO_ENTRAR_HTML, erro=erro, erro_rep=None, tab_ativa='cliente')
 
 
 @app.route('/catalogo/cadastrar', methods=['POST'])
@@ -594,6 +635,299 @@ def catalogo_cadastrar():
         return _erro(f'Erro ao cadastrar: {ex}')
 
 
+# ─────────────────────────────────────────────
+#  REPRESENTANTE — login próprio, carteira de clientes cadastrados por
+#  ele mesmo, e atuação "em nome de" um cliente pra digitar pedido oficial.
+#  Cadastro de representante é feito só pelo admin (ver /admin/catalogo-
+#  representantes); aqui só existe o login e o uso do dia a dia.
+# ─────────────────────────────────────────────
+_CATALOGO_REP_PAINEL_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Catálogo BOAONDA — Meus clientes</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--coral:#ed6842;--verde-dark:#26361e;--bg:#f8f5f1;--border:#e2ddd8;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);min-height:100vh;padding:32px 20px}
+.wrap{max-width:640px;margin:0 auto}
+.topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.mark{font-size:18px;font-weight:800;letter-spacing:2px;color:var(--coral)}
+.mark span{color:var(--verde-dark);font-weight:400;font-size:12px;margin-left:8px;letter-spacing:1px}
+.sair{font-size:12px;color:var(--txt-m);text-decoration:none;border:1px solid var(--border);border-radius:7px;padding:7px 12px}
+.sair:hover{color:#b8462a;border-color:#b8462a}
+h1{font-size:16px;font-weight:700;color:var(--verde-dark);margin-bottom:4px}
+p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:18px}
+.erro{background:rgba(221,112,81,.1);color:#b8462a;font-size:12px;padding:9px 12px;border-radius:7px;margin-bottom:16px}
+.btn{display:inline-block;background:var(--coral);color:#fff;font-weight:700;font-size:12.5px;
+     text-decoration:none;padding:10px 18px;border-radius:8px;margin-bottom:20px}
+.btn:hover{background:#dd5a34}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:0;overflow:hidden}
+.cli{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}
+.cli:last-child{border-bottom:none}
+.cli-info b{font-size:13px;color:var(--verde-dark);display:block}
+.cli-info span{font-size:11.5px;color:var(--txt-m)}
+.cli-btn{font-size:12px;font-weight:700;color:var(--coral);text-decoration:none;border:1px solid var(--coral);
+         border-radius:7px;padding:7px 14px;white-space:nowrap}
+.cli-btn:hover{background:var(--coral);color:#fff}
+.vazio{padding:24px 18px;font-size:12.5px;color:var(--txt-m);text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topo">
+    <div class="mark">BOAONDA <span>· Representante</span></div>
+    <a class="sair" href="/catalogo/representante/sair">↪ Sair</a>
+  </div>
+  <h1>Olá, {{ rep_nome }}</h1>
+  <p class="sub">Clientes que você cadastrou. Escolha um para digitar o pedido em nome dele.</p>
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  <a class="btn" href="/catalogo/representante/cadastrar-cliente">+ Cadastrar novo cliente</a>
+  <div class="card">
+    {% if clientes %}
+      {% for c in clientes %}
+      <div class="cli">
+        <div class="cli-info">
+          <b>{{ c.empresa or c.nome }}</b>
+          <span>{{ c.nome }}{% if c.cidade %} · {{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %}{% endif %}</span>
+        </div>
+        <a class="cli-btn" href="/catalogo/representante/atuar/{{ c.id }}">Digitar pedido</a>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="vazio">Você ainda não cadastrou nenhum cliente.</div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>'''
+
+
+_CATALOGO_REP_CADASTRO_CLIENTE_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Catálogo BOAONDA — Novo cliente</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--coral:#ed6842;--verde-dark:#26361e;--bg:#f8f5f1;--border:#e2ddd8;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);min-height:100vh;
+     display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:36px;
+      max-width:440px;width:100%;box-shadow:0 8px 32px rgba(38,54,30,.08)}
+.mark{font-size:20px;font-weight:800;letter-spacing:2px;color:var(--coral);margin-bottom:6px}
+h1{font-size:18px;font-weight:700;color:var(--verde-dark);margin-bottom:6px}
+p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:20px;line-height:1.5}
+.row{display:flex;gap:10px}
+.row > div{flex:1}
+label{font-size:11px;font-weight:600;color:var(--verde-dark);display:block;margin:12px 0 5px}
+input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;
+      font-family:inherit;font-size:13.5px;outline:none;transition:.15s;background:#fff}
+input:focus{border-color:var(--coral)}
+.termos{display:flex;align-items:flex-start;gap:8px;margin-top:18px}
+.termos input{width:auto;margin-top:2px}
+.termos label{font-size:11.5px;font-weight:400;color:var(--txt-m);margin:0;line-height:1.4}
+.btn{width:100%;margin-top:20px;padding:12px;border:none;border-radius:8px;background:var(--coral);
+     color:#fff;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.btn:hover{background:#dd5a34}
+.erro{background:rgba(221,112,81,.1);color:#b8462a;font-size:12px;padding:9px 12px;
+      border-radius:7px;margin-bottom:14px}
+.voltar{display:block;text-align:center;margin-top:16px;font-size:12px;color:var(--txt-m);text-decoration:none}
+.voltar:hover{color:var(--coral)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="mark">BOAONDA</div>
+  <h1>Cadastrar novo cliente</h1>
+  <p class="sub">Preenchido por você em nome do cliente — o aceite dos termos deve ser confirmado com ele antes de marcar a caixa abaixo.</p>
+  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+  <form method="POST">
+    <label>Nome completo *</label>
+    <input type="text" name="nome" required autofocus/>
+    <label>Empresa</label>
+    <input type="text" name="empresa"/>
+    <label>CNPJ *</label>
+    <input type="text" name="cnpj" id="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required/>
+    <div class="row">
+      <div>
+        <label>Telefone *</label>
+        <input type="text" name="telefone" required/>
+      </div>
+      <div>
+        <label>E-mail *</label>
+        <input type="email" name="email" required/>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Cidade</label>
+        <input type="text" name="cidade"/>
+      </div>
+      <div>
+        <label>UF</label>
+        <input type="text" name="uf" maxlength="2" style="text-transform:uppercase"/>
+      </div>
+    </div>
+    <div class="termos">
+      <input type="checkbox" name="aceite_termos" id="aceite" required/>
+      <label for="aceite">Confirmo que o cliente concorda com o uso dos seus dados para contato comercial da BOAONDA, conforme a política de privacidade.</label>
+    </div>
+    <button class="btn" type="submit">Cadastrar e digitar pedido</button>
+  </form>
+  <a class="voltar" href="/catalogo/representante/painel">← Voltar aos meus clientes</a>
+</div>
+<script>
+document.getElementById('cnpj').addEventListener('input', function(){
+  let v = this.value.replace(/\\D/g,'').substring(0,14);
+  if      (v.length > 12) v = v.replace(/^(\\d{2})(\\d{3})(\\d{3})(\\d{4})(\\d{0,2})$/,'$1.$2.$3/$4-$5');
+  else if (v.length >  8) v = v.replace(/^(\\d{2})(\\d{3})(\\d{3})(\\d{0,4})$/,'$1.$2.$3/$4');
+  else if (v.length >  5) v = v.replace(/^(\\d{2})(\\d{3})(\\d{0,3})$/,'$1.$2.$3');
+  else if (v.length >  2) v = v.replace(/^(\\d{2})(\\d{0,3})$/,'$1.$2');
+  this.value = v;
+});
+</script>
+</body>
+</html>'''
+
+
+@app.route('/catalogo/representante/entrar', methods=['POST'])
+def catalogo_representante_entrar():
+    """Login do representante (e-mail + senha) — cadastro é feito só pelo
+    admin em /admin/catalogo-representantes."""
+    email = request.form.get('email', '').strip().lower()
+    senha = request.form.get('senha', '')
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute(
+            "SELECT id, nome, senha_hash, ativo FROM catalogo_representantes WHERE lower(email) = %s",
+            (email,)
+        )
+        row = cursor.fetchone()
+        conexao.close()
+    except Exception as ex:
+        return render_template_string(_CATALOGO_ENTRAR_HTML, erro=None, tab_ativa='representante',
+                                       erro_rep=f'Não foi possível validar o login agora. ({ex})')
+    if not row or not row[3] or not check_password_hash(row[2], senha):
+        return render_template_string(_CATALOGO_ENTRAR_HTML, erro=None, tab_ativa='representante',
+                                       erro_rep='E-mail ou senha incorretos.')
+    session['catalogo_rep_id'] = str(row[0])
+    session['catalogo_rep_nome'] = row[1]
+    session.pop('catalogo_cadastro_id', None)
+    session.pop('catalogo_cliente', None)
+    return redirect(url_for('catalogo_representante_painel'))
+
+
+@app.route('/catalogo/representante/sair')
+def catalogo_representante_sair():
+    """Logout completo do representante — encerra também qualquer cliente
+    em cujo nome ele estivesse atuando no momento."""
+    session.pop('catalogo_rep_id', None)
+    session.pop('catalogo_rep_nome', None)
+    session.pop('catalogo_cadastro_id', None)
+    session.pop('catalogo_cliente', None)
+    return redirect(url_for('catalogo_entrar'))
+
+
+@app.route('/catalogo/representante/painel')
+def catalogo_representante_painel():
+    if not session.get('catalogo_rep_id'):
+        return redirect(url_for('catalogo_entrar'))
+    erro = request.args.get('erro')
+    clientes = []
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("""
+            SELECT id, nome, empresa, cnpj, cidade, uf, criado_em
+            FROM catalogo_cadastros
+            WHERE representante_id = %s
+            ORDER BY criado_em DESC
+        """, (session['catalogo_rep_id'],))
+        cols = [d[0] for d in cursor.description]
+        clientes = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
+                    for row in cursor.fetchall()]
+        conexao.close()
+    except Exception as ex:
+        erro = erro or f'Não foi possível carregar seus clientes agora. ({ex})'
+    return render_template_string(_CATALOGO_REP_PAINEL_HTML, clientes=clientes,
+                                   rep_nome=session.get('catalogo_rep_nome'), erro=erro)
+
+
+@app.route('/catalogo/representante/atuar/<cadastro_id>')
+def catalogo_representante_atuar(cadastro_id):
+    """Coloca a sessão no contexto do cliente escolhido — só permite se o
+    cliente pertence à carteira deste representante (representante_id
+    bate com a sessão), nunca por confiança no valor recebido na URL."""
+    if not session.get('catalogo_rep_id'):
+        return redirect(url_for('catalogo_entrar'))
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("""
+            SELECT id, nome, empresa, representante
+            FROM catalogo_cadastros
+            WHERE id = %s AND representante_id = %s
+        """, (cadastro_id, session['catalogo_rep_id']))
+        row = cursor.fetchone()
+        conexao.close()
+    except Exception as ex:
+        return redirect(url_for('catalogo_representante_painel', erro=str(ex)))
+    if not row:
+        return redirect(url_for('catalogo_representante_painel',
+                                 erro='Cliente não encontrado ou fora da sua carteira.'))
+    session['catalogo_cadastro_id'] = str(row[0])
+    session['catalogo_cliente'] = {'nome': row[1], 'empresa': row[2] or '', 'representante': row[3]}
+    return redirect(url_for('catalogo'))
+
+
+@app.route('/catalogo/representante/cadastrar-cliente', methods=['GET', 'POST'])
+def catalogo_representante_cadastrar_cliente():
+    if not session.get('catalogo_rep_id'):
+        return redirect(url_for('catalogo_entrar'))
+    erro = None
+    if request.method == 'POST':
+        nome     = request.form.get('nome', '').strip()
+        empresa  = request.form.get('empresa', '').strip() or None
+        cnpj     = re.sub(r'\D', '', request.form.get('cnpj', ''))
+        telefone = request.form.get('telefone', '').strip()
+        email    = request.form.get('email', '').strip()
+        cidade   = request.form.get('cidade', '').strip() or None
+        uf       = request.form.get('uf', '').strip() or None
+        aceite   = request.form.get('aceite_termos') == 'on'
+        if not (nome and telefone and email and len(cnpj) == 14):
+            erro = 'Preencha nome, telefone, e-mail e um CNPJ válido.'
+        elif not aceite:
+            erro = 'É necessário confirmar o aceite dos termos para continuar.'
+        else:
+            try:
+                conexao = _conectar_catalogo_db()
+                cursor = conexao.cursor()
+                cursor.execute("""
+                    INSERT INTO catalogo_cadastros
+                        (nome, empresa, cnpj, telefone, email, cidade, uf, representante, representante_id, aceite_termos)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    RETURNING id
+                """, (nome, empresa, cnpj, telefone, email, cidade, uf,
+                      session.get('catalogo_rep_nome'), session['catalogo_rep_id'], aceite))
+                novo_id = cursor.fetchone()[0]
+                conexao.commit()
+                conexao.close()
+                session['catalogo_cadastro_id'] = str(novo_id)
+                session['catalogo_cliente'] = {'nome': nome, 'empresa': empresa or '',
+                                                'representante': session.get('catalogo_rep_nome')}
+                return redirect(url_for('catalogo'))
+            except Exception as ex:
+                if 'unique' in str(ex).lower() or 'duplicate' in str(ex).lower():
+                    erro = 'Esse CNPJ já está cadastrado — volte e procure o cliente na sua lista.'
+                else:
+                    erro = f'Erro ao cadastrar: {ex}'
+    return render_template_string(_CATALOGO_REP_CADASTRO_CLIENTE_HTML, erro=erro)
+
+
 @app.route('/api/catalogo/pedido', methods=['POST'])
 def api_catalogo_pedido():
     """Chamada pelo catalogo.html (dentro de idConfirmar/gerarPDF) para
@@ -609,13 +943,15 @@ def api_catalogo_pedido():
     if not itens:
         return jsonify({'erro': 'Carrinho vazio.'}), 400
 
+    representante_responsavel = session.get('catalogo_rep_nome') if session.get('catalogo_rep_id') else None
+
     try:
         conexao = _conectar_catalogo_db()
         cursor = conexao.cursor()
         cursor.execute("""
-            INSERT INTO catalogo_pedidos (cadastro_id, observacoes)
-            VALUES (%s, %s) RETURNING id
-        """, (cadastro_id, observacoes))
+            INSERT INTO catalogo_pedidos (cadastro_id, observacoes, representante_responsavel)
+            VALUES (%s, %s, %s) RETURNING id
+        """, (cadastro_id, observacoes, representante_responsavel))
         pedido_id = cursor.fetchone()[0]
         for item in itens:
             cursor.execute("""
@@ -653,7 +989,11 @@ def api_catalogo_quem_sou_eu():
     por isso a identidade chega via fetch em vez de Jinja."""
     if not session.get('catalogo_cadastro_id'):
         return jsonify({'logado': False})
-    return jsonify({'logado': True, 'cliente': session.get('catalogo_cliente') or {}})
+    return jsonify({
+        'logado': True,
+        'cliente': session.get('catalogo_cliente') or {},
+        'rep_nome': session.get('catalogo_rep_nome'),
+    })
 
 
 @app.route('/api/catalogo/meu-historico')
@@ -837,6 +1177,7 @@ CONFIG_SECOES = [
     {'id': 'fotos',      'icone': '🖼', 'label': 'Atualizar fotos do catálogo',   'url': '/admin/fotos'},
     {'id': 'home',       'icone': '🏠', 'label': 'Editar home do catálogo',       'url': '/admin/home'},
     {'id': 'usuarios',   'icone': '👤', 'label': 'Gerenciar usuários',            'url': '/admin/usuarios'},
+    {'id': 'reps_cat',   'icone': '🧑‍💼', 'label': 'Representantes do catálogo',   'url': '/admin/catalogo-representantes'},
     {'id': 'producao',   'icone': '⚙',  'label': 'Configurações de produção',     'url': '/config'},
     {'id': 'diag',       'icone': '🩺', 'label': 'Diagnóstico da fonte de dados', 'url': '/admin/diag'},
     {'id': 'recarregar', 'icone': '🔄', 'label': 'Recarregar dados no servidor',  'url': '/admin/recarregar'},
@@ -2518,6 +2859,196 @@ def admin_db_tunnel_status():
         })
     except Exception as ex:
         return jsonify({'status': 'erro', 'detalhe': str(ex)}), 500
+
+
+# ─────────────────────────────────────────────
+#  GESTÃO DE REPRESENTANTES DO CATÁLOGO (admin-only) — vive no Supabase
+#  (tabela catalogo_representantes), não no usuarios.json local, porque
+#  precisa ser referenciável por FK a partir de catalogo_cadastros
+#  (representante_id) pro painel do representante filtrar a carteira dele.
+# ─────────────────────────────────────────────
+_CATALOGO_REPS_HTML = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Boaonda Intelligence — Representantes do Catálogo</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--coral:#ed6842;--verde:#6c9c37;--verde-dark:#26361e;--bg:#f8f5f1;--card:#fff;--line:#e2ddd8;--txt-s:#71706f;--txt-m:#9b9895}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',sans-serif}
+body{background:var(--bg);color:var(--verde-dark);min-height:100vh;padding:32px}
+.wrap{max-width:760px;margin:0 auto}
+.brand{font-size:18px;font-weight:800;color:var(--coral);letter-spacing:2px;margin-bottom:4px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:13px;margin-left:8px;letter-spacing:1px}
+h1{font-size:16px;font-weight:700;margin:24px 0 8px}
+h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-s);margin:28px 0 12px}
+p.sub{font-size:12px;color:var(--txt-s);margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:16px}
+.field{margin-bottom:16px}
+label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-s);margin-bottom:8px}
+input[type=text],input[type=email],input[type=password]{width:100%;background:#f3f0eb;border:1px solid var(--line);border-radius:8px;padding:10px 14px;color:var(--verde-dark);font-size:13px;outline:none;font-family:'Montserrat',sans-serif}
+input:focus{border-color:var(--coral)}
+.hint{font-size:11px;color:var(--txt-m);margin-top:4px}
+.btn{background:var(--coral);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:700;cursor:pointer}
+.btn:hover{background:#dd7051}
+.btn-sm{padding:7px 12px;font-size:11px}
+.msg{border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:16px}
+.msg.ok{background:rgba(108,156,55,.1);color:var(--verde);border:1px solid rgba(108,156,55,.25)}
+.msg.err{background:rgba(239,68,68,.08);color:#c0392b;border:1px solid rgba(239,68,68,.25)}
+.back{display:inline-block;margin-top:8px;font-size:12px;color:var(--txt-s);text-decoration:none}
+.back:hover{color:var(--coral)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-m);padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:10px;border-bottom:1px solid var(--line);font-size:12px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.tag-inativo{font-size:9px;font-weight:700;color:#c0392b;background:rgba(239,68,68,.08);border-radius:4px;padding:2px 6px;margin-left:6px}
+.row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.row-actions form{display:flex;gap:6px;align-items:center;margin:0}
+.row-actions input[type=password]{width:130px;padding:6px 10px;font-size:11px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">BOAONDA <span>· Intelligence</span></div>
+  <h1>Representantes do catálogo</h1>
+  <p class="sub">Login exclusivo pro ambiente de pedidos de pronta entrega (catálogo público) — só existe se o admin criar aqui. Cada representante enxerga só os clientes que ele mesmo cadastrar.</p>
+
+  {% if message %}
+  <div class="msg {{ 'ok' if ok else 'err' }}">{{ message }}</div>
+  {% endif %}
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Nome</th><th>E-mail</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <tbody>
+        {% for r in reps %}
+        <tr>
+          <td>{{ r.nome }}{% if not r.ativo %}<span class="tag-inativo">inativo</span>{% endif %}</td>
+          <td>{{ r.email }}</td>
+          <td>{{ (r.criado_em or '')[:16] }}</td>
+          <td>
+            <div class="row-actions">
+              <form method="post" action="/admin/catalogo-representantes/senha">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <input type="password" name="nova_senha" placeholder="Nova senha" minlength="6" required>
+                <button class="btn btn-sm" type="submit">Trocar senha</button>
+              </form>
+              <form method="post" action="/admin/catalogo-representantes/ativo">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <input type="hidden" name="ativo" value="{{ '0' if r.ativo else '1' }}">
+                <button class="btn btn-sm" type="submit">{{ 'Desativar' if r.ativo else 'Reativar' }}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="color:var(--txt-m)">Nenhum representante cadastrado ainda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Novo representante</h2>
+  <form class="card" method="post" action="/admin/catalogo-representantes/criar">
+    <div class="field">
+      <label>Nome</label>
+      <input type="text" name="nome" required>
+    </div>
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" name="email" autocomplete="off" required>
+    </div>
+    <div class="field">
+      <label>Senha inicial</label>
+      <input type="password" name="senha" minlength="6" required>
+      <div class="hint">Mínimo 6 caracteres. O representante pode trocar depois de logar no catálogo.</div>
+    </div>
+    <button class="btn" type="submit">Cadastrar representante</button>
+  </form>
+
+  <a class="back" href="/" target="_top">← Voltar ao portal</a>
+</div>
+</body>
+</html>'''
+
+
+def _redirect_catalogo_reps(msg, ok=True):
+    return redirect(url_for('admin_catalogo_representantes', msg=msg, ok='1' if ok else '0'))
+
+
+@app.route('/admin/catalogo-representantes')
+def admin_catalogo_representantes():
+    msg = request.args.get('msg')
+    ok = request.args.get('ok', '1') == '1'
+    reps = []
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("SELECT id, nome, email, ativo, criado_em FROM catalogo_representantes ORDER BY nome")
+        cols = [d[0] for d in cursor.description]
+        reps = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
+                for row in cursor.fetchall()]
+        conexao.close()
+    except Exception as ex:
+        msg = msg or f'Não foi possível carregar os representantes. ({ex})'
+        ok = False
+    return render_template_string(_CATALOGO_REPS_HTML, reps=reps, message=msg, ok=ok)
+
+
+@app.route('/admin/catalogo-representantes/criar', methods=['POST'])
+def admin_catalogo_representantes_criar():
+    nome = request.form.get('nome', '').strip()
+    email = request.form.get('email', '').strip().lower()
+    senha = request.form.get('senha', '')
+    if not nome or not email or len(senha) < 6:
+        return _redirect_catalogo_reps('Informe nome, e-mail e uma senha com pelo menos 6 caracteres.', ok=False)
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("""
+            INSERT INTO catalogo_representantes (nome, email, senha_hash)
+            VALUES (%s, %s, %s)
+        """, (nome, email, generate_password_hash(senha)))
+        conexao.commit()
+        conexao.close()
+        return _redirect_catalogo_reps(f'Representante "{nome}" cadastrado com sucesso.')
+    except Exception as ex:
+        if 'unique' in str(ex).lower() or 'duplicate' in str(ex).lower():
+            return _redirect_catalogo_reps(f'Já existe um representante com o e-mail "{email}".', ok=False)
+        return _redirect_catalogo_reps(f'Erro ao cadastrar: {ex}', ok=False)
+
+
+@app.route('/admin/catalogo-representantes/senha', methods=['POST'])
+def admin_catalogo_representantes_senha():
+    rep_id = request.form.get('id', '')
+    nova_senha = request.form.get('nova_senha', '')
+    if len(nova_senha) < 6:
+        return _redirect_catalogo_reps('A nova senha precisa ter pelo menos 6 caracteres.', ok=False)
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("UPDATE catalogo_representantes SET senha_hash = %s WHERE id = %s",
+                       (generate_password_hash(nova_senha), rep_id))
+        conexao.commit()
+        conexao.close()
+        return _redirect_catalogo_reps('Senha atualizada.')
+    except Exception as ex:
+        return _redirect_catalogo_reps(f'Erro ao atualizar senha: {ex}', ok=False)
+
+
+@app.route('/admin/catalogo-representantes/ativo', methods=['POST'])
+def admin_catalogo_representantes_ativo():
+    rep_id = request.form.get('id', '')
+    ativo = request.form.get('ativo') == '1'
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("UPDATE catalogo_representantes SET ativo = %s WHERE id = %s", (ativo, rep_id))
+        conexao.commit()
+        conexao.close()
+        return _redirect_catalogo_reps('Representante ' + ('reativado.' if ativo else 'desativado.'))
+    except Exception as ex:
+        return _redirect_catalogo_reps(f'Erro ao atualizar: {ex}', ok=False)
 
 
 _CATALOGO_DIAG_CSS = '''
