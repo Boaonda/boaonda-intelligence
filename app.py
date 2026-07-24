@@ -673,6 +673,8 @@ p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:18px}
          border-radius:7px;padding:7px 14px;white-space:nowrap}
 .cli-btn:hover{background:var(--coral);color:#fff}
 .vazio{padding:24px 18px;font-size:12.5px;color:var(--txt-m);text-align:center}
+.voltar{font-size:12px;color:var(--txt-m);text-decoration:none}
+.voltar:hover{color:var(--coral)}
 </style>
 </head>
 <body>
@@ -684,7 +686,10 @@ p.sub{font-size:12.5px;color:var(--txt-m);margin-bottom:18px}
   <h1>Olá, {{ rep_nome }}</h1>
   <p class="sub">Clientes que você cadastrou. Escolha um para digitar o pedido em nome dele.</p>
   {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
-  <a class="btn" href="/catalogo/representante/cadastrar-cliente">+ Cadastrar novo cliente</a>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <a class="btn" href="/catalogo/representante/cadastrar-cliente">+ Cadastrar novo cliente</a>
+    <a class="voltar" href="/catalogo" style="margin:0">← Voltar ao catálogo</a>
+  </div>
   <div class="card">
     {% if clientes %}
       {% for c in clientes %}
@@ -740,7 +745,7 @@ input:focus{border-color:var(--coral)}
 .btn:hover{background:#dd5a34}
 .erro{background:rgba(221,112,81,.1);color:#b8462a;font-size:12px;padding:9px 12px;
       border-radius:7px;margin-bottom:14px}
-.voltar{display:block;text-align:center;margin-top:16px;font-size:12px;color:var(--txt-m);text-decoration:none}
+.voltar{font-size:12px;color:var(--txt-m);text-decoration:none}
 .voltar:hover{color:var(--coral)}
 </style>
 </head>
@@ -783,7 +788,10 @@ input:focus{border-color:var(--coral)}
     </div>
     <button class="btn" type="submit">Cadastrar e digitar pedido</button>
   </form>
-  <a class="voltar" href="/catalogo/representante/painel">← Voltar aos meus clientes</a>
+  <div style="display:flex;justify-content:space-between;margin-top:16px">
+    <a class="voltar" href="/catalogo/representante/painel">← Voltar aos meus clientes</a>
+    <a class="voltar" href="/catalogo">← Voltar ao catálogo</a>
+  </div>
 </div>
 <script>
 document.getElementById('cnpj').addEventListener('input', function(){
