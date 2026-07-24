@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+import html
 import io
 import json
 import os
@@ -2336,6 +2337,132 @@ def admin_db_tunnel_status():
         })
     except Exception as ex:
         return jsonify({'status': 'erro', 'detalhe': str(ex)}), 500
+
+
+_CATALOGO_DIAG_CSS = '''
+:root{--coral:#ed6842;--verde-dark:#26361e;--bg:#f8f5f1;--card:#fff;--border:#e2ddd8;--txt-m:#71706f}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Montserrat',system-ui,sans-serif}
+body{background:var(--bg);color:var(--verde-dark);padding:28px}
+.brand{font-size:16px;font-weight:800;color:var(--coral);letter-spacing:2px;margin-bottom:2px}
+.brand span{color:var(--verde-dark);font-weight:300;font-size:12px;margin-left:8px;letter-spacing:1px}
+h1{font-size:15px;font-weight:700;margin:18px 0 4px}
+p.sub{font-size:11.5px;color:var(--txt-m);margin-bottom:14px;line-height:1.5}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:22px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11.5px;white-space:nowrap}
+th{text-align:left;padding:6px 10px;color:var(--txt-m);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
+td{padding:6px 10px;border-bottom:1px solid rgba(0,0,0,.04)}
+tr:hover td{background:rgba(237,104,66,.04)}
+.aviso{font-size:12px;color:var(--txt-m);font-style:italic;padding:6px 2px}
+.ordem-nota{font-size:10px;color:var(--txt-m);margin-top:6px}
+.back{display:inline-block;margin-top:6px;font-size:12px;color:var(--txt-m);text-decoration:none}
+.back:hover{color:var(--coral)}
+'''
+
+
+def _catalogo_diag_colunas(cursor, tabela):
+    cursor.execute("""
+        SELECT column_name, data_type FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = %s ORDER BY ordinal_position
+    """, (tabela,))
+    return cursor.fetchall()
+
+
+def _catalogo_diag_ordem(colunas):
+    """Escolhe a coluna mais confiável para "mais recente primeiro". Prefere
+    uma coluna de data/hora; só cai para 'id' se for tipo inteiro (serial) —
+    id do tipo uuid não é cronológico, então nesse caso avisa que a ordem
+    pode não refletir os registros mais recentes."""
+    tipos = {nome: tipo for nome, tipo in colunas}
+    for candidata in ('criado_em', 'created_at', 'data_criacao', 'inserted_at', 'data_cadastro', 'data'):
+        if candidata in tipos:
+            return candidata, True
+    if tipos.get('id') in ('integer', 'bigint', 'smallint'):
+        return 'id', True
+    return 'id', False
+
+
+def _catalogo_diag_tabela_html(conexao, titulo, sql_select, tabela_ordem, alvo_ordem, limit=20):
+    """Executa um SELECT (com placeholder {ordem} pra coluna de ordenação) e
+    devolve o HTML da seção — captura erro por tabela (schema diferente do
+    esperado, tabela ainda não criada) sem derrubar o restante da página."""
+    cursor = conexao.cursor()
+    colunas_meta = _catalogo_diag_colunas(cursor, tabela_ordem)
+    if not colunas_meta:
+        return f'<div class="card"><h1>{titulo}</h1><p class="aviso">Tabela "{tabela_ordem}" não encontrada no schema public — confirme se a migração/criação da tabela já rodou no Supabase.</p></div>'
+    ordem_col, confiavel = _catalogo_diag_ordem(colunas_meta)
+    try:
+        cursor.execute(sql_select.format(ordem=f'{alvo_ordem}.{ordem_col}'), (limit,))
+        cols = [d[0] for d in cursor.description]
+        linhas = cursor.fetchall()
+    except Exception as ex:
+        conexao.rollback()
+        return f'<div class="card"><h1>{titulo}</h1><p class="aviso">Erro ao consultar: {html.escape(str(ex))}</p></div>'
+
+    aviso_ordem = '' if confiavel else (
+        '<p class="ordem-nota">⚠ Sem coluna de data e id não é sequencial — '
+        'a ordem abaixo pode não refletir os registros mais recentes.</p>')
+    if not linhas:
+        return f'<div class="card"><h1>{titulo} (0)</h1><p class="aviso">Nenhum registro ainda.</p></div>'
+    head = ''.join(f'<th>{html.escape(str(c))}</th>' for c in cols)
+    body = ''.join(
+        '<tr>' + ''.join(f'<td>{"" if v is None else html.escape(str(v))}</td>' for v in linha) + '</tr>'
+        for linha in linhas
+    )
+    return (f'<div class="card"><h1>{titulo} ({len(linhas)})</h1>'
+            f'{aviso_ordem}<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>')
+
+
+@app.route('/admin/catalogo-diag')
+def admin_catalogo_diag():
+    """Mostra os cadastros e pedidos mais recentes gravados pelo gate do
+    catálogo (catalogo_cadastros/catalogo_pedidos/catalogo_pedidos_itens no
+    Supabase) — confirma que um cadastro/pedido de teste foi gravado, sem
+    precisar de acesso ao painel do Supabase. Rota temporária de apoio à
+    validação do gate de CNPJ; remover ou restringir mais quando não for
+    mais necessária."""
+    try:
+        import psycopg2
+    except ImportError:
+        return '<p>Biblioteca \'psycopg2-binary\' não instalada no servidor.</p>', 500
+
+    try:
+        conexao = _conectar_catalogo_db()
+    except Exception as ex:
+        return f'<p>Não foi possível conectar ao banco: {html.escape(str(ex))}</p>', 500
+
+    secoes = []
+    secoes.append(_catalogo_diag_tabela_html(
+        conexao, 'Cadastros recentes',
+        'SELECT * FROM catalogo_cadastros ORDER BY {ordem} DESC LIMIT %s',
+        'catalogo_cadastros', 'catalogo_cadastros',
+    ))
+    secoes.append(_catalogo_diag_tabela_html(
+        conexao, 'Pedidos recentes (com nome/CNPJ do cadastro)',
+        '''SELECT p.*, c.nome AS cli_nome, c.cnpj AS cli_cnpj, c.empresa AS cli_empresa
+           FROM catalogo_pedidos p
+           LEFT JOIN catalogo_cadastros c ON c.id = p.cadastro_id
+           ORDER BY {ordem} DESC LIMIT %s''',
+        'catalogo_pedidos', 'p',
+    ))
+    secoes.append(_catalogo_diag_tabela_html(
+        conexao, 'Itens de pedidos recentes',
+        '''SELECT i.*, p.cadastro_id
+           FROM catalogo_pedidos_itens i
+           LEFT JOIN catalogo_pedidos p ON p.id = i.pedido_id
+           ORDER BY {ordem} DESC LIMIT %s''',
+        'catalogo_pedidos_itens', 'i',
+    ))
+    conexao.close()
+
+    pagina = (f'<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>'
+              f'<title>Diagnóstico — Catálogo</title><style>{_CATALOGO_DIAG_CSS}</style></head><body>'
+              f'<div class="brand">BOAONDA <span>· Diagnóstico do gate do catálogo</span></div>'
+              f'<p class="sub">Últimos registros gravados no Supabase pelo cadastro (CNPJ) e pelos pedidos do catálogo público. '
+              f'Atualize a página (F5) para ver dados novos.</p>'
+              + ''.join(secoes) +
+              '<a class="back" href="/admin/configuracoes">← Voltar às Configurações</a>'
+              '</body></html>')
+    return pagina
 
 
 @app.route('/version')
