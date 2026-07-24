@@ -498,7 +498,7 @@ function renderCharts(){
 // ── Drilldown — Pares por mês de entrega prevista ───────────
 let mesEntregaAtivo = null;
 let mesEntregaLabelAtivo = '';
-let entregaModo = 'cliente';   // 'cliente' | 'modelo' | 'etapa'
+let entregaModo = 'cliente';   // 'cliente' | 'modelo' | 'etapa' | 'semana'
 let clienteEntregaAtivo = null;
 let modeloEntregaAtivo = null;
 let etapaEntregaAtiva = null;
@@ -507,6 +507,114 @@ let CLIENTES_ENTREGA_REF = [];
 let MODELOS_ENTREGA_REF = [];
 let ETAPAS_ENTREGA_REF = [];
 let CLIENTES_EM_ETAPA_REF = [];
+
+// Semana (segunda–sexta) dentro do mês — pedido de fim de semana cai na
+// semana útil que o contém, pra bater com a semana real de produção.
+const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+let semanaEntregaAtiva = null;
+let semanaSubModo = 'cliente';   // 'cliente' | 'modelo' | 'etapa' — dentro da semana expandida
+let SEMANAS_ENTREGA_REF = [];
+
+function segundaDaSemana(dataBr){
+  if(!dataBr) return null;
+  const [d,m,y] = dataBr.split('/').map(Number);
+  const dt = new Date(y, m-1, d);
+  const diaSemana = (dt.getDay() + 6) % 7; // 0=segunda ... 6=domingo
+  dt.setDate(dt.getDate() - diaSemana);
+  return dt;
+}
+function semanaKeyLabel(dataBr){
+  const seg = segundaDaSemana(dataBr);
+  if(!seg) return {key:null, label:''};
+  const sex = new Date(seg); sex.setDate(sex.getDate()+4);
+  const key = seg.toISOString().slice(0,10);
+  const label = `${String(seg.getDate()).padStart(2,'0')}/${MESES_ABREV[seg.getMonth()]}–${String(sex.getDate()).padStart(2,'0')}/${MESES_ABREV[sex.getMonth()]}`;
+  return {key, label};
+}
+
+function toggleSemanaEntrega(idx){
+  const key = SEMANAS_ENTREGA_REF[idx];
+  semanaEntregaAtiva = (semanaEntregaAtiva===key) ? null : key;
+  clienteEntregaAtivo = null; modeloEntregaAtivo = null; etapaEntregaAtiva = null;
+  renderEntregaDrill();
+}
+function setSemanaSubModo(modo){
+  semanaSubModo = modo;
+  clienteEntregaAtivo = null; modeloEntregaAtivo = null; etapaEntregaAtiva = null;
+  renderEntregaDrill();
+}
+
+// Agrupa uma lista de pedidos por cliente/modelo/etapa — usado tanto no
+// nível de mês quanto, aninhado, dentro de uma semana expandida.
+function montaModoLista(pedidos, modo){
+  let count, listaHtml;
+  if(modo === 'modelo'){
+    const porModelo = {};
+    pedidos.forEach(p=>{
+      const refs = (p.refs && Object.keys(p.refs).length) ? p.refs : {[p.ref_principal||'–']: p.pares};
+      Object.entries(refs).forEach(([ref,qtd])=>{
+        if(!porModelo[ref]) porModelo[ref] = {ref, pares:0, clientes:new Set(), pedidos:[]};
+        porModelo[ref].pares += qtd;
+        porModelo[ref].clientes.add(p.cliente);
+        porModelo[ref].pedidos.push({cliente:p.cliente, pedido:p.pedido, qtd});
+      });
+    });
+    const modelos = Object.values(porModelo).sort((a,b)=>b.pares-a.pares);
+    count = modelos.length;
+    MODELOS_ENTREGA_REF = [];
+    listaHtml = modelos.map(m=>`
+      <div class="drill-cliente ${modeloEntregaAtivo===m.ref?'ativa':''}" onclick="event.stopPropagation();toggleModeloEntrega(${MODELOS_ENTREGA_REF.push(m.ref)-1})">
+        <div class="drill-arrow">${modeloEntregaAtivo===m.ref?'▾':'▸'}</div>
+        <div class="dc-nome">${m.ref}</div>
+        <div class="dc-ped">${f(m.clientes.size)} cli.</div>
+        <div class="dc-pares">${f(m.pares)} pares</div>
+      </div>
+      ${modeloEntregaAtivo===m.ref ? renderClientesModelo(m.pedidos) : ''}
+    `).join('');
+  } else if(modo === 'etapa'){
+    const porEtapa = {};
+    pedidos.forEach(p=>{
+      const etapa = p.etapa || '(sem etapa)';
+      if(!porEtapa[etapa]) porEtapa[etapa] = {etapa, pares:0, clientes:new Set(), pedidos:[]};
+      porEtapa[etapa].pares += p.pares;
+      porEtapa[etapa].clientes.add(p.cliente);
+      porEtapa[etapa].pedidos.push(p);
+    });
+    const etapas = Object.values(porEtapa).sort((a,b)=>b.pares-a.pares);
+    count = etapas.length;
+    ETAPAS_ENTREGA_REF = [];
+    listaHtml = etapas.map(e=>`
+      <div class="drill-cliente ${etapaEntregaAtiva===e.etapa?'ativa':''}" onclick="event.stopPropagation();toggleEtapaEntrega(${ETAPAS_ENTREGA_REF.push(e.etapa)-1})">
+        <div class="drill-arrow">${etapaEntregaAtiva===e.etapa?'▾':'▸'}</div>
+        <div class="dc-nome">${e.etapa}</div>
+        <div class="dc-ped">${f(e.clientes.size)} cli.</div>
+        <div class="dc-pares">${f(e.pares)} pares</div>
+      </div>
+      ${etapaEntregaAtiva===e.etapa ? renderClientesEtapaDrill(e.pedidos) : ''}
+    `).join('');
+  } else {
+    const porCliente = {};
+    pedidos.forEach(p=>{
+      const k = p.cliente;
+      if(!porCliente[k]) porCliente[k] = {cliente:k, pares:0, pedidos:[]};
+      porCliente[k].pares += p.pares;
+      porCliente[k].pedidos.push(p);
+    });
+    const clientes = Object.values(porCliente).sort((a,b)=>b.pares-a.pares);
+    count = clientes.length;
+    CLIENTES_ENTREGA_REF = [];
+    listaHtml = clientes.map(c=>`
+      <div class="drill-cliente ${clienteEntregaAtivo===c.cliente?'ativa':''}" onclick="event.stopPropagation();toggleClienteEntrega(${CLIENTES_ENTREGA_REF.push(c.cliente)-1})">
+        <div class="drill-arrow">${clienteEntregaAtivo===c.cliente?'▾':'▸'}</div>
+        <div class="dc-nome">${c.cliente}</div>
+        <div class="dc-ped">${f(c.pedidos.length)} ped.</div>
+        <div class="dc-pares">${f(c.pares)} pares</div>
+      </div>
+      ${clienteEntregaAtivo===c.cliente ? renderProdutosCliente(c.pedidos) : ''}
+    `).join('');
+  }
+  return {count, listaHtml};
+}
 
 function mesKey(dataBr){
   if(!dataBr) return null;
@@ -521,6 +629,7 @@ function toggleMesEntrega(key, label){
   modeloEntregaAtivo = null;
   etapaEntregaAtiva = null;
   clienteEmEtapaEntregaAtivo = null;
+  semanaEntregaAtiva = null;
   renderEntregaDrill();
 }
 function fecharEntregaDrill(){
@@ -529,6 +638,7 @@ function fecharEntregaDrill(){
   modeloEntregaAtivo = null;
   etapaEntregaAtiva = null;
   clienteEmEtapaEntregaAtivo = null;
+  semanaEntregaAtiva = null;
   renderEntregaDrill();
 }
 function setEntregaModo(modo){
@@ -537,6 +647,7 @@ function setEntregaModo(modo){
   modeloEntregaAtivo = null;
   etapaEntregaAtiva = null;
   clienteEmEtapaEntregaAtivo = null;
+  semanaEntregaAtiva = null;
   renderEntregaDrill();
 }
 function toggleClienteEntrega(idx){
@@ -569,83 +680,59 @@ function renderEntregaDrill(){
   const pedidos = (DATA.pedidos||[]).filter(p=>mesKey(p.dt_faturam)===mesEntregaAtivo);
 
   let count, listaHtml;
-  if(entregaModo === 'modelo'){
-    const porModelo = {};
+  if(entregaModo === 'semana'){
+    const porSemana = {};
     pedidos.forEach(p=>{
-      const refs = (p.refs && Object.keys(p.refs).length) ? p.refs : {[p.ref_principal||'–']: p.pares};
-      Object.entries(refs).forEach(([ref,qtd])=>{
-        if(!porModelo[ref]) porModelo[ref] = {ref, pares:0, clientes:new Set(), pedidos:[]};
-        porModelo[ref].pares += qtd;
-        porModelo[ref].clientes.add(p.cliente);
-        porModelo[ref].pedidos.push({cliente:p.cliente, pedido:p.pedido, qtd});
-      });
+      const {key, label} = semanaKeyLabel(p.dt_faturam);
+      if(!key) return;
+      if(!porSemana[key]) porSemana[key] = {key, label, pares:0, clientes:new Set(), pedidos:[]};
+      porSemana[key].pares += p.pares;
+      porSemana[key].clientes.add(p.cliente);
+      porSemana[key].pedidos.push(p);
     });
-    const modelos = Object.values(porModelo).sort((a,b)=>b.pares-a.pares);
-    count = modelos.length;
-    MODELOS_ENTREGA_REF = [];
-    listaHtml = modelos.map(m=>`
-      <div class="drill-cliente ${modeloEntregaAtivo===m.ref?'ativa':''}" onclick="toggleModeloEntrega(${MODELOS_ENTREGA_REF.push(m.ref)-1})">
-        <div class="drill-arrow">${modeloEntregaAtivo===m.ref?'▾':'▸'}</div>
-        <div class="dc-nome">${m.ref}</div>
-        <div class="dc-ped">${f(m.clientes.size)} cli.</div>
-        <div class="dc-pares">${f(m.pares)} pares</div>
+    const semanas = Object.values(porSemana).sort((a,b)=>a.key.localeCompare(b.key));
+    count = semanas.length;
+    SEMANAS_ENTREGA_REF = [];
+    listaHtml = semanas.map(s=>{
+      const expandida = semanaEntregaAtiva===s.key;
+      const sub = expandida ? montaModoLista(s.pedidos, semanaSubModo) : null;
+      return `
+      <div class="drill-cliente ${expandida?'ativa':''}" onclick="toggleSemanaEntrega(${SEMANAS_ENTREGA_REF.push(s.key)-1})">
+        <div class="drill-arrow">${expandida?'▾':'▸'}</div>
+        <div class="dc-nome">Semana ${s.label}</div>
+        <div class="dc-ped">${f(s.clientes.size)} cli. · ${f(s.pedidos.length)} ped.</div>
+        <div class="dc-pares">${f(s.pares)} pares</div>
       </div>
-      ${modeloEntregaAtivo===m.ref ? renderClientesModelo(m.pedidos) : ''}
-    `).join('');
-  } else if(entregaModo === 'etapa'){
-    const porEtapa = {};
-    pedidos.forEach(p=>{
-      const etapa = p.etapa || '(sem etapa)';
-      if(!porEtapa[etapa]) porEtapa[etapa] = {etapa, pares:0, clientes:new Set(), pedidos:[]};
-      porEtapa[etapa].pares += p.pares;
-      porEtapa[etapa].clientes.add(p.cliente);
-      porEtapa[etapa].pedidos.push(p);
-    });
-    const etapas = Object.values(porEtapa).sort((a,b)=>b.pares-a.pares);
-    count = etapas.length;
-    ETAPAS_ENTREGA_REF = [];
-    listaHtml = etapas.map(e=>`
-      <div class="drill-cliente ${etapaEntregaAtiva===e.etapa?'ativa':''}" onclick="toggleEtapaEntrega(${ETAPAS_ENTREGA_REF.push(e.etapa)-1})">
-        <div class="drill-arrow">${etapaEntregaAtiva===e.etapa?'▾':'▸'}</div>
-        <div class="dc-nome">${e.etapa}</div>
-        <div class="dc-ped">${f(e.clientes.size)} cli.</div>
-        <div class="dc-pares">${f(e.pares)} pares</div>
-      </div>
-      ${etapaEntregaAtiva===e.etapa ? renderClientesEtapaDrill(e.pedidos) : ''}
-    `).join('');
+      ${expandida ? `
+        <div class="drill-detail" style="padding:8px 10px 10px 30px">
+          <div class="drill-sort" style="margin-bottom:6px">
+            <span>ver por</span>
+            <select onclick="event.stopPropagation()" onchange="event.stopPropagation();setSemanaSubModo(this.value)">
+              <option value="cliente" ${semanaSubModo==='cliente'?'selected':''}>Cliente</option>
+              <option value="modelo" ${semanaSubModo==='modelo'?'selected':''}>Modelo</option>
+              <option value="etapa" ${semanaSubModo==='etapa'?'selected':''}>Etapa</option>
+            </select>
+          </div>
+          ${sub.listaHtml}
+        </div>` : ''}
+      `;
+    }).join('');
   } else {
-    const porCliente = {};
-    pedidos.forEach(p=>{
-      const k = p.cliente;
-      if(!porCliente[k]) porCliente[k] = {cliente:k, pares:0, pedidos:[]};
-      porCliente[k].pares += p.pares;
-      porCliente[k].pedidos.push(p);
-    });
-    const clientes = Object.values(porCliente).sort((a,b)=>b.pares-a.pares);
-    count = clientes.length;
-    CLIENTES_ENTREGA_REF = [];
-    listaHtml = clientes.map(c=>`
-      <div class="drill-cliente ${clienteEntregaAtivo===c.cliente?'ativa':''}" onclick="toggleClienteEntrega(${CLIENTES_ENTREGA_REF.push(c.cliente)-1})">
-        <div class="drill-arrow">${clienteEntregaAtivo===c.cliente?'▾':'▸'}</div>
-        <div class="dc-nome">${c.cliente}</div>
-        <div class="dc-ped">${f(c.pedidos.length)} ped.</div>
-        <div class="dc-pares">${f(c.pares)} pares</div>
-      </div>
-      ${clienteEntregaAtivo===c.cliente ? renderProdutosCliente(c.pedidos) : ''}
-    `).join('');
+    ({count, listaHtml} = montaModoLista(pedidos, entregaModo));
   }
 
-  const modoLabel = entregaModo==='modelo' ? 'modelo' : entregaModo==='etapa' ? 'etapa' : 'cliente';
+  const modoLabel = entregaModo==='modelo' ? 'modelo' : entregaModo==='etapa' ? 'etapa' : entregaModo==='semana' ? 'semana(s)' : 'cliente';
   wrap.innerHTML = `
     <div class="drill">
       <div class="drill-head">
-        <span>${count} ${modoLabel}(s) — entrega em ${mesEntregaLabelAtivo||mesEntregaAtivo}</span>
+        <span>${count} ${modoLabel}${modoLabel==='semana(s)'?'':'(s)'} — entrega em ${mesEntregaLabelAtivo||mesEntregaAtivo}</span>
         <div class="drill-sort">
           <span>ver por</span>
           <select onchange="setEntregaModo(this.value)">
             <option value="cliente" ${entregaModo==='cliente'?'selected':''}>Cliente</option>
             <option value="modelo" ${entregaModo==='modelo'?'selected':''}>Modelo</option>
             <option value="etapa" ${entregaModo==='etapa'?'selected':''}>Etapa</option>
+            <option value="semana" ${entregaModo==='semana'?'selected':''}>Semana</option>
           </select>
           <span class="drill-close" onclick="event.stopPropagation();fecharEntregaDrill()">fechar ✕</span>
         </div>
