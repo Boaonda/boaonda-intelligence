@@ -129,6 +129,17 @@ th.sortable .sort-arrow{margin-left:3px;color:var(--coral);opacity:.9}
 .cl-mini-row.aberto td{color:var(--coral)}
 .td-sub{color:var(--txt-m);font-size:10px}
 
+/* Contraste por segmento no quadro "Clientes com compra" — tinta sutil de
+   fundo por par de colunas (par/R$), pra diferenciar Prog./PE/Mista/ME/
+   E-com num piscar de olhos. Especificidade suficiente pra vencer o
+   fundo padrão de tr/tfoot sem precisar de !important. */
+td.seg-mi-prog, .cl-mini-table td.seg-mi-prog{background:#4994c714}
+td.seg-mi-pe, .cl-mini-table td.seg-mi-pe{background:#6c9c3714}
+td.seg-mi-mista, .cl-mini-table td.seg-mi-mista{background:#ed684214}
+td.seg-me-me, .cl-mini-table td.seg-me-me{background:#9b7fd414}
+td.seg-ecom-ecom, .cl-mini-table td.seg-ecom-ecom{background:#d9a44114}
+.tr-cliente:hover td.td-seg{background:var(--card2)}
+
 @media(max-width:900px){.crow{grid-template-columns:1fr}.main{padding:14px}}
 </style>
 </head>
@@ -608,9 +619,15 @@ function clPassaPeriodo(dt){
 
 // Colunas na mesma ordem/nomenclatura já usada no resto do painel (MI Prog/PE/
 // Mista, ME, E-commerce) — reaproveita a "modalidade" já estabelecida aqui.
+// Cor própria por segmento — mesmo contraste em cabeçalho, tinta de fundo
+// das células e nome da modalidade no detalhe por pedido, pra dar pra
+// diferenciar os segmentos num piscar de olhos num quadro denso.
 const CL_COLS = [
-  {k:'MI_PROG', label:'MI Prog.'}, {k:'MI_PE', label:'MI PE'}, {k:'MI_MISTA', label:'MI Mista'},
-  {k:'ME_ME', label:'ME'}, {k:'ECOM_ECOM', label:'E-com'},
+  {k:'MI_PROG',  label:'MI Prog.',  cor:'#4994c7'},
+  {k:'MI_PE',    label:'MI PE',     cor:'#6c9c37'},
+  {k:'MI_MISTA', label:'MI Mista',  cor:'#ed6842'},
+  {k:'ME_ME',    label:'ME',        cor:'#9b7fd4'},
+  {k:'ECOM_ECOM',label:'E-com',     cor:'#d9a441'},
 ];
 function clColKey(canal,tipo){ return canal==='ME' ? 'ME_ME' : canal==='ECOM' ? 'ECOM_ECOM' : canal+'_'+tipo; }
 function clColunasAtivas(canais, tipos){
@@ -648,6 +665,14 @@ function clAgregar(canais, tipos){
 }
 function clTotal(cols, idx){ return Object.values(cols).reduce((a,v)=>a+v[idx],0); }
 
+// Estilo de contraste por segmento — cabeçalho ganha texto colorido +
+// sublinhado grosso na cor do segmento; células do corpo ganham uma tinta
+// de fundo bem sutil (classe CSS, não inline, pra não brigar com o hover
+// da linha) na mesma cor, pra dar pra acompanhar a coluna com o olho sem
+// precisar ler o cabeçalho toda hora.
+function segThStyle(cor){ return 'color:'+cor+';border-bottom:2px solid '+cor+';'; }
+function segTdClass(k){ return 'td-seg seg-'+k.toLowerCase().replace(/_/g,'-'); }
+
 function renderClientes(){
   const thead=document.getElementById('cl-thead');
   const tb=document.getElementById('tb-clientes');
@@ -663,8 +688,9 @@ function renderClientes(){
   // clicáveis para ordenar (item 4).
   let theadHtml = '<th class="sortable" onclick="clSetSort(\'nome\')">Cliente / Holding'+sortArrow('nome')+'</th>';
   cols.forEach(c=>{
-    theadHtml += '<th class="sortable" onclick="clSetSort(\''+c.k+'|p\')">'+c.label+' (par)'+sortArrow(c.k+'|p')+'</th>';
-    theadHtml += '<th class="sortable" onclick="clSetSort(\''+c.k+'|v\')">'+c.label+' (R$)'+sortArrow(c.k+'|v')+'</th>';
+    const thStyle = ' style="'+segThStyle(c.cor)+'"';
+    theadHtml += '<th class="sortable"'+thStyle+' onclick="clSetSort(\''+c.k+'|p\')">'+c.label+' (par)'+sortArrow(c.k+'|p')+'</th>';
+    theadHtml += '<th class="sortable"'+thStyle+' onclick="clSetSort(\''+c.k+'|v\')">'+c.label+' (R$)'+sortArrow(c.k+'|v')+'</th>';
   });
   theadHtml += '<th class="sortable" onclick="clSetSort(\'total_pares\')">Total (par)'+sortArrow('total_pares')+'</th>';
   theadHtml += '<th class="sortable" onclick="clSetSort(\'total_valor\')">Total (R$)'+sortArrow('total_valor')+'</th>';
@@ -688,7 +714,8 @@ function renderClientes(){
     let cells = '<td class="td-nome"><span class="cl-arrow">'+arrow+'</span>'+item.h+'</td>';
     cols.forEach(c=>{
       const v=item.cols[c.k];
-      cells += '<td>'+(v?f(v[0]):'–')+'</td><td class="td-sub">'+(v?fmoeda(v[1]):'–')+'</td>';
+      const segCls = segTdClass(c.k);
+      cells += '<td class="'+segCls+'">'+(v?f(v[0]):'–')+'</td><td class="td-sub '+segCls+'">'+(v?fmoeda(v[1]):'–')+'</td>';
     });
     cells += '<td class="td-num">'+f(item.total_pares)+'</td><td class="td-num td-sub">'+fmoeda(item.total_valor)+'</td>';
     tr.innerHTML = cells;
@@ -704,7 +731,8 @@ function renderClientes(){
     const somaColV = k => lista.reduce((a,x)=>a+((x.cols[k]||[0,0])[1]),0);
     let footHtml = '<td class="td-nome">Total ('+lista.length+' cliente'+(lista.length===1?'':'s')+')</td>';
     cols.forEach(c=>{
-      footHtml += '<td>'+f(somaCol(c.k))+'</td><td class="td-sub">'+fmoeda(somaColV(c.k))+'</td>';
+      const segCls = segTdClass(c.k);
+      footHtml += '<td class="'+segCls+'">'+f(somaCol(c.k))+'</td><td class="td-sub '+segCls+'">'+fmoeda(somaColV(c.k))+'</td>';
     });
     const totPares = lista.reduce((a,x)=>a+x.total_pares,0), totValor = lista.reduce((a,x)=>a+x.total_valor,0);
     footHtml += '<td>'+f(totPares)+'</td><td class="td-sub">'+fmoeda(totValor)+'</td>';
@@ -719,13 +747,13 @@ function clRowRefs(item, cols){
     r, cols:v.cols, linhas:v.linhas, total_pares: clTotal(v.cols,0), total_valor: clTotal(v.cols,1),
   })).sort((a,b)=>b.total_pares-a.total_pares);
   let html = '<div class="tr-sub-inner"><table class="cl-mini-table"><thead><tr><th>Referência</th>'+
-    cols.map(c=>'<th>'+c.label+' (par)</th><th>'+c.label+' (R$)</th>').join('')+
+    cols.map(c=>'<th style="'+segThStyle(c.cor)+'">'+c.label+' (par)</th><th style="'+segThStyle(c.cor)+'">'+c.label+' (R$)</th>').join('')+
     '<th>Total (par)</th><th>Total (R$)</th></tr></thead><tbody>';
   refsList.forEach(rf=>{
     const aberto = clRefAberto===rf.r;
     html += `<tr class="cl-mini-row${aberto?' aberto':''}" onclick="clToggleRef(event,'${rf.r.replace(/'/g,"\\'")}')">`+
       '<td>'+(aberto?'▾ ':'▸ ')+rf.r+'</td>'+
-      cols.map(c=>{ const v=rf.cols[c.k]; return '<td>'+(v?f(v[0]):'–')+'</td><td class="td-sub">'+(v?fmoeda(v[1]):'–')+'</td>'; }).join('')+
+      cols.map(c=>{ const v=rf.cols[c.k]; const segCls=segTdClass(c.k); return '<td class="'+segCls+'">'+(v?f(v[0]):'–')+'</td><td class="td-sub '+segCls+'">'+(v?fmoeda(v[1]):'–')+'</td>'; }).join('')+
       '<td class="td-num">'+f(rf.total_pares)+'</td><td class="td-num td-sub">'+fmoeda(rf.total_valor)+'</td></tr>';
     if(aberto) html += clLinhasHtml(rf.linhas, cols);
   });
@@ -740,12 +768,13 @@ function clToggleRef(ev, ref){
   renderClientes();
 }
 function clLinhasHtml(linhas, cols){
-  const colLabel = k => (CL_COLS.find(c=>c.k===k)||{}).label || k;
+  const colInfo = k => CL_COLS.find(c=>c.k===k) || {label:k, cor:'var(--txt-s)'};
   let html = '<tr><td colspan="'+(cols.length*2+3)+'" style="padding:6px 8px 10px 24px">'+
     '<table class="cl-mini-table" style="background:var(--bg)"><thead><tr>'+
     '<th>Pedido</th><th>Data</th><th>Modalidade</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>';
   linhas.forEach(l=>{
-    html += '<tr><td>'+l.pedido+'</td><td>'+l.dt+'</td><td>'+colLabel(l.ck)+'</td>'+
+    const info = colInfo(l.ck);
+    html += '<tr><td>'+l.pedido+'</td><td>'+l.dt+'</td><td style="color:'+info.cor+';font-weight:700">'+info.label+'</td>'+
       '<td>'+f(l.qtd)+'</td><td>'+fmoeda(l.valor)+'</td></tr>';
   });
   html += '</tbody></table></td></tr>';
