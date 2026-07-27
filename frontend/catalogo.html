@@ -2485,7 +2485,7 @@ async function cancelarPedidoHistorico(idx) {
     const r = await fetch(`/api/catalogo/pedido/${p.id}/cancelar`, { method: 'POST' });
     const d = await r.json();
     if (!r.ok) { alert(d.erro || 'Não foi possível cancelar o pedido.'); return; }
-    p.status = 'Cancelado';
+    p.status = 'cancelado';
     renderHistoricoConteudo(document.getElementById('checkout-body'));
   } catch(e) {
     alert('Não foi possível cancelar o pedido agora.');

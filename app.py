@@ -1333,7 +1333,7 @@ def api_catalogo_pedido_cancelar(pedido_id):
             if not cursor.fetchone():
                 conexao.close()
                 return jsonify({'erro': 'Pedido não encontrado ou fora da sua carteira.'}), 403
-        cursor.execute("UPDATE catalogo_pedidos SET status = 'Cancelado' WHERE id = %s", (pedido_id,))
+        cursor.execute("UPDATE catalogo_pedidos SET status = 'cancelado' WHERE id = %s", (pedido_id,))
         conexao.commit()
         conexao.close()
         return jsonify({'status': 'ok'})
