@@ -481,6 +481,7 @@ def require_login():
                         'catalogo_representante_entrar', 'catalogo_representante_sair',
                         'catalogo_representante_painel', 'api_catalogo_representante_clientes',
                         'api_catalogo_representante_historico', 'api_catalogo_meu_cadastro',
+                        'api_catalogo_pedido_cancelar',
                         'api_catalogo_meu_cadastro_atualizar',
                         'catalogo_representante_cadastrar_cliente',
                         'catalogo_equipe_entrar', 'catalogo_equipe_sair'}
@@ -1244,6 +1245,35 @@ def api_catalogo_representante_historico():
         return jsonify({'disponivel': True, 'pedidos': pedidos})
     except Exception as ex:
         return jsonify({'disponivel': False, 'erro': str(ex)}), 500
+
+
+@app.route('/api/catalogo/pedido/<pedido_id>/cancelar', methods=['POST'])
+def api_catalogo_pedido_cancelar(pedido_id):
+    """Cancela um pedido (soft-delete via status='Cancelado', nunca apaga a
+    linha) — só representante (pedidos da própria carteira) ou equipe
+    Boaonda (qualquer pedido). Cliente não tem esse botão nesta tela."""
+    eh_rep = bool(session.get('catalogo_rep_id'))
+    eh_equipe = bool(session.get('catalogo_equipe_username'))
+    if not (eh_rep or eh_equipe):
+        return jsonify({'erro': 'Sem permissão para cancelar pedidos.'}), 403
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        if eh_rep:
+            cursor.execute("""
+                SELECT 1 FROM catalogo_pedidos p
+                JOIN catalogo_cadastros c ON c.id = p.cadastro_id
+                WHERE p.id = %s AND c.representante_id = %s
+            """, (pedido_id, session['catalogo_rep_id']))
+            if not cursor.fetchone():
+                conexao.close()
+                return jsonify({'erro': 'Pedido não encontrado ou fora da sua carteira.'}), 403
+        cursor.execute("UPDATE catalogo_pedidos SET status = 'Cancelado' WHERE id = %s", (pedido_id,))
+        conexao.commit()
+        conexao.close()
+        return jsonify({'status': 'ok'})
+    except Exception as ex:
+        return jsonify({'erro': str(ex)}), 500
 
 
 @app.route('/api/catalogo/meu-cadastro')

@@ -2418,8 +2418,28 @@ function renderLinhaHistorico(p, idx) {
         <div class="co-item-row">
           <button class="co-btn-acao" style="flex:1;padding:9px" onclick="event.stopPropagation();gerarPDFHistorico(historicoCache[${idx}])">📄 Baixar PDF</button>
           <a class="co-btn-acao wpp" style="flex:1;padding:9px" href="https://wa.me/${WPP_NUMERO}?text=${msgWpp}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 Reenviar</a>
-        </div>` : ''}
+        </div>
+        ${ehSessaoInterna() && (p.status||'').toLowerCase() !== 'cancelado' ? `
+        <div class="co-item-row">
+          <button class="co-btn-acao" style="flex:1;padding:9px;color:#b8462a;border-color:#b8462a"
+            onclick="event.stopPropagation();cancelarPedidoHistorico(${idx})">🗑 Cancelar pedido</button>
+        </div>` : ''}` : ''}
     </div>`;
+}
+
+async function cancelarPedidoHistorico(idx) {
+  const p = historicoCache[idx];
+  if (!p) return;
+  if (!confirm('Cancelar este pedido? Ele fica marcado como "Cancelado" no histórico — não é excluído de verdade, dá pra conferir depois se precisar.')) return;
+  try {
+    const r = await fetch(`/api/catalogo/pedido/${p.id}/cancelar`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) { alert(d.erro || 'Não foi possível cancelar o pedido.'); return; }
+    p.status = 'Cancelado';
+    renderHistoricoConteudo(document.getElementById('checkout-body'));
+  } catch(e) {
+    alert('Não foi possível cancelar o pedido agora.');
+  }
 }
 
 // ── Aba: Meu cadastro ───────────────────────────────────────────────
