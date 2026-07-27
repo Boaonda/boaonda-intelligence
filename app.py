@@ -480,6 +480,7 @@ def require_login():
                         'api_catalogo_meu_historico', 'foto_proxy', 'promo_imagem', 'promo_imagem_idx',
                         'catalogo_representante_entrar', 'catalogo_representante_sair',
                         'catalogo_representante_painel', 'api_catalogo_representante_clientes',
+                        'api_catalogo_representante_historico', 'api_catalogo_meu_cadastro',
                         'catalogo_representante_cadastrar_cliente',
                         'catalogo_equipe_entrar', 'catalogo_equipe_sair'}
     if request.endpoint in public_endpoints:
@@ -1074,14 +1075,19 @@ def api_catalogo_pedido():
         for item in itens:
             cursor.execute("""
                 INSERT INTO catalogo_pedidos_itens
-                    (pedido_id, produto_referencia, produto_nome, grade_tamanho, quantidade)
-                VALUES (%s, %s, %s, %s, %s)
+                    (pedido_id, produto_referencia, produto_nome, grade_tamanho, quantidade,
+                     cor, cor_nome, preco_par, foto_url)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 pedido_id,
                 item.get('referencia'),
                 item.get('nome'),
                 item.get('grade'),
                 item.get('quantidade'),
+                item.get('cor'),
+                item.get('cor_nome'),
+                item.get('preco_par'),
+                item.get('foto_url'),
             ))
         conexao.commit()
         conexao.close()
@@ -1147,7 +1153,8 @@ def api_catalogo_meu_historico():
         itens_por_pedido = {}
         if pedido_ids_raw:
             cursor.execute("""
-                SELECT pedido_id, produto_referencia, produto_nome, grade_tamanho, quantidade
+                SELECT pedido_id, produto_referencia, produto_nome, grade_tamanho, quantidade,
+                       cor, cor_nome, preco_par, foto_url
                 FROM catalogo_pedidos_itens
                 WHERE pedido_id = ANY(%s)
                 ORDER BY criado_em
@@ -1163,6 +1170,121 @@ def api_catalogo_meu_historico():
         return jsonify({'disponivel': True, 'pedidos': pedidos})
     except Exception as ex:
         return jsonify({'disponivel': False, 'erro': str(ex)}), 500
+
+
+@app.route('/api/catalogo/representante/historico')
+def api_catalogo_representante_historico():
+    """Histórico agregado pro representante (só a própria carteira) ou pra
+    equipe Boaonda (todos os clientes) — mesma tela "Pedidos" do catalogo.html,
+    aba Histórico. Filtro opcional ?cadastro_id= pra ver só um cliente."""
+    eh_rep = bool(session.get('catalogo_rep_id'))
+    eh_equipe = bool(session.get('catalogo_equipe_username'))
+    if not (eh_rep or eh_equipe):
+        return jsonify({'erro': 'Sessão expirada.'}), 401
+    cadastro_filtro = (request.args.get('cadastro_id') or '').strip() or None
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        if eh_rep:
+            if cadastro_filtro:
+                cursor.execute("""
+                    SELECT p.id, p.status, p.observacoes, p.criado_em, c.nome, c.empresa, c.id
+                    FROM catalogo_pedidos p
+                    JOIN catalogo_cadastros c ON c.id = p.cadastro_id
+                    WHERE c.representante_id = %s AND c.id = %s
+                    ORDER BY p.criado_em DESC LIMIT 200
+                """, (session['catalogo_rep_id'], cadastro_filtro))
+            else:
+                cursor.execute("""
+                    SELECT p.id, p.status, p.observacoes, p.criado_em, c.nome, c.empresa, c.id
+                    FROM catalogo_pedidos p
+                    JOIN catalogo_cadastros c ON c.id = p.cadastro_id
+                    WHERE c.representante_id = %s
+                    ORDER BY p.criado_em DESC LIMIT 200
+                """, (session['catalogo_rep_id'],))
+        else:
+            if cadastro_filtro:
+                cursor.execute("""
+                    SELECT p.id, p.status, p.observacoes, p.criado_em, c.nome, c.empresa, c.id
+                    FROM catalogo_pedidos p
+                    JOIN catalogo_cadastros c ON c.id = p.cadastro_id
+                    WHERE c.id = %s
+                    ORDER BY p.criado_em DESC LIMIT 200
+                """, (cadastro_filtro,))
+            else:
+                cursor.execute("""
+                    SELECT p.id, p.status, p.observacoes, p.criado_em, c.nome, c.empresa, c.id
+                    FROM catalogo_pedidos p
+                    JOIN catalogo_cadastros c ON c.id = p.cadastro_id
+                    ORDER BY p.criado_em DESC LIMIT 200
+                """)
+        cols = ['id','status','observacoes','criado_em','cliente_nome','cliente_empresa','cadastro_id']
+        linhas = cursor.fetchall()
+        pedido_ids_raw = [row[0] for row in linhas]
+        pedidos = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row))) for row in linhas]
+
+        itens_por_pedido = {}
+        if pedido_ids_raw:
+            cursor.execute("""
+                SELECT pedido_id, produto_referencia, produto_nome, grade_tamanho, quantidade,
+                       cor, cor_nome, preco_par, foto_url
+                FROM catalogo_pedidos_itens
+                WHERE pedido_id = ANY(%s)
+                ORDER BY criado_em
+            """, (pedido_ids_raw,))
+            cols2 = [d[0] for d in cursor.description]
+            for row in cursor.fetchall():
+                item = dict(zip(cols2, (_catalogo_valor_json_seguro(v) for v in row)))
+                itens_por_pedido.setdefault(item['pedido_id'], []).append(item)
+        conexao.close()
+
+        for p in pedidos:
+            p['itens'] = itens_por_pedido.get(p['id'], [])
+        return jsonify({'disponivel': True, 'pedidos': pedidos})
+    except Exception as ex:
+        return jsonify({'disponivel': False, 'erro': str(ex)}), 500
+
+
+@app.route('/api/catalogo/meu-cadastro')
+def api_catalogo_meu_cadastro():
+    """Dados de cadastro da sessão atual — cliente vê o próprio registro
+    completo; representante vê nome/e-mail; equipe vê só o usuário do portal."""
+    if session.get('catalogo_equipe_username'):
+        return jsonify({'tipo': 'equipe', 'username': session['catalogo_equipe_username']})
+    if session.get('catalogo_rep_id'):
+        try:
+            conexao = _conectar_catalogo_db()
+            cursor = conexao.cursor()
+            cursor.execute("SELECT nome, email, criado_em FROM catalogo_representantes WHERE id = %s",
+                           (session['catalogo_rep_id'],))
+            row = cursor.fetchone()
+            conexao.close()
+        except Exception as ex:
+            return jsonify({'erro': str(ex)}), 500
+        if not row:
+            return jsonify({'erro': 'Representante não encontrado.'}), 404
+        return jsonify({'tipo': 'representante', 'nome': row[0], 'email': row[1],
+                         'criado_em': _catalogo_valor_json_seguro(row[2])})
+    cadastro_id = session.get('catalogo_cadastro_id')
+    if not cadastro_id:
+        return jsonify({'erro': 'Sessão do catálogo expirada.'}), 401
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("""
+            SELECT nome, empresa, cnpj, telefone, email, cidade, uf, representante, criado_em
+            FROM catalogo_cadastros WHERE id = %s
+        """, (cadastro_id,))
+        row = cursor.fetchone()
+        conexao.close()
+    except Exception as ex:
+        return jsonify({'erro': str(ex)}), 500
+    if not row:
+        return jsonify({'erro': 'Cadastro não encontrado.'}), 404
+    campos = ['nome','empresa','cnpj','telefone','email','cidade','uf','representante','criado_em']
+    dados = dict(zip(campos, (_catalogo_valor_json_seguro(v) for v in row)))
+    dados['tipo'] = 'cliente'
+    return jsonify(dados)
 
 
 @app.route('/api/catalogo/resumo')

@@ -31,6 +31,9 @@ body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:va
 .hdr-sub{font-size:10px;font-weight:400;color:rgba(255,255,255,.4);letter-spacing:1px}
 .hdr-tag{font-size:10px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase}
 .hdr-right{display:flex;align-items:center;gap:14px}
+.hdr-nav-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.85);
+  font-family:inherit;font-size:12px;font-weight:700;padding:6px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+.hdr-nav-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28)}
 .hdr-user{position:relative;display:none;align-items:center;gap:6px;cursor:pointer;
   padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.05);transition:.15s;max-width:160px}
@@ -543,6 +546,12 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
 .checkout-voltar:hover{opacity:.8}
 .checkout-titulo{font-size:14px;font-weight:800;letter-spacing:.02em}
 .checkout-body{max-width:720px;margin:0 auto;padding:22px 18px 80px}
+.co-tabs{display:flex;gap:6px;margin-bottom:18px;background:var(--card);border:1px solid var(--border);
+         border-radius:10px;padding:4px}
+.co-tab{flex:1;text-align:center;padding:9px 6px;font-size:12.5px;font-weight:700;color:var(--txt-m);
+        background:none;border:none;border-radius:7px;cursor:pointer;font-family:inherit;transition:.15s}
+.co-tab.ativa{background:var(--verde-dark);color:#fff}
+.co-vazio{text-align:center;color:var(--txt-m);font-size:13px;padding:30px 20px;line-height:1.6}
 .co-secao{background:var(--card);border:1px solid var(--border);border-radius:12px;
           padding:18px 20px;margin-bottom:14px}
 .co-secao-titulo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
@@ -752,12 +761,12 @@ select.co-obs{min-height:auto;padding:11px 12px;cursor:pointer}
     <span class="hdr-sub">Calçados</span>
   </div>
   <div class="hdr-right">
+    <button class="hdr-nav-btn" onclick="abrirPedidosArea()" title="Fechar pedido, ver histórico e seu cadastro">📦 Pedidos</button>
     <span class="hdr-tag">Catálogo de Produtos</span>
     <div class="hdr-user" id="hdr-user" onclick="toggleUserMenu(event)">
       <span class="hdr-user-nome" id="hdr-user-nome">…</span>
       <span class="hdr-user-caret">▾</span>
       <div class="hdr-user-menu" id="hdr-user-menu">
-        <button type="button" id="hdr-btn-meus-pedidos" onclick="abrirMeusPedidos(event)">📦 Meus pedidos</button>
         <a href="/catalogo/representante/painel" id="hdr-link-meus-clientes" style="display:none">👤 Meus clientes</a>
         <a href="/catalogo/sair" id="hdr-link-trocar">↪ Trocar CNPJ / Sair</a>
         <a href="/catalogo/representante/sair" id="hdr-link-sair-rep" class="sair" style="display:none">🚪 Sair (representante)</a>
@@ -866,22 +875,6 @@ select.co-obs{min-height:auto;padding:11px 12px;cursor:pointer}
   <div class="checkout-body" id="checkout-body"></div>
 </div>
 
-<!-- Modal Meus Pedidos (histórico do cadastro logado) -->
-<div class="id-over" id="hist-over" onclick="if(event.target.id==='hist-over')fecharMeusPedidos()" style="display:none">
-  <div class="id-box">
-    <div class="id-header">
-      <div class="id-title">Meus pedidos</div>
-      <div class="id-sub" id="hist-sub">Pedidos feitos com este cadastro</div>
-    </div>
-    <div class="id-body" id="hist-body" style="max-height:60vh;overflow-y:auto">
-      <p style="font-size:12.5px;color:#888">Carregando…</p>
-    </div>
-    <div class="id-footer">
-      <button class="id-btn-cancel" onclick="fecharMeusPedidos()">Fechar</button>
-    </div>
-  </div>
-</div>
-
 <!-- FAB Carrinho -->
 <button class="cart-fab" id="cart-fab" onclick="toggleDrawer()">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
@@ -905,7 +898,7 @@ select.co-obs{min-height:auto;padding:11px 12px;cursor:pointer}
       <span>Investimento estimado</span>
       <strong id="cart-invest-val" style="color:var(--azul)">—</strong>
     </div>
-    <button class="cart-btn-pdf" id="cart-btn-pdf" onclick="abrirCheckout()" disabled>
+    <button class="cart-btn-pdf" id="cart-btn-pdf" onclick="abrirPedidosArea('fechar')" disabled>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       Finalizar Pedido
     </button>
@@ -2045,12 +2038,10 @@ async function carregarIdentidade() {
     if (el) el.textContent = label;
     if (box) box.classList.add('vis');
     if (TIPO_SESSAO === 'representante') {
-      document.getElementById('hdr-btn-meus-pedidos').style.display = 'none';
       document.getElementById('hdr-link-trocar').style.display = 'none';
       document.getElementById('hdr-link-meus-clientes').style.display = 'block';
       document.getElementById('hdr-link-sair-rep').style.display = 'block';
     } else if (TIPO_SESSAO === 'equipe') {
-      document.getElementById('hdr-btn-meus-pedidos').style.display = 'none';
       document.getElementById('hdr-link-trocar').style.display = 'none';
       document.getElementById('hdr-link-sair-equipe').style.display = 'block';
     }
@@ -2063,56 +2054,19 @@ function toggleUserMenu(e) {
 }
 document.addEventListener('click', () => document.getElementById('hdr-user')?.classList.remove('aberto'));
 
-async function abrirMeusPedidos(e) {
-  e.stopPropagation();
-  document.getElementById('hdr-user').classList.remove('aberto');
-  const over = document.getElementById('hist-over');
-  const body = document.getElementById('hist-body');
-  body.innerHTML = '<p style="font-size:12.5px;color:#888">Carregando…</p>';
-  over.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-  try {
-    const r = await fetch('/api/catalogo/meu-historico');
-    const d = await r.json();
-    if (!d.disponivel || !(d.pedidos||[]).length) {
-      body.innerHTML = '<p style="font-size:12.5px;color:#888">Nenhum pedido encontrado ainda para este cadastro.</p>';
-      return;
-    }
-    body.innerHTML = d.pedidos.map(p => {
-      const data = (p.criado_em||'').toString().slice(0,10).split('-').reverse().join('/');
-      const itens = (p.itens||[]).map(it =>
-        `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;border-top:1px solid #f0f0f0">
-           <span>${esc(it.produto_nome||it.produto_referencia||'')} ${it.grade_tamanho?('· '+esc(it.grade_tamanho)):''}</span>
-           <span style="color:#888">${it.quantidade||0} un.</span>
-         </div>`).join('');
-      return `<div style="border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <strong style="font-size:12.5px">Pedido ${data||''}</strong>
-          <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#888">${esc(p.status||'novo')}</span>
-        </div>
-        ${p.observacoes ? `<div style="font-size:11.5px;color:#888;margin-top:4px">${esc(p.observacoes)}</div>` : ''}
-        ${itens}
-      </div>`;
-    }).join('');
-  } catch(e) {
-    body.innerHTML = '<p style="font-size:12.5px;color:#888">Não foi possível carregar seus pedidos agora.</p>';
-  }
-}
-
-function fecharMeusPedidos() {
-  document.getElementById('hist-over').style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-// ── Tela de fechamento de pedido ────────────────────────────────────
+// ── Área "Pedidos" (fechar / histórico / meu cadastro) ─────────────
 function ehSessaoInterna() { return TIPO_SESSAO === 'representante' || TIPO_SESSAO === 'equipe'; }
 
-let checkoutEstado = 'revisao';      // 'revisao' | 'sucesso'
+let checkoutAba = 'fechar';          // 'fechar' | 'historico' | 'cadastro'
+let checkoutEstado = 'revisao';      // 'revisao' | 'sucesso' (só vale pra aba 'fechar')
 let checkoutObs = '';
 let checkoutClienteId = '';
 let checkoutClientesCache = null;    // cache de /api/catalogo/representante/clientes
 let checkoutPedidoInfo = null;       // {id} do pedido confirmado
 let PEDIDO_CONFIRMADO = null;        // snapshot {itens, cliente} usado pelo PDF pós-confirmação
+let historicoCache = null;           // cache dos pedidos já buscados, pra não refetch a cada expandir/colapsar
+let historicoAberto = null;          // id do pedido expandido no histórico
+let historicoClienteFiltro = '';     // (rep/equipe) filtra histórico por um cliente específico
 
 // Estoque disponível AGORA (não o congelado no momento em que o item
 // entrou no carrinho) — o carrinho pode ter dias, ESTOQUE é o que já foi
@@ -2123,11 +2077,11 @@ function estoqueAtualMax(item) {
   return g ? (g.completas || 0) : item.grade_cx_disponiveis;
 }
 
-async function abrirCheckout() {
-  if (!carrinho.itens.length) return;
+async function abrirPedidosArea(abaPreferida) {
   fecharDrawer();
   checkoutEstado = 'revisao';
   checkoutPedidoInfo = null;
+  checkoutAba = abaPreferida || (carrinho.itens.length ? 'fechar' : 'historico');
   if (ehSessaoInterna() && !checkoutClientesCache) {
     try {
       const r = await fetch('/api/catalogo/representante/clientes');
@@ -2143,6 +2097,13 @@ async function abrirCheckout() {
 function fecharCheckout() {
   document.getElementById('checkout-view').style.display = 'none';
   document.body.style.overflow = '';
+  checkoutEstado = 'revisao';
+}
+
+function checkoutSetAba(aba) {
+  checkoutAba = aba;
+  if (aba === 'historico') { historicoCache = null; historicoAberto = null; }
+  renderCheckout();
 }
 
 function checkoutSetObs(v) { checkoutObs = v; }
@@ -2164,16 +2125,38 @@ function checkoutRemoverItem(idx) {
   carrinho.itens.splice(idx, 1);
   salvarCarrinho();
   atualizarCarrinhoUI();
-  if (!carrinho.itens.length) { fecharCheckout(); return; }
   renderCheckout();
 }
 
 function renderCheckout() {
   const body = document.getElementById('checkout-body');
   if (!body) return;
-  if (checkoutEstado === 'sucesso') { renderCheckoutSucesso(body); return; }
+  if (checkoutAba === 'fechar' && checkoutEstado === 'sucesso') { renderCheckoutSucesso(body); return; }
 
+  body.innerHTML = `
+    <div class="co-tabs">
+      <button class="co-tab ${checkoutAba==='fechar'?'ativa':''}" onclick="checkoutSetAba('fechar')">Fechar pedido</button>
+      <button class="co-tab ${checkoutAba==='historico'?'ativa':''}" onclick="checkoutSetAba('historico')">Histórico</button>
+      <button class="co-tab ${checkoutAba==='cadastro'?'ativa':''}" onclick="checkoutSetAba('cadastro')">Meu cadastro</button>
+    </div>
+    <div id="co-conteudo"></div>
+  `;
+  const conteudo = document.getElementById('co-conteudo');
+  if (checkoutAba === 'historico') renderAbaHistorico(conteudo);
+  else if (checkoutAba === 'cadastro') renderAbaCadastro(conteudo);
+  else renderAbaFechar(conteudo);
+}
+
+// ── Aba: Fechar pedido ──────────────────────────────────────────────
+function renderAbaFechar(body) {
   const itens = carrinho.itens;
+  if (!itens.length) {
+    body.innerHTML = `<div class="co-secao co-vazio">
+      Seu carrinho está vazio.<br/>Adicione produtos no catálogo pra fechar um pedido.
+      <div style="margin-top:14px"><button class="co-btn-acao principal" style="display:inline-flex" onclick="fecharCheckout()">← Voltar ao catálogo</button></div>
+    </div>`;
+    return;
+  }
   const totalPares = itens.reduce((s,i) => s + i.qtd_pares, 0);
   const totalCx    = itens.reduce((s,i) => s + i.qtd_caixas, 0);
   const totalValor = itens.reduce((s,i) => s + (i.preco_par||0) * i.qtd_pares, 0);
@@ -2259,6 +2242,10 @@ async function checkoutConfirmar() {
           nome: i.descricao,
           grade: i.grade_tamanhos ? i.grade_tamanhos.join('/') : i.grade_code,
           quantidade: i.qtd_pares,
+          cor: i.cor,
+          cor_nome: i.cor_nome,
+          preco_par: i.preco_par || null,
+          foto_url: i.foto_url || null,
         })),
       }),
     });
@@ -2312,15 +2299,214 @@ function renderCheckoutSucesso(body) {
       <div class="co-sucesso-acoes">
         <button class="co-btn-acao principal" id="co-btn-pdf" onclick="gerarPDF()">📄 Baixar PDF do pedido</button>
         <a class="co-btn-acao wpp" href="https://wa.me/${WPP_NUMERO}?text=${msg}" target="_blank" rel="noopener">💬 Compartilhar no WhatsApp</a>
-        ${TIPO_SESSAO === 'cliente' ? `<button class="co-btn-acao" onclick="fecharCheckout();abrirMeusPedidos({stopPropagation(){}})">📦 Ver meus pedidos</button>` : ''}
+        <button class="co-btn-acao" onclick="checkoutSetAba('historico')">📦 Ver histórico de pedidos</button>
         <button class="co-btn-acao" onclick="fecharCheckout()">← Voltar ao catálogo</button>
       </div>
     </div>`;
 }
 
+// ── Aba: Histórico ──────────────────────────────────────────────────
+async function renderAbaHistorico(container, forcarReload) {
+  if (historicoCache === null || forcarReload) {
+    container.innerHTML = '<div class="co-secao co-vazio">Carregando pedidos…</div>';
+    const url = ehSessaoInterna()
+      ? '/api/catalogo/representante/historico' + (historicoClienteFiltro ? '?cadastro_id=' + encodeURIComponent(historicoClienteFiltro) : '')
+      : '/api/catalogo/meu-historico';
+    try {
+      const r = await fetch(url);
+      const d = await r.json();
+      historicoCache = d.disponivel ? (d.pedidos || []) : undefined;
+    } catch(e) { historicoCache = undefined; }
+  }
+  renderHistoricoConteudo(container);
+}
+
+function renderHistoricoConteudo(container) {
+  if (historicoCache === undefined) {
+    container.innerHTML = '<div class="co-secao co-vazio">Não foi possível carregar seus pedidos agora.</div>';
+    return;
+  }
+  let filtroHtml = '';
+  if (ehSessaoInterna()) {
+    const opcoes = ['<option value="">Todos os clientes</option>']
+      .concat((checkoutClientesCache||[]).map(c =>
+        `<option value="${esc(c.id)}"${historicoClienteFiltro===c.id?' selected':''}>${esc(c.empresa || c.nome)}</option>`));
+    filtroHtml = `<div class="co-secao"><div class="co-secao-titulo">Filtrar por cliente</div>
+      <select class="co-obs" onchange="historicoSetFiltro(this.value)">${opcoes.join('')}</select></div>`;
+  }
+  if (!historicoCache.length) {
+    container.innerHTML = filtroHtml + '<div class="co-secao co-vazio">Nenhum pedido encontrado.</div>';
+    return;
+  }
+  container.innerHTML = filtroHtml +
+    `<div class="co-secao" style="padding:4px 18px">` +
+    historicoCache.map((p, idx) => renderLinhaHistorico(p, idx)).join('') +
+    `</div>`;
+}
+
+function historicoSetFiltro(v) {
+  historicoClienteFiltro = v;
+  historicoAberto = null;
+  renderAbaHistorico(document.getElementById('co-conteudo'), true);
+}
+
+function toggleHistoricoPedido(idx) {
+  historicoAberto = historicoAberto === idx ? null : idx;
+  renderHistoricoConteudo(document.getElementById('co-conteudo'));
+}
+
+function renderLinhaHistorico(p, idx) {
+  const aberto = historicoAberto === idx;
+  const itens = p.itens || [];
+  const totalPares = itens.reduce((s,i) => s + (i.quantidade||0), 0);
+  const data = (p.criado_em||'').toString().slice(0,10).split('-').reverse().join('/');
+  const clienteLinha = (p.cliente_empresa || p.cliente_nome)
+    ? `<div class="co-item-meta">${esc(p.cliente_empresa || p.cliente_nome)}</div>` : '';
+  const itensHtml = itens.map(it => `
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:5px 0;border-top:1px solid var(--border2)">
+      <span>${esc(it.produto_nome || it.produto_referencia || '')}${it.cor_nome ? (' · ' + esc(it.cor_nome)) : ''}${it.grade_tamanho ? (' · ' + esc(it.grade_tamanho)) : ''}</span>
+      <span style="color:var(--txt-m)">${it.quantidade||0} un.</span>
+    </div>`).join('');
+  const numeroPedido = (p.id || '').slice(0,8);
+  const msgWpp = encodeURIComponent(`Olá! Reenviando um pedido feito no catálogo BOAONDA (nº ${numeroPedido}, ${data}): ` +
+    itens.map(i => `${i.quantidade}x ${i.produto_referencia}${i.cor_nome ? ' (' + i.cor_nome + ')' : ''}`).join(', ') + '. Podem confirmar?');
+  return `
+    <div class="co-item" style="cursor:pointer;flex-direction:column;align-items:stretch" onclick="toggleHistoricoPedido(${idx})">
+      <div class="co-item-row" style="margin-top:0">
+        <div style="flex:1">
+          <div class="co-item-ref">${aberto?'▾':'▸'} Pedido ${data||''}
+            <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;color:var(--txt-m);margin-left:6px">${esc(p.status||'novo')}</span>
+          </div>
+          ${clienteLinha}
+          <div class="co-item-meta">${itens.length} referência${itens.length!==1?'s':''} · ${fN(totalPares)} pares</div>
+        </div>
+      </div>
+      ${aberto ? `
+        <div style="margin-top:4px">${itensHtml}</div>
+        ${p.observacoes ? `<div class="co-item-meta" style="margin-top:6px">Obs.: ${esc(p.observacoes)}</div>` : ''}
+        <div class="co-item-row">
+          <button class="co-btn-acao" style="flex:1;padding:9px" onclick="event.stopPropagation();gerarPDFHistorico(historicoCache[${idx}])">📄 Baixar PDF</button>
+          <a class="co-btn-acao wpp" style="flex:1;padding:9px" href="https://wa.me/${WPP_NUMERO}?text=${msgWpp}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 Reenviar</a>
+        </div>` : ''}
+    </div>`;
+}
+
+// ── Aba: Meu cadastro ───────────────────────────────────────────────
+async function renderAbaCadastro(container) {
+  container.innerHTML = '<div class="co-secao co-vazio">Carregando…</div>';
+  try {
+    const r = await fetch('/api/catalogo/meu-cadastro');
+    const d = await r.json();
+    if (d.erro) { container.innerHTML = `<div class="co-secao co-vazio">${esc(d.erro)}</div>`; return; }
+    let linhas;
+    if (d.tipo === 'cliente') {
+      linhas = [
+        ['Nome', d.nome], ['Empresa', d.empresa], ['CNPJ', d.cnpj], ['Telefone', d.telefone],
+        ['E-mail', d.email], ['Cidade/UF', [d.cidade, d.uf].filter(Boolean).join('/')],
+        ['Representante', d.representante],
+      ];
+    } else if (d.tipo === 'representante') {
+      linhas = [['Nome', d.nome], ['E-mail', d.email]];
+    } else {
+      linhas = [['Usuário', d.username]];
+    }
+    container.innerHTML = `<div class="co-secao">` +
+      linhas.filter(([,v]) => v).map(([k,v]) => `
+        <div class="co-resumo-row"><span>${esc(k)}</span><span style="font-weight:700;color:var(--txt)">${esc(v)}</span></div>
+      `).join('') + `</div>`;
+  } catch(e) {
+    container.innerHTML = '<div class="co-secao co-vazio">Não foi possível carregar seus dados agora.</div>';
+  }
+}
+
 // ── Geração do PDF (Passo 5) ───────────────────────────────────────
 // Remove acentos para compatibilidade com a fonte helvetica do jsPDF
 function norm(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,''); }
+
+async function carregarJsPDF() {
+  if (window.jspdf) return;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = res; s.onerror = () => rej(new Error('Falha ao carregar jsPDF'));
+    document.head.appendChild(s);
+  });
+}
+
+// PDF simplificado pra reimpressão de pedido do histórico — sem foto (pedidos
+// antigos, de antes de gravarmos foto_url, não teriam imagem de qualquer
+// forma), só o essencial: referência, cor, grade e quantidade.
+async function gerarPDFHistorico(pedido) {
+  if (!pedido || !(pedido.itens||[]).length) return;
+  try {
+    await carregarJsPDF();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p','mm','a4');
+    const ML = 14, PW = 210, MT = 14, end = PW - ML;
+    const tc = hex => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); doc.setTextColor(r,g,b); };
+    const dataStr = (pedido.criado_em||'').toString().slice(0,10).split('-').reverse().join('/');
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(22); tc('#ed6842');
+    doc.text('BOAONDA', ML, MT+9);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); tc('#71706f');
+    doc.text('Calcados  Sapiranga/RS', ML, MT+14);
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); tc('#26361e');
+    doc.text('Pedido de Compra (reimpressao)', end, MT+9, {align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); tc('#71706f');
+    doc.text('Data original: '+dataStr, end, MT+15, {align:'right'});
+
+    let y = MT+24;
+    if (pedido.cliente_nome || pedido.cliente_empresa) {
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); tc('#71706f');
+      doc.text('Cliente:', ML, y);
+      doc.setFont('helvetica','normal'); tc('#26361e');
+      doc.text(norm(pedido.cliente_empresa || pedido.cliente_nome), ML+22, y);
+      y += 6;
+    }
+    if (pedido.observacoes) {
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); tc('#71706f');
+      doc.text('Observacoes:', ML, y); y += 4;
+      const linhas = doc.splitTextToSize(norm(pedido.observacoes), end-ML-6);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5); tc('#26361e');
+      doc.text(linhas, ML+3, y); y += linhas.length*4.5 + 4;
+    }
+    y += 4;
+    doc.setDrawColor(226,221,216); doc.setLineWidth(.5); doc.line(ML,y,end,y); y += 7;
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); tc('#9b9895');
+    doc.text('REFERENCIA', ML+2, y); doc.text('COR', ML+72, y); doc.text('GRADE', ML+102, y);
+    doc.text('PARES', end-2, y, {align:'right'});
+    y += 3; doc.line(ML,y,end,y); y += 8;
+
+    let totP = 0;
+    pedido.itens.forEach(it => {
+      if (y > 270) { doc.addPage(); y = MT+10; }
+      doc.setFont('helvetica','bold'); doc.setFontSize(9.5); tc('#26361e');
+      doc.text(norm(it.produto_referencia||''), ML+2, y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); tc('#5a5855');
+      if (it.produto_nome) doc.text(norm(it.produto_nome), ML+2, y+4.5);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); tc('#26361e');
+      doc.text(norm(it.cor_nome||it.cor||''), ML+72, y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5); tc('#4994c7');
+      doc.text(norm(it.grade_tamanho||''), ML+102, y);
+      doc.setFont('helvetica','bold'); doc.setFontSize(10); tc('#6c9c37');
+      doc.text(String(it.quantidade||0), end-2, y, {align:'right'});
+      totP += it.quantidade||0;
+      y += 11;
+      doc.setDrawColor(240,236,231); doc.setLineWidth(.3); doc.line(ML,y-3,end,y-3);
+    });
+
+    y += 4;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5); tc('#26361e');
+    doc.text(`TOTAL: ${totP} pares   ${pedido.itens.length} ref.`, ML+2, y);
+
+    const hoje = new Date();
+    const dd = String(hoje.getDate()).padStart(2,'0'), mm = String(hoje.getMonth()+1).padStart(2,'0');
+    doc.save(`Pedido_Boaonda_reimpressao_${hoje.getFullYear()}${mm}${dd}.pdf`);
+  } catch(err) {
+    alert('Erro ao gerar PDF: '+err.message);
+    console.error(err);
+  }
+}
 
 async function imgToBase64(url) {
   if (!url || url.startsWith('data:')) return null;
@@ -2357,15 +2543,7 @@ async function gerarPDF() {
   document.body.style.cursor = 'wait';
 
   try {
-    // Lazy-load jsPDF
-    if (!window.jspdf) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-        s.onload = res; s.onerror = () => rej(new Error('Falha ao carregar jsPDF'));
-        document.head.appendChild(s);
-      });
-    }
+    await carregarJsPDF();
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p','mm','a4');
 
