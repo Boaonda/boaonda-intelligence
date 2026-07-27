@@ -537,20 +537,28 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
   .id-box{border-radius:20px 20px 0 0}
 }
 
-/* ── Tela de fechamento de pedido ── */
-.checkout-view{position:fixed;inset:0;z-index:800;background:var(--bg);overflow-y:auto}
-.checkout-head{position:sticky;top:0;z-index:2;background:var(--verde-dark);color:#fff;
+/* ── Tela de fechamento de pedido / área Pedidos ── */
+.checkout-view{position:fixed;inset:0;z-index:800;background:var(--bg);
+               display:flex;flex-direction:column;overflow:hidden}
+.checkout-head{flex-shrink:0;background:var(--verde-dark);color:#fff;
                padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
 .checkout-voltar{background:none;border:none;color:#fff;font-family:inherit;font-size:13px;
                   font-weight:700;cursor:pointer;width:70px;text-align:left}
 .checkout-voltar:hover{opacity:.8}
 .checkout-titulo{font-size:14px;font-weight:800;letter-spacing:.02em}
-.checkout-body{max-width:720px;margin:0 auto;padding:22px 18px 80px}
-.co-tabs{display:flex;gap:6px;margin-bottom:18px;background:var(--card);border:1px solid var(--border);
-         border-radius:10px;padding:4px}
-.co-tab{flex:1;text-align:center;padding:9px 6px;font-size:12.5px;font-weight:700;color:var(--txt-m);
-        background:none;border:none;border-radius:7px;cursor:pointer;font-family:inherit;transition:.15s}
-.co-tab.ativa{background:var(--verde-dark);color:#fff}
+.co-layout{flex:1;display:flex;min-height:0}
+.co-sidebar{width:220px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);
+            overflow-y:auto;padding:16px 0}
+.co-side-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+                color:var(--txt-m);padding:0 20px 10px}
+.co-side-item{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:12.5px;
+               font-weight:600;color:var(--verde-dark);cursor:pointer;border-left:3px solid transparent;
+               transition:.12s}
+.co-side-item:hover{background:rgba(237,104,66,.06)}
+.co-side-item.active{background:rgba(237,104,66,.1);border-left-color:var(--coral);color:var(--coral)}
+.co-side-icon{font-size:15px;width:20px;text-align:center}
+.co-content{flex:1;min-width:0;overflow-y:auto}
+.checkout-body{max-width:760px;padding:22px 26px 80px}
 .co-vazio{text-align:center;color:var(--txt-m);font-size:13px;padding:30px 20px;line-height:1.6}
 .co-secao{background:var(--card);border:1px solid var(--border);border-radius:12px;
           padding:18px 20px;margin-bottom:14px}
@@ -865,14 +873,30 @@ select.co-obs{min-height:auto;padding:11px 12px;cursor:pointer}
   </div>
 </div>
 
-<!-- Tela de fechamento de pedido -->
+<!-- Área Pedidos (fechar / histórico / meu cadastro) -->
 <div class="checkout-view" id="checkout-view" style="display:none">
   <div class="checkout-head">
     <button class="checkout-voltar" onclick="fecharCheckout()">← Voltar</button>
-    <span class="checkout-titulo">Finalizar pedido</span>
+    <span class="checkout-titulo">Pedidos</span>
     <span style="width:70px"></span>
   </div>
-  <div class="checkout-body" id="checkout-body"></div>
+  <div class="co-layout">
+    <div class="co-sidebar" id="co-sidebar">
+      <div class="co-side-title">Pedidos</div>
+      <div class="co-side-item" id="co-side-fechar" onclick="checkoutSetAba('fechar')">
+        <span class="co-side-icon">🛒</span><span>Fechar pedido</span>
+      </div>
+      <div class="co-side-item" id="co-side-historico" onclick="checkoutSetAba('historico')">
+        <span class="co-side-icon">📦</span><span>Histórico</span>
+      </div>
+      <div class="co-side-item" id="co-side-cadastro" onclick="checkoutSetAba('cadastro')">
+        <span class="co-side-icon">👤</span><span>Meu cadastro</span>
+      </div>
+    </div>
+    <div class="co-content">
+      <div class="checkout-body" id="checkout-body"></div>
+    </div>
+  </div>
 </div>
 
 <!-- FAB Carrinho -->
@@ -2130,21 +2154,22 @@ function checkoutRemoverItem(idx) {
 
 function renderCheckout() {
   const body = document.getElementById('checkout-body');
+  const sidebar = document.getElementById('co-sidebar');
   if (!body) return;
-  if (checkoutAba === 'fechar' && checkoutEstado === 'sucesso') { renderCheckoutSucesso(body); return; }
 
-  body.innerHTML = `
-    <div class="co-tabs">
-      <button class="co-tab ${checkoutAba==='fechar'?'ativa':''}" onclick="checkoutSetAba('fechar')">Fechar pedido</button>
-      <button class="co-tab ${checkoutAba==='historico'?'ativa':''}" onclick="checkoutSetAba('historico')">Histórico</button>
-      <button class="co-tab ${checkoutAba==='cadastro'?'ativa':''}" onclick="checkoutSetAba('cadastro')">Meu cadastro</button>
-    </div>
-    <div id="co-conteudo"></div>
-  `;
-  const conteudo = document.getElementById('co-conteudo');
-  if (checkoutAba === 'historico') renderAbaHistorico(conteudo);
-  else if (checkoutAba === 'cadastro') renderAbaCadastro(conteudo);
-  else renderAbaFechar(conteudo);
+  if (checkoutAba === 'fechar' && checkoutEstado === 'sucesso') {
+    if (sidebar) sidebar.style.display = 'none';
+    renderCheckoutSucesso(body);
+    return;
+  }
+  if (sidebar) sidebar.style.display = '';
+  ['fechar','historico','cadastro'].forEach(a => {
+    document.getElementById('co-side-'+a)?.classList.toggle('active', checkoutAba === a);
+  });
+
+  if (checkoutAba === 'historico') renderAbaHistorico(body);
+  else if (checkoutAba === 'cadastro') renderAbaCadastro(body);
+  else renderAbaFechar(body);
 }
 
 // ── Aba: Fechar pedido ──────────────────────────────────────────────
@@ -2347,12 +2372,12 @@ function renderHistoricoConteudo(container) {
 function historicoSetFiltro(v) {
   historicoClienteFiltro = v;
   historicoAberto = null;
-  renderAbaHistorico(document.getElementById('co-conteudo'), true);
+  renderAbaHistorico(document.getElementById('checkout-body'), true);
 }
 
 function toggleHistoricoPedido(idx) {
   historicoAberto = historicoAberto === idx ? null : idx;
-  renderHistoricoConteudo(document.getElementById('co-conteudo'));
+  renderHistoricoConteudo(document.getElementById('checkout-body'));
 }
 
 function renderLinhaHistorico(p, idx) {
@@ -2398,24 +2423,116 @@ async function renderAbaCadastro(container) {
     const r = await fetch('/api/catalogo/meu-cadastro');
     const d = await r.json();
     if (d.erro) { container.innerHTML = `<div class="co-secao co-vazio">${esc(d.erro)}</div>`; return; }
-    let linhas;
-    if (d.tipo === 'cliente') {
-      linhas = [
-        ['Nome', d.nome], ['Empresa', d.empresa], ['CNPJ', d.cnpj], ['Telefone', d.telefone],
-        ['E-mail', d.email], ['Cidade/UF', [d.cidade, d.uf].filter(Boolean).join('/')],
-        ['Representante', d.representante],
-      ];
-    } else if (d.tipo === 'representante') {
-      linhas = [['Nome', d.nome], ['E-mail', d.email]];
-    } else {
-      linhas = [['Usuário', d.username]];
-    }
-    container.innerHTML = `<div class="co-secao">` +
-      linhas.filter(([,v]) => v).map(([k,v]) => `
-        <div class="co-resumo-row"><span>${esc(k)}</span><span style="font-weight:700;color:var(--txt)">${esc(v)}</span></div>
-      `).join('') + `</div>`;
+    renderFormCadastro(container, d);
   } catch(e) {
     container.innerHTML = '<div class="co-secao co-vazio">Não foi possível carregar seus dados agora.</div>';
+  }
+}
+
+function campoEditavel(label, id, valor, tipo) {
+  return `<div class="id-field" style="margin-bottom:12px">
+    <label class="id-label">${esc(label)}</label>
+    <input class="id-input" id="${id}" type="${tipo||'text'}" value="${esc(valor||'')}"/>
+  </div>`;
+}
+function campoTravado(label, valor) {
+  return `<div class="id-field" style="margin-bottom:12px">
+    <label class="id-label">${esc(label)} (não editável)</label>
+    <input class="id-input" value="${esc(valor||'')}" disabled/>
+  </div>`;
+}
+
+function renderFormCadastro(container, d) {
+  let camposHtml;
+  if (d.tipo === 'cliente') {
+    camposHtml = `
+      ${campoEditavel('Nome', 'cad-nome', d.nome)}
+      ${campoEditavel('Empresa', 'cad-empresa', d.empresa)}
+      ${campoTravado('CNPJ', d.cnpj)}
+      ${campoEditavel('Telefone', 'cad-telefone', d.telefone)}
+      ${campoEditavel('E-mail', 'cad-email', d.email, 'email')}
+      <div class="id-row2">
+        ${campoEditavel('Cidade', 'cad-cidade', d.cidade)}
+        ${campoEditavel('UF', 'cad-uf', d.uf)}
+      </div>
+      ${d.representante ? `<div class="co-item-meta" style="margin-bottom:10px">Representante: ${esc(d.representante)}</div>` : ''}
+    `;
+  } else if (d.tipo === 'representante') {
+    camposHtml = `
+      ${campoEditavel('Nome', 'cad-nome', d.nome)}
+      ${campoTravado('E-mail', d.email)}
+      <div class="id-field" style="margin-bottom:4px">
+        <label class="id-label">Nova senha (deixe em branco pra não trocar)</label>
+        <input class="id-input" id="cad-senha" type="password" placeholder="Mínimo 6 caracteres"/>
+      </div>
+    `;
+  } else {
+    camposHtml = `
+      ${campoTravado('Usuário', d.username)}
+      <div class="id-field" style="margin-bottom:4px">
+        <label class="id-label">Nova senha (deixe em branco pra não trocar)</label>
+        <input class="id-input" id="cad-senha" type="password" placeholder="Mínimo 6 caracteres"/>
+      </div>
+    `;
+  }
+  container.innerHTML = `
+    <div class="co-secao">
+      <div class="co-secao-titulo">Meus dados</div>
+      ${camposHtml}
+      <div id="cad-msg" style="min-height:18px;font-size:12px;font-weight:700"></div>
+      <button class="co-btn-confirmar" onclick="salvarMeuCadastro('${d.tipo}')">Salvar alterações</button>
+    </div>`;
+}
+
+async function salvarMeuCadastro(tipo) {
+  const msgEl = document.getElementById('cad-msg');
+  const btn = document.querySelector('#checkout-body .co-btn-confirmar');
+  let payload = {};
+  if (tipo === 'cliente') {
+    payload = {
+      nome: document.getElementById('cad-nome').value.trim(),
+      empresa: document.getElementById('cad-empresa').value.trim(),
+      telefone: document.getElementById('cad-telefone').value.trim(),
+      email: document.getElementById('cad-email').value.trim(),
+      cidade: document.getElementById('cad-cidade').value.trim(),
+      uf: document.getElementById('cad-uf').value.trim(),
+    };
+  } else if (tipo === 'representante') {
+    payload = {
+      nome: document.getElementById('cad-nome').value.trim(),
+      nova_senha: document.getElementById('cad-senha').value.trim(),
+    };
+  } else {
+    payload = { nova_senha: document.getElementById('cad-senha').value.trim() };
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+  try {
+    const r = await fetch('/api/catalogo/meu-cadastro/atualizar', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      msgEl.style.color = '#b8462a';
+      msgEl.textContent = d.erro || 'Erro ao salvar.';
+      return;
+    }
+    msgEl.style.color = 'var(--verde)';
+    msgEl.textContent = '✓ Dados atualizados.';
+    const senhaEl = document.getElementById('cad-senha');
+    if (senhaEl) senhaEl.value = '';
+    if (tipo === 'cliente' && (payload.empresa || payload.nome)) {
+      IDENTIDADE_CLIENTE = { ...IDENTIDADE_CLIENTE, nome: payload.nome, empresa: payload.empresa };
+      const el = document.getElementById('hdr-user-nome');
+      if (el) el.textContent = payload.empresa || payload.nome;
+    } else if (tipo === 'representante' && payload.nome) {
+      const el = document.getElementById('hdr-user-nome');
+      if (el) el.textContent = payload.nome;
+    }
+  } catch(e) {
+    msgEl.style.color = '#b8462a';
+    msgEl.textContent = 'Não foi possível salvar agora.';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar alterações'; }
   }
 }
 

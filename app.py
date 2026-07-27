@@ -481,6 +481,7 @@ def require_login():
                         'catalogo_representante_entrar', 'catalogo_representante_sair',
                         'catalogo_representante_painel', 'api_catalogo_representante_clientes',
                         'api_catalogo_representante_historico', 'api_catalogo_meu_cadastro',
+                        'api_catalogo_meu_cadastro_atualizar',
                         'catalogo_representante_cadastrar_cliente',
                         'catalogo_equipe_entrar', 'catalogo_equipe_sair'}
     if request.endpoint in public_endpoints:
@@ -1285,6 +1286,78 @@ def api_catalogo_meu_cadastro():
     dados = dict(zip(campos, (_catalogo_valor_json_seguro(v) for v in row)))
     dados['tipo'] = 'cliente'
     return jsonify(dados)
+
+
+@app.route('/api/catalogo/meu-cadastro/atualizar', methods=['POST'])
+def api_catalogo_meu_cadastro_atualizar():
+    """Autoatendimento — cada sessão só altera o próprio registro, nunca o
+    de outro cadastro/representante/usuário. CNPJ e e-mail de representante
+    nunca são editáveis aqui (chaves de login)."""
+    payload = request.get_json(silent=True) or {}
+
+    if session.get('catalogo_equipe_username'):
+        nova_senha = (payload.get('nova_senha') or '').strip()
+        if not nova_senha:
+            return jsonify({'erro': 'Informe uma nova senha.'}), 400
+        if len(nova_senha) < 6:
+            return jsonify({'erro': 'A senha precisa ter pelo menos 6 caracteres.'}), 400
+        usuarios = _ler_usuarios()
+        usuario = next((u for u in usuarios if u['username'] == session['catalogo_equipe_username']), None)
+        if not usuario:
+            return jsonify({'erro': 'Usuário não encontrado.'}), 404
+        usuario['senha_hash'] = generate_password_hash(nova_senha)
+        _salvar_usuarios(usuarios)
+        return jsonify({'status': 'ok'})
+
+    if session.get('catalogo_rep_id'):
+        nome = (payload.get('nome') or '').strip()
+        nova_senha = (payload.get('nova_senha') or '').strip()
+        if not nome and not nova_senha:
+            return jsonify({'erro': 'Nada para atualizar.'}), 400
+        if nova_senha and len(nova_senha) < 6:
+            return jsonify({'erro': 'A senha precisa ter pelo menos 6 caracteres.'}), 400
+        try:
+            conexao = _conectar_catalogo_db()
+            cursor = conexao.cursor()
+            if nome:
+                cursor.execute("UPDATE catalogo_representantes SET nome = %s WHERE id = %s",
+                               (nome, session['catalogo_rep_id']))
+            if nova_senha:
+                cursor.execute("UPDATE catalogo_representantes SET senha_hash = %s WHERE id = %s",
+                               (generate_password_hash(nova_senha), session['catalogo_rep_id']))
+            conexao.commit()
+            conexao.close()
+        except Exception as ex:
+            return jsonify({'erro': str(ex)}), 500
+        if nome:
+            session['catalogo_rep_nome'] = nome
+        return jsonify({'status': 'ok'})
+
+    cadastro_id = session.get('catalogo_cadastro_id')
+    if not cadastro_id:
+        return jsonify({'erro': 'Sessão do catálogo expirada.'}), 401
+    nome     = (payload.get('nome') or '').strip()
+    empresa  = (payload.get('empresa') or '').strip()
+    telefone = (payload.get('telefone') or '').strip()
+    email    = (payload.get('email') or '').strip()
+    cidade   = (payload.get('cidade') or '').strip()
+    uf       = (payload.get('uf') or '').strip().upper()[:2]
+    if not (nome and telefone and email):
+        return jsonify({'erro': 'Preencha nome, telefone e e-mail.'}), 400
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        cursor.execute("""
+            UPDATE catalogo_cadastros
+            SET nome = %s, empresa = %s, telefone = %s, email = %s, cidade = %s, uf = %s
+            WHERE id = %s
+        """, (nome, empresa or None, telefone, email, cidade or None, uf or None, cadastro_id))
+        conexao.commit()
+        conexao.close()
+    except Exception as ex:
+        return jsonify({'erro': str(ex)}), 500
+    session['catalogo_cliente'] = {**(session.get('catalogo_cliente') or {}), 'nome': nome, 'empresa': empresa}
+    return jsonify({'status': 'ok'})
 
 
 @app.route('/api/catalogo/resumo')
