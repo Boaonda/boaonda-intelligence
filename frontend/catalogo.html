@@ -2331,24 +2331,30 @@ function renderCheckoutSucesso(body) {
 }
 
 // ── Aba: Histórico ──────────────────────────────────────────────────
+let historicoErro = null; // detalhe real do erro do backend, pra diagnosticar sem precisar adivinhar
+
 async function renderAbaHistorico(container, forcarReload) {
   if (historicoCache === null || forcarReload) {
     container.innerHTML = '<div class="co-secao co-vazio">Carregando pedidos…</div>';
     const url = ehSessaoInterna()
       ? '/api/catalogo/representante/historico' + (historicoClienteFiltro ? '?cadastro_id=' + encodeURIComponent(historicoClienteFiltro) : '')
       : '/api/catalogo/meu-historico';
+    historicoErro = null;
     try {
       const r = await fetch(url);
       const d = await r.json();
-      historicoCache = d.disponivel ? (d.pedidos || []) : undefined;
-    } catch(e) { historicoCache = undefined; }
+      if (d.disponivel) { historicoCache = d.pedidos || []; }
+      else { historicoCache = undefined; historicoErro = d.erro || null; }
+    } catch(e) { historicoCache = undefined; historicoErro = e.message; }
   }
   renderHistoricoConteudo(container);
 }
 
 function renderHistoricoConteudo(container) {
   if (historicoCache === undefined) {
-    container.innerHTML = '<div class="co-secao co-vazio">Não foi possível carregar seus pedidos agora.</div>';
+    container.innerHTML = '<div class="co-secao co-vazio">Não foi possível carregar seus pedidos agora.' +
+      (historicoErro ? `<div style="margin-top:8px;font-size:11px;color:var(--txt-m);font-family:monospace">${esc(historicoErro)}</div>` : '') +
+      '</div>';
     return;
   }
   let filtroHtml = '';
