@@ -532,6 +532,8 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
            border-radius:9px;font-family:inherit;font-size:13px;font-weight:700;
            cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:7px}
 .id-btn-ok:hover{background:var(--coral)}
+.id-btn-ok.perigo{background:#b8462a}
+.id-btn-ok.perigo:hover{background:#963a22}
 @media(max-width:480px){
   .id-over{padding:0;align-items:flex-end}
   .id-box{border-radius:20px 20px 0 0}
@@ -898,6 +900,20 @@ select.co-obs{min-height:auto;padding:11px 12px;cursor:pointer}
     </div>
     <div class="co-content">
       <div class="checkout-body" id="checkout-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmação (substitui o confirm() nativo do navegador) -->
+<div class="id-over" id="confirmar-over" style="display:none;z-index:900">
+  <div class="id-box" style="max-width:380px">
+    <div class="id-header">
+      <div class="id-title" id="confirmar-titulo">Confirmar ação</div>
+      <div class="id-sub" id="confirmar-msg"></div>
+    </div>
+    <div class="id-footer">
+      <button class="id-btn-cancel" onclick="confirmarResolver(false)">Voltar</button>
+      <button class="id-btn-ok" id="confirmar-btn-ok" onclick="confirmarResolver(true)">Confirmar</button>
     </div>
   </div>
 </div>
@@ -2085,7 +2101,26 @@ function toggleUserMenu(e) {
 }
 document.addEventListener('click', () => document.getElementById('hdr-user')?.classList.remove('aberto'));
 
-// ── Área "Pedidos" (fechar / histórico / meu cadastro) ─────────────
+// ── Modal de confirmação genérico (substitui confirm() nativo) ─────
+let _confirmarResolve = null;
+function confirmarAcao(mensagem, opcoes) {
+  opcoes = opcoes || {};
+  document.getElementById('confirmar-titulo').textContent = opcoes.titulo || 'Confirmar ação';
+  document.getElementById('confirmar-msg').textContent = mensagem;
+  const btnOk = document.getElementById('confirmar-btn-ok');
+  btnOk.textContent = opcoes.textoBotao || 'Confirmar';
+  btnOk.classList.toggle('perigo', !!opcoes.perigo);
+  document.getElementById('confirmar-over').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  return new Promise(resolve => { _confirmarResolve = resolve; });
+}
+function confirmarResolver(valor) {
+  document.getElementById('confirmar-over').style.display = 'none';
+  document.body.style.overflow = '';
+  if (_confirmarResolve) { _confirmarResolve(valor); _confirmarResolve = null; }
+}
+
+// ── Área "Gerenciamento" (fechar / histórico / clientes / cadastro) ─
 function ehSessaoInterna() { return TIPO_SESSAO === 'representante' || TIPO_SESSAO === 'equipe'; }
 
 let checkoutAba = 'fechar';          // 'fechar' | 'historico' | 'cadastro'
@@ -2441,7 +2476,11 @@ function renderLinhaHistorico(p, idx) {
 async function cancelarPedidoHistorico(idx) {
   const p = historicoCache[idx];
   if (!p) return;
-  if (!confirm('Cancelar este pedido? Ele fica marcado como "Cancelado" no histórico — não é excluído de verdade, dá pra conferir depois se precisar.')) return;
+  const ok = await confirmarAcao(
+    'Ele fica marcado como "Cancelado" no histórico — não é excluído de verdade, dá pra conferir depois se precisar.',
+    { titulo: 'Cancelar este pedido?', textoBotao: 'Cancelar pedido', perigo: true }
+  );
+  if (!ok) return;
   try {
     const r = await fetch(`/api/catalogo/pedido/${p.id}/cancelar`, { method: 'POST' });
     const d = await r.json();
