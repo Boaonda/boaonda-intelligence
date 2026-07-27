@@ -534,6 +534,63 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
   .id-box{border-radius:20px 20px 0 0}
 }
 
+/* ── Tela de fechamento de pedido ── */
+.checkout-view{position:fixed;inset:0;z-index:800;background:var(--bg);overflow-y:auto}
+.checkout-head{position:sticky;top:0;z-index:2;background:var(--verde-dark);color:#fff;
+               padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.checkout-voltar{background:none;border:none;color:#fff;font-family:inherit;font-size:13px;
+                  font-weight:700;cursor:pointer;width:70px;text-align:left}
+.checkout-voltar:hover{opacity:.8}
+.checkout-titulo{font-size:14px;font-weight:800;letter-spacing:.02em}
+.checkout-body{max-width:720px;margin:0 auto;padding:22px 18px 80px}
+.co-secao{background:var(--card);border:1px solid var(--border);border-radius:12px;
+          padding:18px 20px;margin-bottom:14px}
+.co-secao-titulo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+                  color:var(--txt-m);margin-bottom:12px}
+.co-identidade{font-size:15px;font-weight:800;color:var(--verde-dark)}
+.co-identidade-sub{font-size:12px;color:var(--txt-m);margin-top:2px}
+.co-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2)}
+.co-item:last-child{border-bottom:none}
+.co-item-foto{width:52px;height:52px;border-radius:8px;object-fit:cover;background:var(--bg);flex-shrink:0}
+.co-item-body{flex:1;min-width:0}
+.co-item-ref{font-weight:800;font-size:13px;color:var(--verde-dark)}
+.co-item-meta{font-size:11.5px;color:var(--txt-m);margin-top:2px}
+.co-item-aviso{font-size:11px;color:#b8462a;margin-top:3px;font-weight:700}
+.co-item-row{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.co-item-qtd{width:56px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;
+             text-align:center;font-family:inherit;font-size:13px;color:var(--txt)}
+.co-item-pares{font-size:12px;color:var(--txt-s);flex:1}
+.co-item-del{background:none;border:none;cursor:pointer;font-size:15px;opacity:.55;padding:2px}
+.co-item-del:hover{opacity:1}
+.co-obs{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;
+        font-family:inherit;font-size:13px;color:var(--txt);min-height:70px;resize:vertical;
+        background:var(--bg);outline:none}
+.co-obs:focus{border-color:var(--coral);background:#fff}
+select.co-obs{min-height:auto;padding:11px 12px;cursor:pointer}
+.co-resumo-row{display:flex;justify-content:space-between;font-size:13px;color:var(--txt-s);padding:5px 0}
+.co-resumo-row.total{font-size:17px;font-weight:800;color:var(--verde-dark);
+                      border-top:1px solid var(--border);margin-top:6px;padding-top:12px}
+.co-btn-confirmar{width:100%;padding:15px;border:none;border-radius:10px;background:var(--coral);
+                   color:#fff;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;
+                   transition:.15s}
+.co-btn-confirmar:hover:not(:disabled){background:var(--coral2)}
+.co-btn-confirmar:disabled{opacity:.5;cursor:not-allowed}
+.co-sucesso{text-align:center;padding:60px 20px 20px}
+.co-sucesso-icone{font-size:50px;margin-bottom:14px}
+.co-sucesso-titulo{font-size:20px;font-weight:800;color:var(--verde-dark);margin-bottom:6px}
+.co-sucesso-sub{font-size:13px;color:var(--txt-m);margin-bottom:26px}
+.co-sucesso-acoes{display:flex;flex-direction:column;gap:10px;max-width:320px;margin:0 auto}
+.co-btn-acao{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;
+             border-radius:10px;font-family:inherit;font-weight:700;font-size:13px;
+             text-decoration:none;cursor:pointer;border:1.5px solid var(--border);
+             background:var(--card);color:var(--txt);transition:.15s}
+.co-btn-acao:hover{border-color:var(--txt-m)}
+.co-btn-acao.principal{background:var(--verde-dark);color:#fff;border:none}
+.co-btn-acao.principal:hover{background:var(--coral)}
+.co-btn-acao.wpp{background:#25D366;color:#fff;border:none}
+.co-btn-acao.wpp:hover{background:#20b858}
+.co-btn-acao:disabled{opacity:.6;cursor:not-allowed}
+
 /* ── Footer ── */
 .footer{text-align:center;padding:24px 16px;font-size:11px;color:var(--txt-m);
         border-top:1px solid var(--border)}
@@ -799,47 +856,14 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
   </div>
 </div>
 
-<!-- Modal Identificação -->
-<div class="id-over" id="id-over" onclick="idBgClick(event)" style="display:none">
-  <div class="id-box">
-    <div class="id-header">
-      <div class="id-title">Antes de exportar</div>
-      <div class="id-sub">Opcional — para identificação no PDF do pedido</div>
-    </div>
-    <div class="id-body">
-      <div class="id-field" id="id-cliente-wrap" style="display:none">
-        <label class="id-label" for="id-cliente">Cliente</label>
-        <select class="id-input" id="id-cliente">
-          <option value="">Pedido de teste (sem cliente vinculado)</option>
-        </select>
-      </div>
-      <div class="id-row2">
-        <div class="id-field">
-          <label class="id-label" for="id-nome">Seu nome</label>
-          <input class="id-input" id="id-nome" type="text" placeholder="Ex.: João Silva" autocomplete="name"/>
-        </div>
-        <div class="id-field">
-          <label class="id-label" for="id-empresa">Empresa</label>
-          <input class="id-input" id="id-empresa" type="text" placeholder="Ex.: Calçados Centro Ltda" autocomplete="organization"/>
-        </div>
-      </div>
-      <div class="id-field">
-        <label class="id-label" for="id-cnpj">CNPJ</label>
-        <input class="id-input" id="id-cnpj" type="text" placeholder="Ex.: 12.345.678/0001-99" autocomplete="off" maxlength="18" oninput="mascaraCNPJ(this)"/>
-      </div>
-      <div class="id-field">
-        <label class="id-label" for="id-obs">Observações do pedido</label>
-        <textarea class="id-input" id="id-obs" placeholder="Prazo de entrega, condição de pagamento, observações…"></textarea>
-      </div>
-    </div>
-    <div class="id-footer">
-      <button class="id-btn-cancel" onclick="fecharModalId()">Cancelar</button>
-      <button class="id-btn-ok" onclick="idConfirmar()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Gerar PDF
-      </button>
-    </div>
+<!-- Tela de fechamento de pedido -->
+<div class="checkout-view" id="checkout-view" style="display:none">
+  <div class="checkout-head">
+    <button class="checkout-voltar" onclick="fecharCheckout()">← Voltar</button>
+    <span class="checkout-titulo">Finalizar pedido</span>
+    <span style="width:70px"></span>
   </div>
+  <div class="checkout-body" id="checkout-body"></div>
 </div>
 
 <!-- Modal Meus Pedidos (histórico do cadastro logado) -->
@@ -881,9 +905,9 @@ textarea.id-input{resize:vertical;min-height:68px;font-size:13px}
       <span>Investimento estimado</span>
       <strong id="cart-invest-val" style="color:var(--azul)">—</strong>
     </div>
-    <button class="cart-btn-pdf" id="cart-btn-pdf" onclick="abrirModalId()" disabled>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      Exportar PDF
+    <button class="cart-btn-pdf" id="cart-btn-pdf" onclick="abrirCheckout()" disabled>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Finalizar Pedido
     </button>
   </div>
 </div>
@@ -2005,6 +2029,7 @@ function mostrarErro(msg){ document.getElementById('grid').innerHTML=`<div class
 // cliente — navegam sempre como eles mesmos; a escolha de cliente
 // acontece só no modal de fechamento do pedido.
 let TIPO_SESSAO = 'cliente'; // 'cliente' | 'representante' | 'equipe'
+let IDENTIDADE_CLIENTE = {}; // {nome, empresa} da sessão — só quando TIPO_SESSAO==='cliente'
 
 async function carregarIdentidade() {
   try {
@@ -2013,6 +2038,7 @@ async function carregarIdentidade() {
     if (!d.logado) return;
     TIPO_SESSAO = d.tipo || 'cliente';
     const c = d.cliente || {};
+    if (TIPO_SESSAO === 'cliente') IDENTIDADE_CLIENTE = c;
     const label = TIPO_SESSAO === 'cliente' ? (c.empresa || c.nome || 'Cadastro') : d.nome;
     const el = document.getElementById('hdr-user-nome');
     const box = document.getElementById('hdr-user');
@@ -2078,71 +2104,156 @@ function fecharMeusPedidos() {
   document.body.style.overflow = '';
 }
 
-// ── Modal Identificação (Passo 4) ──────────────────────────────────
-const ID_KEY = 'boaonda_cliente';
-
+// ── Tela de fechamento de pedido ────────────────────────────────────
 function ehSessaoInterna() { return TIPO_SESSAO === 'representante' || TIPO_SESSAO === 'equipe'; }
 
-async function abrirModalId() {
+let checkoutEstado = 'revisao';      // 'revisao' | 'sucesso'
+let checkoutObs = '';
+let checkoutClienteId = '';
+let checkoutClientesCache = null;    // cache de /api/catalogo/representante/clientes
+let checkoutPedidoInfo = null;       // {id} do pedido confirmado
+let PEDIDO_CONFIRMADO = null;        // snapshot {itens, cliente} usado pelo PDF pós-confirmação
+
+// Estoque disponível AGORA (não o congelado no momento em que o item
+// entrou no carrinho) — o carrinho pode ter dias, ESTOQUE é o que já foi
+// carregado no início desta sessão de navegação, o dado mais atual que
+// temos no cliente.
+function estoqueAtualMax(item) {
+  const g = (REFS[item.ref]?.cores?.[item.cor]?.grades || []).find(x => x.code === item.grade_code);
+  return g ? (g.completas || 0) : item.grade_cx_disponiveis;
+}
+
+async function abrirCheckout() {
+  if (!carrinho.itens.length) return;
   fecharDrawer();
-  const saved = JSON.parse(localStorage.getItem(ID_KEY) || '{}');
-  document.getElementById('id-nome').value    = saved.nome    || '';
-  document.getElementById('id-empresa').value = saved.empresa || '';
-  document.getElementById('id-cnpj').value    = saved.cnpj    || '';
-  document.getElementById('id-obs').value     = '';
-  if (ehSessaoInterna()) {
-    document.getElementById('id-cliente-wrap').style.display = 'block';
-    await carregarClientesDoRepresentante();
+  checkoutEstado = 'revisao';
+  checkoutPedidoInfo = null;
+  if (ehSessaoInterna() && !checkoutClientesCache) {
+    try {
+      const r = await fetch('/api/catalogo/representante/clientes');
+      const d = await r.json();
+      checkoutClientesCache = d.clientes || [];
+    } catch(e) { checkoutClientesCache = []; }
   }
-  document.getElementById('id-over').style.display = 'flex';
+  document.getElementById('checkout-view').style.display = 'block';
   document.body.style.overflow = 'hidden';
-  setTimeout(() => document.getElementById(ehSessaoInterna() ? 'id-cliente' : 'id-nome').focus(), 80);
+  renderCheckout();
 }
 
-async function carregarClientesDoRepresentante() {
-  const sel = document.getElementById('id-cliente');
-  try {
-    const r = await fetch('/api/catalogo/representante/clientes');
-    const d = await r.json();
-    const opcoes = ['<option value="">Pedido de teste (sem cliente vinculado)</option>']
-      .concat((d.clientes || []).map(c =>
-        `<option value="${esc(c.id)}">${esc(c.empresa || c.nome)}</option>`));
-    sel.innerHTML = opcoes.join('');
-  } catch(e) {
-    console.error('Falha ao carregar clientes do representante:', e);
-  }
-}
-
-function fecharModalId() {
-  document.getElementById('id-over').style.display = 'none';
+function fecharCheckout() {
+  document.getElementById('checkout-view').style.display = 'none';
   document.body.style.overflow = '';
 }
 
-function idBgClick(e) { if (e.target.id === 'id-over') fecharModalId(); }
+function checkoutSetObs(v) { checkoutObs = v; }
+function checkoutSetCliente(v) { checkoutClienteId = v; }
 
-async function idConfirmar() {
-  const nome    = document.getElementById('id-nome').value.trim();
-  const empresa = document.getElementById('id-empresa').value.trim();
-  const cnpj    = document.getElementById('id-cnpj').value.trim();
-  const obs     = document.getElementById('id-obs').value.trim();
-  carrinho.cliente = { nome, empresa, cnpj, obs };
+function checkoutAtualizarQtd(idx, novaQtd) {
+  const item = carrinho.itens[idx]; if (!item) return;
+  const max = estoqueAtualMax(item);
+  const q = Math.max(1, Math.min(parseInt(novaQtd) || 1, max));
+  item.qtd_caixas = q;
+  item.qtd_pares  = q * item.grade_pares_cx;
+  item.grade_cx_disponiveis = max;
   salvarCarrinho();
-  if (nome || empresa || cnpj) {
-    try { localStorage.setItem(ID_KEY, JSON.stringify({ nome, empresa, cnpj })); } catch(e) {}
-  }
-  fecharModalId();
+  atualizarCarrinhoUI();
+  renderCheckout();
+}
 
-  // Novo: grava o pedido no banco antes/junto de gerar o PDF.
-  // Se falhar, não trava o PDF (cliente ainda leva o arquivo) —
-  // só perde o registro no banco, e isso fica no console pra depurar depois.
-  const clienteId = ehSessaoInterna() ? (document.getElementById('id-cliente').value || null) : null;
+function checkoutRemoverItem(idx) {
+  carrinho.itens.splice(idx, 1);
+  salvarCarrinho();
+  atualizarCarrinhoUI();
+  if (!carrinho.itens.length) { fecharCheckout(); return; }
+  renderCheckout();
+}
+
+function renderCheckout() {
+  const body = document.getElementById('checkout-body');
+  if (!body) return;
+  if (checkoutEstado === 'sucesso') { renderCheckoutSucesso(body); return; }
+
+  const itens = carrinho.itens;
+  const totalPares = itens.reduce((s,i) => s + i.qtd_pares, 0);
+  const totalCx    = itens.reduce((s,i) => s + i.qtd_caixas, 0);
+  const totalValor = itens.reduce((s,i) => s + (i.preco_par||0) * i.qtd_pares, 0);
+
+  let identidadeHtml;
+  if (ehSessaoInterna()) {
+    const opcoes = ['<option value="">Pedido de teste (sem cliente vinculado)</option>']
+      .concat((checkoutClientesCache||[]).map(c =>
+        `<option value="${esc(c.id)}"${checkoutClienteId===c.id?' selected':''}>${esc(c.empresa || c.nome)}</option>`));
+    identidadeHtml = `
+      <div class="co-secao">
+        <div class="co-secao-titulo">Pedido em nome de</div>
+        <select class="co-obs" onchange="checkoutSetCliente(this.value)">${opcoes.join('')}</select>
+      </div>`;
+  } else {
+    const nomeTopo = IDENTIDADE_CLIENTE.empresa || IDENTIDADE_CLIENTE.nome || 'Cadastro';
+    const subLinha = (IDENTIDADE_CLIENTE.empresa && IDENTIDADE_CLIENTE.nome) ? IDENTIDADE_CLIENTE.nome : '';
+    identidadeHtml = `
+      <div class="co-secao">
+        <div class="co-secao-titulo">Pedido em nome de</div>
+        <div class="co-identidade">${esc(nomeTopo)}</div>
+        ${subLinha ? `<div class="co-identidade-sub">${esc(subLinha)}</div>` : ''}
+      </div>`;
+  }
+
+  const itensHtml = itens.map((item, idx) => {
+    const max = estoqueAtualMax(item);
+    const reduzido = max < item.qtd_caixas;
+    return `
+    <div class="co-item">
+      <img class="co-item-foto" src="${esc(item.foto_url||PH)}" onerror="this.src='${PH}'" alt=""/>
+      <div class="co-item-body">
+        <div class="co-item-ref">${item.ref}</div>
+        <div class="co-item-meta">Cor ${item.cor} ${item.cor_nome} · Grade ${item.grade_code} · ${item.grade_pares_cx} pares/cx</div>
+        ${reduzido ? `<div class="co-item-aviso">⚠ Estoque reduzido — máximo disponível agora: ${max} cx</div>` : ''}
+        <div class="co-item-row">
+          <input class="co-item-qtd" type="number" min="1" max="${max}" value="${item.qtd_caixas}"
+            onchange="checkoutAtualizarQtd(${idx},this.value)"/>
+          <span class="co-item-pares">${fN(item.qtd_pares)} pares${item.preco_par ? ' · ' + fBRL(item.qtd_pares*item.preco_par) : ''}</span>
+          <button class="co-item-del" onclick="checkoutRemoverItem(${idx})" title="Remover">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const resumoHtml = totalValor > 0
+    ? `<div class="co-resumo-row"><span>${itens.length} referência${itens.length!==1?'s':''}</span><span>${totalCx} caixas</span></div>
+       <div class="co-resumo-row total"><span>${fN(totalPares)} pares</span><span>${fBRL(totalValor)}</span></div>`
+    : `<div class="co-resumo-row"><span>${itens.length} referência${itens.length!==1?'s':''}</span><span>${totalCx} caixas</span></div>
+       <div class="co-resumo-row total"><span>Total</span><span>${fN(totalPares)} pares</span></div>`;
+
+  body.innerHTML = `
+    ${identidadeHtml}
+    <div class="co-secao">
+      <div class="co-secao-titulo">Itens do pedido</div>
+      ${itensHtml}
+    </div>
+    <div class="co-secao">
+      <div class="co-secao-titulo">Observações</div>
+      <textarea class="co-obs" placeholder="Prazo de entrega, condição de pagamento, observações…"
+        onchange="checkoutSetObs(this.value)">${esc(checkoutObs)}</textarea>
+    </div>
+    <div class="co-secao">
+      <div class="co-secao-titulo">Resumo</div>
+      ${resumoHtml}
+    </div>
+    <button class="co-btn-confirmar" id="co-btn-confirmar" onclick="checkoutConfirmar()">Confirmar pedido</button>
+  `;
+}
+
+async function checkoutConfirmar() {
+  const btn = document.getElementById('co-btn-confirmar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Confirmando...'; }
   try {
     const resp = await fetch('/api/catalogo/pedido', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        observacoes: obs,
-        cadastro_id: clienteId,
+        observacoes: checkoutObs,
+        cadastro_id: ehSessaoInterna() ? (checkoutClienteId || null) : null,
         itens: carrinho.itens.map(i => ({
           referencia: i.ref,
           nome: i.descricao,
@@ -2153,22 +2264,58 @@ async function idConfirmar() {
     });
     if (resp.status === 403) {
       alert('O cliente selecionado não é válido — atualize a página e tente novamente.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Confirmar pedido'; }
       return;
     }
-  } catch (e) {
-    console.error('Falha ao salvar pedido no banco:', e);
-  }
+    const d = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(d.erro || 'Falha ao confirmar pedido');
 
-  gerarPDF();
+    let clienteInfo = {};
+    if (ehSessaoInterna()) {
+      const c = (checkoutClientesCache||[]).find(x => x.id === checkoutClienteId);
+      if (c) clienteInfo = { nome: c.nome, empresa: c.empresa };
+    } else {
+      clienteInfo = { nome: IDENTIDADE_CLIENTE.nome, empresa: IDENTIDADE_CLIENTE.empresa };
+    }
+    // Snapshot pro PDF/WhatsApp — o carrinho de verdade esvazia logo em
+    // seguida (o pedido já está gravado), então o botão "Baixar PDF" na
+    // tela de sucesso não pode depender mais do carrinho ao vivo.
+    PEDIDO_CONFIRMADO = {
+      itens: JSON.parse(JSON.stringify(carrinho.itens)),
+      cliente: { ...clienteInfo, obs: checkoutObs },
+    };
+    checkoutPedidoInfo = { id: d.pedido_id };
+    checkoutEstado = 'sucesso';
+
+    carrinho.itens = [];
+    salvarCarrinho();
+    atualizarCarrinhoUI();
+    renderCheckout();
+  } catch(e) {
+    alert('Não foi possível confirmar o pedido agora. Tente novamente em instantes.');
+    console.error(e);
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirmar pedido'; }
+  }
 }
 
-function mascaraCNPJ(el) {
-  let v = el.value.replace(/\D/g,'').substring(0,14);
-  if      (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})$/,'$1.$2.$3/$4-$5');
-  else if (v.length >  8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4})$/,'$1.$2.$3/$4');
-  else if (v.length >  5) v = v.replace(/^(\d{2})(\d{3})(\d{0,3})$/,'$1.$2.$3');
-  else if (v.length >  2) v = v.replace(/^(\d{2})(\d{0,3})$/,'$1.$2');
-  el.value = v;
+function renderCheckoutSucesso(body) {
+  const itens = PEDIDO_CONFIRMADO?.itens || [];
+  const totalPares = itens.reduce((s,i) => s + i.qtd_pares, 0);
+  const linhas = itens.map(i => `${i.qtd_pares}x ${i.ref} (${i.cor_nome})`).join(', ');
+  const numeroPedido = (checkoutPedidoInfo?.id || '').slice(0,8);
+  const msg = encodeURIComponent(`Olá! Acabei de fechar um pedido no catálogo BOAONDA${numeroPedido?' (nº '+numeroPedido+')':''}: ${linhas}. Podem confirmar?`);
+  body.innerHTML = `
+    <div class="co-sucesso">
+      <div class="co-sucesso-icone">✅</div>
+      <div class="co-sucesso-titulo">Pedido confirmado!</div>
+      <div class="co-sucesso-sub">${fN(totalPares)} pares · ${itens.length} referência${itens.length!==1?'s':''}</div>
+      <div class="co-sucesso-acoes">
+        <button class="co-btn-acao principal" id="co-btn-pdf" onclick="gerarPDF()">📄 Baixar PDF do pedido</button>
+        <a class="co-btn-acao wpp" href="https://wa.me/${WPP_NUMERO}?text=${msg}" target="_blank" rel="noopener">💬 Compartilhar no WhatsApp</a>
+        ${TIPO_SESSAO === 'cliente' ? `<button class="co-btn-acao" onclick="fecharCheckout();abrirMeusPedidos({stopPropagation(){}})">📦 Ver meus pedidos</button>` : ''}
+        <button class="co-btn-acao" onclick="fecharCheckout()">← Voltar ao catálogo</button>
+      </div>
+    </div>`;
 }
 
 // ── Geração do PDF (Passo 5) ───────────────────────────────────────
@@ -2198,9 +2345,14 @@ async function imgToBase64(url) {
 }
 
 async function gerarPDF() {
-  if (!carrinho.itens.length) return;
-  const btnPdf = document.getElementById('cart-btn-pdf');
-  const origTxt = btnPdf ? btnPdf.textContent : '';
+  // Usa o snapshot gravado na confirmação do pedido (o carrinho ao vivo já
+  // foi esvaziado nesse ponto) — cai no carrinho ao vivo só se chamado fora
+  // desse fluxo (não deveria acontecer mais, mas evita quebrar em silêncio).
+  const itensRef = PEDIDO_CONFIRMADO?.itens || carrinho.itens;
+  const cliRef = PEDIDO_CONFIRMADO?.cliente || carrinho.cliente || {};
+  if (!itensRef.length) return;
+  const btnPdf = document.getElementById('co-btn-pdf');
+  const origHtml = btnPdf ? btnPdf.innerHTML : '';
   if (btnPdf) { btnPdf.disabled = true; btnPdf.textContent = 'Gerando...'; }
   document.body.style.cursor = 'wait';
 
@@ -2231,7 +2383,7 @@ async function gerarPDF() {
     const ROW_H = 26, BOTTOM = PH-22;
     const hoje = new Date();
     const dataStr = hoje.toLocaleDateString('pt-BR');
-    const cli = carrinho.cliente || {};
+    const cli = cliRef;
 
     // helpers de cor
     const tc = hex => { const [r,g,b]=hexRgb(hex); doc.setTextColor(r,g,b); };
@@ -2342,27 +2494,27 @@ async function gerarPDF() {
     }
 
     // ── Pre-load fotos ──────────────────────────────────────────────
-    const fotos = await Promise.all(carrinho.itens.map(it => imgToBase64(it.foto_url)));
+    const fotos = await Promise.all(itensRef.map(it => imgToBase64(it.foto_url)));
 
     // ── Renderizar ──────────────────────────────────────────────────
     let pg=1;
     let y = drawHeader(); drawFooter(pg);
 
-    for (let i=0; i<carrinho.itens.length; i++) {
+    for (let i=0; i<itensRef.length; i++) {
       if (y+ROW_H > BOTTOM) { doc.addPage(); pg++; y = drawHeader(); drawFooter(pg); }
-      y += drawItem(carrinho.itens[i], fotos[i], y);
+      y += drawItem(itensRef[i], fotos[i], y);
     }
 
     // Totais
-    const totP = carrinho.itens.reduce((s,i)=>s+i.qtd_pares,0);
-    const totC = carrinho.itens.reduce((s,i)=>s+i.qtd_caixas,0);
-    const totV = carrinho.itens.reduce((s,i)=>s+(i.preco_par||0)*i.qtd_pares,0);
+    const totP = itensRef.reduce((s,i)=>s+i.qtd_pares,0);
+    const totC = itensRef.reduce((s,i)=>s+i.qtd_caixas,0);
+    const totV = itensRef.reduce((s,i)=>s+(i.preco_par||0)*i.qtd_pares,0);
     const totHeight = totV > 0 ? 20 : 11;
     if (y+totHeight > BOTTOM) { doc.addPage(); pg++; y = drawHeader(); drawFooter(pg); }
     fc('#f8f5f1'); doc.rect(ML,y+2,X.end-ML,totHeight,'F');
     dc('#e2ddd8'); doc.setLineWidth(.4); doc.line(ML,y+2,X.end,y+2); doc.line(ML,y+2+totHeight,X.end,y+2+totHeight);
     doc.setFont('helvetica','bold'); doc.setFontSize(9.5); tc('#26361e');
-    doc.text(`TOTAL GERAL: ${totP} pares   ${carrinho.itens.length} ref.   ${totC} caixas`, ML+4, y+9);
+    doc.text(`TOTAL GERAL: ${totP} pares   ${itensRef.length} ref.   ${totC} caixas`, ML+4, y+9);
     if (totV > 0) {
       const totVStr = totV.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
       doc.setFont('helvetica','normal'); doc.setFontSize(9); tc('#71706f');
@@ -2380,7 +2532,7 @@ async function gerarPDF() {
     console.error(err);
   } finally {
     document.body.style.cursor = '';
-    if (btnPdf) { btnPdf.disabled = false; btnPdf.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exportar PDF`; }
+    if (btnPdf) { btnPdf.disabled = false; btnPdf.innerHTML = origHtml; }
   }
 }
 
@@ -2437,7 +2589,7 @@ function fecharZoom() {
 }
 
 document.addEventListener('keydown', e=>{
-  if (e.key==='Escape') { fecharZoom(); fecharPromoLb(); lbFechar(); fecharSeletor(); fecharDrawer(); fecharModalId(); }
+  if (e.key==='Escape') { fecharZoom(); fecharPromoLb(); lbFechar(); fecharSeletor(); fecharDrawer(); if (checkoutEstado!=='sucesso') fecharCheckout(); }
   if (document.getElementById('promo-lb').style.display !== 'none') {
     if (e.key==='ArrowLeft')  navPromoLb(-1);
     if (e.key==='ArrowRight') navPromoLb(1);
