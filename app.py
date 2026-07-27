@@ -481,7 +481,7 @@ def require_login():
                         'catalogo_representante_entrar', 'catalogo_representante_sair',
                         'catalogo_representante_painel', 'api_catalogo_representante_clientes',
                         'api_catalogo_representante_historico', 'api_catalogo_meu_cadastro',
-                        'api_catalogo_pedido_cancelar',
+                        'api_catalogo_pedido_cancelar', 'api_catalogo_cliente_atualizar',
                         'api_catalogo_meu_cadastro_atualizar',
                         'catalogo_representante_cadastrar_cliente',
                         'catalogo_equipe_entrar', 'catalogo_equipe_sair'}
@@ -824,7 +824,7 @@ input:focus{border-color:var(--coral)}
     <button class="btn" type="submit">Cadastrar cliente</button>
   </form>
   <div style="display:flex;justify-content:space-between;margin-top:16px">
-    <a class="voltar" href="/catalogo/representante/painel">← Voltar aos meus clientes</a>
+    <a class="voltar" href="{{ voltar_url }}">← Voltar aos meus clientes</a>
     <a class="voltar" href="/catalogo">← Voltar ao catálogo</a>
   </div>
 </div>
@@ -869,7 +869,7 @@ def catalogo_representante_entrar():
     session['catalogo_rep_nome'] = row[1]
     session.pop('catalogo_cadastro_id', None)
     session.pop('catalogo_cliente', None)
-    return redirect(url_for('catalogo_representante_painel'))
+    return redirect(url_for('catalogo') + '#clientes')
 
 
 @app.route('/catalogo/representante/sair')
@@ -952,10 +952,12 @@ def catalogo_representante_painel():
 
 @app.route('/api/catalogo/representante/clientes')
 def api_catalogo_representante_clientes():
-    """Lista enxuta (id/nome/empresa) pro seletor do modal de fechamento
-    de pedido no catalogo.html. Representante vê só a própria carteira;
-    equipe Boaonda (usuário do portal) vê todos os clientes cadastrados,
-    já que não tem uma carteira própria."""
+    """Lista de clientes — id/nome/empresa (usado pelos seletores de
+    Fechar pedido/Histórico) e, junto, os mesmos campos completos do
+    painel (cnpj/cidade/uf/criado_em/total_pedidos/ultimo_pedido) pra
+    alimentar a aba "Meus clientes" sem precisar de uma segunda rota.
+    Representante vê só a própria carteira; equipe Boaonda vê todos os
+    clientes cadastrados, já que não tem uma carteira própria."""
     if not (session.get('catalogo_rep_id') or session.get('catalogo_equipe_username')):
         return jsonify({'erro': 'Sessão expirada.'}), 401
     try:
@@ -963,29 +965,92 @@ def api_catalogo_representante_clientes():
         cursor = conexao.cursor()
         if session.get('catalogo_rep_id'):
             cursor.execute("""
-                SELECT id, nome, empresa
+                SELECT id, nome, empresa, cnpj, telefone, email, cidade, uf, criado_em
                 FROM catalogo_cadastros
                 WHERE representante_id = %s
-                ORDER BY empresa NULLS LAST, nome
+                ORDER BY criado_em DESC
             """, (session['catalogo_rep_id'],))
         else:
             cursor.execute("""
-                SELECT id, nome, empresa
+                SELECT id, nome, empresa, cnpj, telefone, email, cidade, uf, criado_em
                 FROM catalogo_cadastros
-                ORDER BY empresa NULLS LAST, nome
+                ORDER BY criado_em DESC
             """)
         cols = [d[0] for d in cursor.description]
+        linhas = cursor.fetchall()
+        ids_raw = [row[0] for row in linhas]
         clientes = [dict(zip(cols, (_catalogo_valor_json_seguro(v) for v in row)))
-                    for row in cursor.fetchall()]
+                    for row in linhas]
+
+        resumo_pedidos = {}
+        if ids_raw:
+            cursor.execute("""
+                SELECT cadastro_id, COUNT(*), MAX(criado_em)
+                FROM catalogo_pedidos
+                WHERE cadastro_id = ANY(%s::uuid[])
+                GROUP BY cadastro_id
+            """, (ids_raw,))
+            for cadastro_id, total, ultimo in cursor.fetchall():
+                resumo_pedidos[str(cadastro_id)] = {
+                    'total': total,
+                    'ultimo': _catalogo_valor_json_seguro(ultimo),
+                }
         conexao.close()
+
+        for c in clientes:
+            r = resumo_pedidos.get(c['id'])
+            c['total_pedidos'] = r['total'] if r else 0
+            c['ultimo_pedido'] = (r['ultimo'] or '')[:10] if r else None
         return jsonify({'clientes': clientes})
+    except Exception as ex:
+        return jsonify({'erro': str(ex)}), 500
+
+
+@app.route('/api/catalogo/cliente/<cliente_id>/atualizar', methods=['POST'])
+def api_catalogo_cliente_atualizar(cliente_id):
+    """Representante/equipe editam o cadastro de um cliente da carteira
+    (manutenção) — nunca o CNPJ (chave de login), igual acontece em
+    /api/catalogo/meu-cadastro/atualizar pro autoatendimento do cliente."""
+    eh_rep = bool(session.get('catalogo_rep_id'))
+    eh_equipe = bool(session.get('catalogo_equipe_username'))
+    if not (eh_rep or eh_equipe):
+        return jsonify({'erro': 'Sem permissão.'}), 403
+    payload = request.get_json(silent=True) or {}
+    nome     = (payload.get('nome') or '').strip()
+    empresa  = (payload.get('empresa') or '').strip()
+    telefone = (payload.get('telefone') or '').strip()
+    email    = (payload.get('email') or '').strip()
+    cidade   = (payload.get('cidade') or '').strip()
+    uf       = (payload.get('uf') or '').strip().upper()[:2]
+    if not (nome and telefone and email):
+        return jsonify({'erro': 'Preencha nome, telefone e e-mail.'}), 400
+    try:
+        conexao = _conectar_catalogo_db()
+        cursor = conexao.cursor()
+        if eh_rep:
+            cursor.execute("SELECT 1 FROM catalogo_cadastros WHERE id = %s AND representante_id = %s",
+                           (cliente_id, session['catalogo_rep_id']))
+            if not cursor.fetchone():
+                conexao.close()
+                return jsonify({'erro': 'Cliente não encontrado ou fora da sua carteira.'}), 403
+        cursor.execute("""
+            UPDATE catalogo_cadastros
+            SET nome = %s, empresa = %s, telefone = %s, email = %s, cidade = %s, uf = %s
+            WHERE id = %s
+        """, (nome, empresa or None, telefone, email, cidade or None, uf or None, cliente_id))
+        conexao.commit()
+        conexao.close()
+        return jsonify({'status': 'ok'})
     except Exception as ex:
         return jsonify({'erro': str(ex)}), 500
 
 
 @app.route('/catalogo/representante/cadastrar-cliente', methods=['GET', 'POST'])
 def catalogo_representante_cadastrar_cliente():
-    if not session.get('catalogo_rep_id'):
+    """Representante cadastra um cliente na própria carteira; equipe
+    Boaonda também pode usar essa tela (fica sem representante_id — igual
+    um autocadastro, só que feito por alguém do time)."""
+    if not (session.get('catalogo_rep_id') or session.get('catalogo_equipe_username')):
         return redirect(url_for('catalogo_entrar'))
     erro = None
     if request.method == 'POST':
@@ -1011,18 +1076,18 @@ def catalogo_representante_cadastrar_cliente():
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     RETURNING id
                 """, (nome, empresa, cnpj, telefone, email, cidade, uf,
-                      session.get('catalogo_rep_nome'), session['catalogo_rep_id'], aceite))
+                      session.get('catalogo_rep_nome'), session.get('catalogo_rep_id'), aceite))
                 cursor.fetchone()
                 conexao.commit()
                 conexao.close()
-                return redirect(url_for('catalogo_representante_painel',
-                                         msg=f'Cliente "{nome}" cadastrado. Ele já aparece pra escolher na hora de fechar um pedido.'))
+                return redirect(url_for('catalogo') + '#clientes')
             except Exception as ex:
                 if 'unique' in str(ex).lower() or 'duplicate' in str(ex).lower():
                     erro = 'Esse CNPJ já está cadastrado — volte e procure o cliente na sua lista.'
                 else:
                     erro = f'Erro ao cadastrar: {ex}'
-    return render_template_string(_CATALOGO_REP_CADASTRO_CLIENTE_HTML, erro=erro)
+    voltar_url = '/catalogo#clientes'
+    return render_template_string(_CATALOGO_REP_CADASTRO_CLIENTE_HTML, erro=erro, voltar_url=voltar_url)
 
 
 @app.route('/api/catalogo/pedido', methods=['POST'])

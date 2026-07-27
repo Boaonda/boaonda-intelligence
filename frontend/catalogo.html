@@ -769,13 +769,13 @@ select.co-obs{min-height:auto;padding:11px 12px;cursor:pointer}
     <span class="hdr-sub">Calçados</span>
   </div>
   <div class="hdr-right">
-    <button class="hdr-nav-btn" onclick="abrirPedidosArea()" title="Fechar pedido, ver histórico e seu cadastro">📦 Pedidos</button>
+    <button class="hdr-nav-btn" onclick="abrirPedidosArea()" title="Fechar pedido, histórico, clientes e cadastro">⚙️ Gerenciamento</button>
     <span class="hdr-tag">Catálogo de Produtos</span>
     <div class="hdr-user" id="hdr-user" onclick="toggleUserMenu(event)">
       <span class="hdr-user-nome" id="hdr-user-nome">…</span>
       <span class="hdr-user-caret">▾</span>
       <div class="hdr-user-menu" id="hdr-user-menu">
-        <a href="/catalogo/representante/painel" id="hdr-link-meus-clientes" style="display:none">👤 Meus clientes</a>
+        <a href="#" onclick="event.preventDefault();abrirPedidosArea('clientes')" id="hdr-link-meus-clientes" style="display:none">👤 Meus clientes</a>
         <a href="/catalogo/sair" id="hdr-link-trocar">↪ Trocar CNPJ / Sair</a>
         <a href="/catalogo/representante/sair" id="hdr-link-sair-rep" class="sair" style="display:none">🚪 Sair (representante)</a>
         <a href="/catalogo/equipe/sair" id="hdr-link-sair-equipe" class="sair" style="display:none">🚪 Sair</a>
@@ -873,21 +873,24 @@ select.co-obs{min-height:auto;padding:11px 12px;cursor:pointer}
   </div>
 </div>
 
-<!-- Área Pedidos (fechar / histórico / meu cadastro) -->
+<!-- Área Gerenciamento (fechar pedido / histórico / meus clientes / meu cadastro) -->
 <div class="checkout-view" id="checkout-view" style="display:none">
   <div class="checkout-head">
     <button class="checkout-voltar" onclick="fecharCheckout()">← Voltar</button>
-    <span class="checkout-titulo">Pedidos</span>
+    <span class="checkout-titulo">Gerenciamento</span>
     <span style="width:70px"></span>
   </div>
   <div class="co-layout">
     <div class="co-sidebar" id="co-sidebar">
-      <div class="co-side-title">Pedidos</div>
+      <div class="co-side-title">Gerenciamento</div>
       <div class="co-side-item" id="co-side-fechar" onclick="checkoutSetAba('fechar')">
         <span class="co-side-icon">🛒</span><span>Fechar pedido</span>
       </div>
       <div class="co-side-item" id="co-side-historico" onclick="checkoutSetAba('historico')">
         <span class="co-side-icon">📦</span><span>Histórico</span>
+      </div>
+      <div class="co-side-item" id="co-side-clientes" onclick="checkoutSetAba('clientes')" style="display:none">
+        <span class="co-side-icon">🧾</span><span>Meus clientes</span>
       </div>
       <div class="co-side-item" id="co-side-cadastro" onclick="checkoutSetAba('cadastro')">
         <span class="co-side-icon">👤</span><span>Meu cadastro</span>
@@ -1091,7 +1094,11 @@ async function init() {
   if (!ESTOQUE) { mostrarErro('Dados indisponíveis.'); return; }
   if (ESTOQUE.gerado_em) document.getElementById('footer-data').textContent = ESTOQUE.gerado_em;
   carregarCarrinho();
-  carregarIdentidade();
+  carregarIdentidade().then(() => {
+    // Redirect pós-cadastro de cliente (rep/equipe) e pós-login do
+    // representante já chegam com #clientes na URL, abrindo direto na aba.
+    if (location.hash === '#clientes') abrirPedidosArea('clientes');
+  });
   prepararRefs();
   renderSidebar();
   popularFiltros();
@@ -2127,6 +2134,7 @@ function fecharCheckout() {
 function checkoutSetAba(aba) {
   checkoutAba = aba;
   if (aba === 'historico') { historicoCache = null; historicoAberto = null; }
+  if (aba === 'clientes') { checkoutClientesCache = null; clienteEditando = null; }
   renderCheckout();
 }
 
@@ -2163,11 +2171,14 @@ function renderCheckout() {
     return;
   }
   if (sidebar) sidebar.style.display = '';
-  ['fechar','historico','cadastro'].forEach(a => {
+  const itemClientes = document.getElementById('co-side-clientes');
+  if (itemClientes) itemClientes.style.display = ehSessaoInterna() ? 'flex' : 'none';
+  ['fechar','historico','clientes','cadastro'].forEach(a => {
     document.getElementById('co-side-'+a)?.classList.toggle('active', checkoutAba === a);
   });
 
   if (checkoutAba === 'historico') renderAbaHistorico(body);
+  else if (checkoutAba === 'clientes') renderAbaClientes(body);
   else if (checkoutAba === 'cadastro') renderAbaCadastro(body);
   else renderAbaFechar(body);
 }
@@ -2439,6 +2450,99 @@ async function cancelarPedidoHistorico(idx) {
     renderHistoricoConteudo(document.getElementById('checkout-body'));
   } catch(e) {
     alert('Não foi possível cancelar o pedido agora.');
+  }
+}
+
+// ── Aba: Meus clientes (representante/equipe) ──────────────────────
+let clienteEditando = null; // índice do cliente com formulário de edição aberto
+
+async function renderAbaClientes(container) {
+  if (checkoutClientesCache === null) {
+    container.innerHTML = '<div class="co-secao co-vazio">Carregando clientes…</div>';
+    try {
+      const r = await fetch('/api/catalogo/representante/clientes');
+      const d = await r.json();
+      checkoutClientesCache = d.clientes || [];
+    } catch(e) { checkoutClientesCache = []; }
+  }
+  renderClientesConteudo(container);
+}
+
+function renderClientesConteudo(container) {
+  const clientes = checkoutClientesCache || [];
+  container.innerHTML = `
+    <div class="co-secao" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div class="co-secao-titulo" style="margin:0">${clientes.length} cliente${clientes.length!==1?'s':''}</div>
+      <a class="co-btn-acao principal" style="padding:9px 16px;flex:none" href="/catalogo/representante/cadastrar-cliente">+ Cadastrar cliente</a>
+    </div>
+    <div class="co-secao" style="padding:4px 18px">
+      ${clientes.length ? clientes.map((c, idx) => renderLinhaCliente(c, idx)).join('') : '<div class="co-vazio">Nenhum cliente cadastrado ainda.</div>'}
+    </div>
+  `;
+}
+
+function renderLinhaCliente(c, idx) {
+  const editando = clienteEditando === idx;
+  const pedidosTxt = c.total_pedidos
+    ? `${c.total_pedidos} pedido${c.total_pedidos!==1?'s':''}${c.ultimo_pedido ? ' · último em ' + c.ultimo_pedido.split('-').reverse().join('/') : ''}`
+    : 'Nenhum pedido ainda';
+  if (!editando) {
+    return `
+      <div class="co-item" style="cursor:pointer" onclick="toggleClienteEdicao(${idx})">
+        <div class="co-item-body">
+          <div class="co-item-ref">${esc(c.empresa || c.nome)}</div>
+          <div class="co-item-meta">${esc(c.nome)}${c.cidade ? ' · ' + esc(c.cidade) + (c.uf ? '/' + esc(c.uf) : '') : ''}</div>
+          <div class="co-item-meta">CNPJ ${esc(c.cnpj || '–')} · ${pedidosTxt}</div>
+        </div>
+      </div>`;
+  }
+  return `
+    <div class="co-item" style="flex-direction:column;align-items:stretch">
+      ${campoEditavel('Nome', 'cli-nome-'+idx, c.nome)}
+      ${campoEditavel('Empresa', 'cli-empresa-'+idx, c.empresa)}
+      ${campoTravado('CNPJ', c.cnpj)}
+      ${campoEditavel('Telefone', 'cli-telefone-'+idx, c.telefone)}
+      ${campoEditavel('E-mail', 'cli-email-'+idx, c.email, 'email')}
+      <div class="id-row2">
+        ${campoEditavel('Cidade', 'cli-cidade-'+idx, c.cidade)}
+        ${campoEditavel('UF', 'cli-uf-'+idx, c.uf)}
+      </div>
+      <div id="cli-msg-${idx}" style="min-height:18px;font-size:12px;font-weight:700"></div>
+      <div class="co-item-row">
+        <button class="co-btn-acao principal" style="flex:1;padding:9px" onclick="event.stopPropagation();salvarClienteEdicao(${idx})">Salvar</button>
+        <button class="co-btn-acao" style="flex:1;padding:9px" onclick="event.stopPropagation();clienteEditando=null;renderClientesConteudo(document.getElementById('checkout-body'))">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+function toggleClienteEdicao(idx) {
+  clienteEditando = clienteEditando === idx ? null : idx;
+  renderClientesConteudo(document.getElementById('checkout-body'));
+}
+
+async function salvarClienteEdicao(idx) {
+  const c = checkoutClientesCache[idx];
+  const payload = {
+    nome: document.getElementById('cli-nome-'+idx).value.trim(),
+    empresa: document.getElementById('cli-empresa-'+idx).value.trim(),
+    telefone: document.getElementById('cli-telefone-'+idx).value.trim(),
+    email: document.getElementById('cli-email-'+idx).value.trim(),
+    cidade: document.getElementById('cli-cidade-'+idx).value.trim(),
+    uf: document.getElementById('cli-uf-'+idx).value.trim(),
+  };
+  const msgEl = document.getElementById('cli-msg-'+idx);
+  try {
+    const r = await fetch(`/api/catalogo/cliente/${c.id}/atualizar`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) { msgEl.style.color = '#b8462a'; msgEl.textContent = d.erro || 'Erro ao salvar.'; return; }
+    Object.assign(c, payload);
+    clienteEditando = null;
+    renderClientesConteudo(document.getElementById('checkout-body'));
+  } catch(e) {
+    msgEl.style.color = '#b8462a';
+    msgEl.textContent = 'Não foi possível salvar agora.';
   }
 }
 
