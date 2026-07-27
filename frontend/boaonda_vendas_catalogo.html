@@ -99,8 +99,6 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 .mbar{height:3px;border-radius:2px;opacity:.7}
 
 /* Clientes com compra */
-.link-carteira{font-size:10.5px;font-weight:700;color:var(--azul);text-decoration:none;white-space:nowrap}
-.link-carteira:hover{color:var(--coral)}
 .cl-search{background:var(--card2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;outline:none;min-width:200px}
 .cl-search:focus{border-color:var(--coral)}
 .cl-empty{padding:24px;text-align:center;color:var(--txt-m);font-size:12px}
@@ -210,22 +208,6 @@ td.seg-ecom-ecom, .cl-mini-table td.seg-ecom-ecom{background:#d9a44114}
     </div>
   </div>
 
-  <!-- Período -->
-  <div class="dd-wrap" id="ddw-periodo">
-    <div class="dd-btn" id="ddb-periodo" onclick="toggleDD('periodo')">
-      <span><span class="dd-label">Período </span><span id="dd-periodo-txt">Todos os meses</span></span>
-      <span class="dd-arrow">▼</span>
-    </div>
-    <div class="dd-menu" id="ddm-periodo" style="min-width:200px">
-      <div class="dd-item all" onclick="ddSelectAll('periodo')">
-        <div class="dd-cb checked" id="cb-periodo-all"></div>
-        <span>Todos os meses</span>
-      </div>
-      <div class="dd-sep"></div>
-      <div id="dd-meses-lista"></div>
-    </div>
-  </div>
-
   <!-- Unidade: Pares ou Valor (R$) -->
   <div class="dd-wrap" id="ddw-unidade">
     <div class="dd-btn" id="ddb-unidade" onclick="toggleDD('unidade')">
@@ -267,11 +249,13 @@ td.seg-ecom-ecom, .cl-mini-table td.seg-ecom-ecom{background:#d9a44114}
   <div class="stitle" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
     <span>Clientes com compra <span class="ctitle-badge" id="cl-badge">período selecionado</span></span>
     <div style="display:flex;gap:10px;align-items:center">
-      <a href="boaonda_carteira_clientes.html" target="_blank" class="link-carteira">Análise da carteira →</a>
       <select class="resumo-mes-sel" id="cl-periodo" onchange="clSetPeriodo(this.value)">
         <option value="dia_anterior">Dia anterior</option>
         <option value="dia_atual" selected>Dia atual</option>
         <option value="mes">Mês</option>
+        <option value="mes_anterior">Mês anterior</option>
+        <option value="ult_3_meses">Últimos 3 meses</option>
+        <option value="ult_6_meses">Últimos 6 meses</option>
         <option value="ano">Ano</option>
       </select>
       <input type="text" id="cl-busca" placeholder="Buscar cliente/holding..." class="cl-search" oninput="clSetBusca(this.value)">
@@ -370,7 +354,6 @@ Promise.all([
     }
     // Derivar lista de meses a partir dos dados — nunca mais desatualiza
     MESES_ALL = Object.keys(mensal).filter(m => /^\d{6}$/.test(m)).sort();
-    estado.meses = new Set(MESES_ALL.length ? [MESES_ALL[MESES_ALL.length-1]] : []);
     // Atualizar subtítulo com intervalo real de dados
     if (MESES_ALL.length) {
       const sub = document.getElementById('h-sub');
@@ -399,7 +382,6 @@ const TIPOS_ALL=['PROG','PE','MISTA'];
 const estado = {
   canal: new Set(['MI']),  // padrão: só Mercado Interno (visão principal; ME/EC ativados sob demanda)
   tipo:  new Set(TIPOS_ALL),          // todos
-  meses: new Set(),  // preenchido após fetch
   unidade: 'pares',                   // 'pares' ou 'valor'
 };
 
@@ -436,8 +418,7 @@ document.addEventListener('click',e=>{
 });
 
 function ddToggle(grupo, val){
-  const set = estado[grupo==='periodo'?'meses':grupo];
-  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?TIPOS_ALL:MESES_ALL;
+  const set = estado[grupo];
   if(set.has(val)){ if(set.size>1) set.delete(val); }
   else set.add(val);
   updateDDUI(grupo);
@@ -445,8 +426,8 @@ function ddToggle(grupo, val){
 }
 
 function ddSelectAll(grupo){
-  const set = grupo==='periodo'?estado.meses:estado[grupo];
-  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?TIPOS_ALL:MESES_ALL;
+  const set = estado[grupo];
+  const allVals = grupo==='canal'?['MI','ME','EC']:TIPOS_ALL;
   const isAll = set.size===allVals.length;
   if(isAll){ set.clear(); set.add(allVals[0]); }
   else { allVals.forEach(v=>set.add(v)); }
@@ -455,8 +436,8 @@ function ddSelectAll(grupo){
 }
 
 function updateDDUI(grupo){
-  const set = grupo==='periodo'?estado.meses:estado[grupo];
-  const allVals = grupo==='canal'?['MI','ME','EC']:grupo==='tipo'?TIPOS_ALL:MESES_ALL;
+  const set = estado[grupo];
+  const allVals = grupo==='canal'?['MI','ME','EC']:TIPOS_ALL;
   const isAll = set.size===allVals.length;
 
   // All checkbox
@@ -464,46 +445,28 @@ function updateDDUI(grupo){
   if(cbAll) cbAll.classList.toggle('checked',isAll);
 
   // Individual checkboxes
-  if(grupo==='periodo'){
-    document.querySelectorAll('#dd-meses-lista .dd-cb').forEach(cb=>{
-      cb.classList.toggle('checked',set.has(cb.dataset.val));
-    });
-  } else {
-    allVals.forEach(v=>{
-      const cb=document.getElementById('cb-'+grupo+'-'+v);
-      if(cb) cb.classList.toggle('checked',set.has(v));
-    });
-  }
+  allVals.forEach(v=>{
+    const cb=document.getElementById('cb-'+grupo+'-'+v);
+    if(cb) cb.classList.toggle('checked',set.has(v));
+  });
 
   // Botão label
   const txt=document.getElementById('dd-'+grupo+'-txt');
   if(txt){
-    if(isAll) txt.textContent=grupo==='canal'?'Todos':grupo==='tipo'?'Todos os tipos':'Todos os meses';
+    if(isAll) txt.textContent=grupo==='canal'?'Todos':'Todos os tipos';
     else if(set.size===1){
       const v=[...set][0];
       const nomes={MI:'Merc. Interno',ME:'Merc. Externo',EC:'E-commerce',
                    PROG:'Programação',PE:'Pronta Entrega',MISTA:'Venda Mista'};
-      txt.textContent=nomes[v]||mesLabel(v);
+      txt.textContent=nomes[v]||v;
     } else txt.textContent=set.size+' selecionados';
   }
 }
 
-// ── INIT MESES ──────────────────────────────────────────────────────
+// ── MESES ───────────────────────────────────────────────────────────
 function mesLabel(m){
   const mn=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   return mn[parseInt(m.slice(4))-1]+'/'+m.slice(2,4);
-}
-
-function initMeses(){
-  const cont=document.getElementById('dd-meses-lista');
-  MESES_ALL.forEach(m=>{
-    const div=document.createElement('div');
-    div.className='dd-item';
-    div.onclick=()=>ddToggle('periodo',m);
-    const checkedCls=estado.meses.has(m)?' checked':'';
-    div.innerHTML='<div class="dd-cb'+checkedCls+'" data-val="'+m+'"></div><span>'+mesLabel(m)+'</span>';
-    cont.appendChild(div);
-  });
 }
 
 // ── CALCULAR ────────────────────────────────────────────────────────
@@ -522,13 +485,15 @@ function calcValMes(m, canais, tipos){
 
 // ── RENDER ──────────────────────────────────────────────────────────
 function render(){
-  const canais=estado.canal, tipos=estado.tipo, meses=estado.meses;
+  const canais=estado.canal, tipos=estado.tipo;
   const D=dadosAtual();
   const unidLabel=estado.unidade==='valor'?'em R$ no período':'pares no período';
 
-  // Totais para KPIs (respeitam todos os filtros)
+  // Totais para KPIs (respeitam todos os filtros; sempre todos os meses
+  // disponíveis na base — o filtro de período no topo foi removido por
+  // não ser usado, ver [[project_filtro_periodo_vendas]])
   let mi_prog=0,mi_pe=0,mi_mista=0,me=0,ec=0;
-  [...meses].sort().forEach(m=>{
+  MESES_ALL.forEach(m=>{
     const d=D[m]||{};
     if(canais.has('MI')){
       if(tipos.has('PROG')) mi_prog+=(d.MI||{}).PROG||0;
@@ -548,14 +513,13 @@ function render(){
   if(canais.has('MI') && tipos.has('MISTA')) kpiHTML+=kpi('','MI — Venda Mista',fmtv(mi_mista),pct(mi_mista,total)+'% do total');
   if(canais.has('ME')) kpiHTML+=kpi('','Mercado Externo',fmtv(me),pct(me,total)+'% do total');
   if(canais.has('EC')) kpiHTML+=kpi('','E-commerce',fmtv(ec),pct(ec,total)+'% do total');
-  kpiHTML+=kpi('','Meses',meses.size,meses.size===MESES_ALL.length?'todos':'de '+MESES_ALL.length);
   document.getElementById('kpi-area').innerHTML=kpiHTML;
 
   // Descrição
   const cNomes={MI:'MI',ME:'ME',EC:'E-com'};
   const tNomesShort={PROG:'Prog',PE:'PE',MISTA:'Mista'};
   const cDesc=[...canais].map(c=>cNomes[c]).join('+') + (canais.has('MI')&&tipos.size<TIPOS_ALL.length?' ('+[...tipos].map(t=>tNomesShort[t]).join('/')+')':'');
-  document.getElementById('stitle-desc').textContent=cDesc+' · '+meses.size+' meses';
+  document.getElementById('stitle-desc').textContent=cDesc;
 
   renderCharts(canais, tipos);
   renderClientes();
@@ -606,8 +570,14 @@ function clPassaPeriodo(dt){
     const ont=new Date(hoje); ont.setDate(hoje.getDate()-1);
     return dd===ont.getDate() && mm===ont.getMonth()+1 && ano===ont.getFullYear();
   }
-  if(clPeriodo==='mes')
-    return mm===hoje.getMonth()+1 && ano===hoje.getFullYear();
+  // Meses-calendário completos, contados a partir do mês corrente (0 = mês
+  // atual, 1 = mês anterior, etc.) — evita aritmética de Date com dia do
+  // mês (setMonth pode "vazar" pro mês seguinte em dias como 31).
+  const diffMeses = (hoje.getFullYear()*12+hoje.getMonth()) - (ano*12+(mm-1));
+  if(clPeriodo==='mes')          return diffMeses===0;
+  if(clPeriodo==='mes_anterior') return diffMeses===1;
+  if(clPeriodo==='ult_3_meses')  return diffMeses>=0 && diffMeses<=2;
+  if(clPeriodo==='ult_6_meses')  return diffMeses>=0 && diffMeses<=5;
   return true; // 'ano' — arquivo já é só do ano corrente
 }
 
@@ -675,7 +645,9 @@ function renderClientes(){
   if(!thead||!tb) return;
   const canais=estado.canal, tipos=estado.tipo;
   const cols = clColunasAtivas(canais, tipos);
-  const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',ano:'ano corrente'}[clPeriodo];
+  const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',
+    mes_anterior:'mês anterior',ult_3_meses:'últimos 3 meses',ult_6_meses:'últimos 6 meses',
+    ano:'ano corrente'}[clPeriodo];
   if(badge) badge.textContent=periodoLabel;
 
   // Cabeçalho — colunas de pares e R$ separadas por modalidade + total, todas
@@ -892,7 +864,9 @@ function renderRefsMix(){
   if(!tb||!thead) return;
   const canais=estado.canal, tipos=estado.tipo;
   const cols = clColunasAtivas(canais, tipos);
-  const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',ano:'ano corrente'}[clPeriodo];
+  const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',
+    mes_anterior:'mês anterior',ult_3_meses:'últimos 3 meses',ult_6_meses:'últimos 6 meses',
+    ano:'ano corrente'}[clPeriodo];
   if(badge) badge.textContent=periodoLabel;
 
   let theadHtml = '<th>#</th><th class="sortable" onclick="refsSetSort(\'r\')">Referência'+refsSortArrow('r')+'</th>';
@@ -966,10 +940,8 @@ function refsDrillRow(item, cols){
 }
 
 // INIT
-initMeses();
 updateDDUI('canal');
 updateDDUI('tipo');
-updateDDUI('periodo');
 // render() é chamado após fetch carregar os dados
 </script>
 </body>
