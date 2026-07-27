@@ -928,7 +928,7 @@ def catalogo_representante_painel():
             cursor.execute("""
                 SELECT cadastro_id, COUNT(*), MAX(criado_em)
                 FROM catalogo_pedidos
-                WHERE cadastro_id = ANY(%s)
+                WHERE cadastro_id = ANY(%s::uuid[])
                 GROUP BY cadastro_id
             """, (ids_raw,))
             for cadastro_id, total, ultimo in cursor.fetchall():
@@ -1157,7 +1157,7 @@ def api_catalogo_meu_historico():
                 SELECT pedido_id, produto_referencia, produto_nome, grade_tamanho, quantidade,
                        cor, cor_nome, preco_par, foto_url
                 FROM catalogo_pedidos_itens
-                WHERE pedido_id = ANY(%s)
+                WHERE pedido_id = ANY(%s::uuid[])
                 ORDER BY criado_em
             """, (pedido_ids_raw,))
             cols = [d[0] for d in cursor.description]
@@ -1230,7 +1230,7 @@ def api_catalogo_representante_historico():
                 SELECT pedido_id, produto_referencia, produto_nome, grade_tamanho, quantidade,
                        cor, cor_nome, preco_par, foto_url
                 FROM catalogo_pedidos_itens
-                WHERE pedido_id = ANY(%s)
+                WHERE pedido_id = ANY(%s::uuid[])
                 ORDER BY criado_em
             """, (pedido_ids_raw,))
             cols2 = [d[0] for d in cursor.description]
