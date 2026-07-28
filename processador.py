@@ -181,6 +181,25 @@ VENDA_TIPO_POR_COD = {'1':'PROG','10':'EQUIPARADA','22':'PE','31':'MISTA','32':'
 # pendências retroativas.
 ESPECIES_ORCAMENTO_ME = {'27', '33'}
 
+# Ajustes manuais de faturamento — pedidos excluídos do cálculo porque
+# representam uma correção contábil pontual, não venda real adicional. O
+# 3YS só mostra o lado da nota de saída (ambos os pedidos abaixo aparecem
+# como espécie 24, 'Faturado', 24/07/2026) — a nota de entrada que anula o
+# faturamento antigo em espécie 1 é tratada só no ERP e não aparece no 3YS,
+# então não tem como detectar/reconciliar isso automaticamente pelos dados
+# que temos. Combinado com o Cássio em 2026-07-28 que o tratamento correto
+# é excluir os pedidos envolvidos aqui, um a um, com o motivo documentado
+# (confirmado batendo 8.037 pares / R$99.970,20 de impacto em ME Julho/2026,
+# valor consistente com a duplicação relatada). Adicionar novas entradas
+# aqui quando um caso parecido aparecer.
+PEDIDOS_EXCLUIDOS_FATURAMENTO = {
+    '313994': 'Refaturamento cliente Comercializadora Arturo Calle SA (espécie 24, '
+              'Faturado 24/07/2026) — duplica faturamento já revertido via nota de '
+              'entrada no ERP (espécie 1, não presente no 3YS). Ver pedido 313995.',
+    '313995': 'Refaturamento cliente Comercializadora Arturo Calle SA (espécie 24, '
+              'Faturado 24/07/2026) — contraparte do pedido 313994 (ver acima).',
+}
+
 # ─── HELPERS ───────────────────────────────────────────────────────────
 def achar_3ys(diretorio='.'):
     """Detecta arquivo 3YS automaticamente — qualquer variação de nome."""
@@ -1500,6 +1519,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     total_fat = total_prev = sem_data_count = 0
 
     for row in linhas:
+        if g(row, IDX['pedido']) in PEDIDOS_EXCLUIDOS_FATURAMENTO: continue
         pos = g(row, IDX['pos_item']).strip().upper()
         if pos == 'CANCELADO': continue
         if pos == 'FATURADO':                                   status = 'fat'
