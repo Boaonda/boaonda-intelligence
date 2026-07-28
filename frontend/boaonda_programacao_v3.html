@@ -47,6 +47,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
 .kpi{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--line2);border-radius:10px;padding:14px}
 .kpi.destaque{border-top-color:var(--coral)}
+.kpi.clicavel{cursor:pointer;transition:.15s}
+.kpi.clicavel:hover{border-color:var(--coral)}
+.kpi.clicavel.ativo{border-color:var(--coral);background:rgba(237,104,66,.06)}
 .kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
 .kpi-v{font-size:1.75rem;font-weight:800;color:var(--txt);line-height:1}
 .kpi-v.destaque{color:var(--coral)}
@@ -281,6 +284,7 @@ table.top-refs tr:hover td{background:var(--card2);color:var(--txt)}
 <div class="main">
   <div class="stitle" id="stitle">Semanas de produção</div>
   <div class="kpi-grid" id="kpi-area"><div class="loading">Carregando dados...</div></div>
+  <div id="segmento-drill"></div>
   <div id="view-semana"><div class="cards-grid" id="cards-semana"></div><div id="sem-drill"></div></div>
   <div id="view-mes" style="display:none"><div id="cards-mes"></div></div>
   <div id="ocup-drill"></div>
@@ -335,6 +339,12 @@ let chartEv=null, chartMix=null, chartMontBar=null, chartMontDonut=null;
 let CONFIG={prazo_producao_dias:45};
 let semanaRefKey='', semanaRefLabel='';
 let DETALHE={semanas:{},cutoff:null};
+// Drilldown por segmento (Exportação/Armazém-PE/E-commerce) — agrega
+// item a item de TODAS as semanas do período (mês) atual, sem precisar
+// abrir semana por semana. Só disponível na visão "Semanas".
+let segmentoAtivo=null, segmentoLabel='';
+let segClienteAtivo=null, segPedidoAtivo=null;
+let SEG_CLI_REF=[], SEG_PED_REF=[];
 let OCUPACAO={semanas:{}};
 let semanaAtiva=null, progTab='cliente', itemAtivo=null;
 let PD_REF=[];
@@ -483,6 +493,7 @@ const periodosMes=()=>Object.keys(MESES).sort();
 function setModo(m){
   modo=m;
   ocupAtiva=null;
+  segmentoAtivo=null;
   document.getElementById('btn-semana').classList.toggle('active',m==='semana');
   document.getElementById('btn-mes').classList.toggle('active',m==='mes');
   document.getElementById('view-semana').style.display=m==='semana'?'block':'none';
@@ -496,7 +507,7 @@ function navPeriodo(dir){
   const arr=modo==='semana'?periodosSem():periodosMes();
   const idx=arr.indexOf(periodoAtual);
   const n=arr[Math.max(0,Math.min(arr.length-1,idx+dir))];
-  if(n!==periodoAtual){periodoAtual=n;renderTudo();}
+  if(n!==periodoAtual){periodoAtual=n;segmentoAtivo=null;renderTudo();}
 }
 
 function renderTudo(){
@@ -519,6 +530,7 @@ function renderSemanas(){
   const totMI=sems.reduce((s,[,v])=>s+(v?v.mi||0:0),0);
   const totEx=sems.reduce((s,[,v])=>s+(v?v.export||0:0),0);
   const totPE=sems.reduce((s,[,v])=>s+(v?v.pe||0:0),0);
+  const totEC=sems.reduce((s,[,v])=>s+(v?v.ecommerce||0:0),0);
   const totCV=sems.reduce((s,[,v])=>s+(v?v.convencional||0:0),0);
   const totMT=sems.reduce((s,[,v])=>s+(v?v.montado||0:0),0);
   const semsOk=sems.filter(([,v])=>v&&v.ok).length;
@@ -529,10 +541,12 @@ function renderSemanas(){
     kpiBox('','Meta do período',f(metaP),sems.length+' semanas × 30k')+
     kpiBox('','% da meta',pctMetaP+'%','<span class="badge '+(pctMetaP>=100?'ok':'warn')+'">'+semsOk+'/'+sems.length+' semanas OK</span>')+
     kpiBox('','Mercado Interno',f(totMI),pct(totMI,totP)+'% do total')+
-    kpiBox('','Exportação',f(totEx),pct(totEx,totP)+'% do total')+
-    kpiBox('','Armazém / PE',f(totPE),pct(totPE,totP)+'% do total')+
+    kpiBox('','Exportação',f(totEx),pct(totEx,totP)+'% do total','export')+
+    kpiBox('','Armazém / PE',f(totPE),pct(totPE,totP)+'% do total','pe')+
+    kpiBox('','E-commerce',f(totEC),pct(totEC,totP)+'% do total','ecommerce')+
     kpiBox('','Convencional',f(totCV),pct(totCV,totP)+'% do total')+
     kpiBox('','Montado',f(totMT),pct(totMT,totP)+'% do total');
+  renderSegmentoDrill();
 
   const hojeKey=mondayKey(new Date());
   const grid=document.getElementById('cards-semana');
@@ -707,14 +721,17 @@ function ocupCard(label,pct,consumo,capacidade,setorId){
     `<div class="ocup-card-pct ${ocupNivel(pct)}">${Math.round(pct)}%</div></div>`;
 }
 
-function kpiBox(cls,label,val,sub){
-  return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div>'+
+function kpiBox(cls,label,val,sub,seg){
+  const clicavel=seg?' clicavel'+(segmentoAtivo===seg?' ativo':''):'';
+  const onclick=seg?` onclick="toggleSegmento('${seg}','${label}')"`:'';
+  return '<div class="kpi '+cls+clicavel+'"'+onclick+'><div class="kpi-l">'+label+'</div>'+
     '<div class="kpi-v '+cls+'">'+val+'</div>'+
     '<div class="kpi-s">'+sub+'</div></div>';
 }
 
 // DRILLDOWN POR SEMANA
 function toggleSemana(k){
+  if(segmentoAtivo) segmentoAtivo=null; // só um painel de drill aberto por vez
   semanaAtiva=(semanaAtiva===k)?null:k;
   progTab='cliente';itemAtivo=null;
   renderSemanas();
@@ -834,8 +851,126 @@ function renderClientesPlano(itens){
     '</table></div>';
 }
 
+// DRILLDOWN POR SEGMENTO (Exportação/Armazém-PE/E-commerce) — clique num
+// dos KPIs, não precisa abrir semana por semana. Cliente → pedido (com a
+// semana em que está programado) → itens do pedido.
+function toggleSegmento(seg,label){
+  if(semanaAtiva) semanaAtiva=null; // só um painel de drill aberto por vez
+  if(segmentoAtivo===seg){ segmentoAtivo=null; }
+  else { segmentoAtivo=seg; segmentoLabel=label; }
+  segClienteAtivo=null; segPedidoAtivo=null;
+  renderSemanas();
+}
+
+function coletarItensSegmento(seg){
+  const keys=semanasDoMes(periodoAtual);
+  const out=[];
+  keys.forEach(k=>{
+    const itens=(DETALHE.semanas||{})[k];
+    if(!itens) return;
+    const semLabel=(SEMANAS[k]||{}).label||k;
+    itens.forEach(it=>{ if(it.segmento===seg) out.push(Object.assign({},it,{semana:semLabel})); });
+  });
+  return out;
+}
+
+function renderSegmentoDrill(){
+  const wrap=document.getElementById('segmento-drill');
+  if(!wrap) return;
+  if(!segmentoAtivo){ wrap.innerHTML=''; return; }
+  const itens=coletarItensSegmento(segmentoAtivo);
+  if(!itens.length){
+    wrap.innerHTML='<div class="prog-drill"><div class="pd-head">'+
+      '<div><div class="pd-title">'+segmentoLabel+'</div>'+
+      '<div class="pd-sub">Nenhum item com detalhamento disponível (a partir de '+fmtCutoff(DETALHE.cutoff)+') pra esse segmento neste período.</div></div>'+
+      '<span class="pd-close" onclick="toggleSegmento(\''+segmentoAtivo+'\',\'\')">fechar ✕</span>'+
+      '</div></div>';
+    return;
+  }
+  SEG_CLI_REF=[]; SEG_PED_REF=[];
+  const totalPares=itens.reduce((s,it)=>s+it.pares,0);
+  const totalPedidos=new Set(itens.map(it=>it.pedido)).size;
+  wrap.innerHTML='<div class="prog-drill"><div class="pd-head">'+
+    '<div><div class="pd-title">'+segmentoLabel+'</div>'+
+    '<div class="pd-sub">'+f(totalPares)+' pares · '+totalPedidos+' pedido(s) · '+new Set(itens.map(it=>it.cliente)).size+' cliente(s)</div></div>'+
+    '<span class="pd-close" onclick="toggleSegmento(\''+segmentoAtivo+'\',\'\')">fechar ✕</span>'+
+    '</div>'+
+    renderSegPorCliente(itens)+
+    '</div>';
+}
+
+function segCliRef(v){SEG_CLI_REF.push(v);return SEG_CLI_REF.length-1;}
+function toggleSegCliente(idx){
+  const nome=SEG_CLI_REF[idx];
+  segClienteAtivo=(segClienteAtivo===nome)?null:nome;
+  segPedidoAtivo=null;
+  renderSegmentoDrill();
+}
+
+function renderSegPorCliente(itens){
+  const map={};
+  itens.forEach(it=>{
+    const k=it.cliente;
+    if(!map[k]) map[k]={nome:k,pares:0,pedidos:new Set(),itens:[]};
+    map[k].pares+=it.pares;
+    map[k].pedidos.add(it.pedido);
+    map[k].itens.push(it);
+  });
+  const arr=Object.values(map).sort((a,b)=>b.pares-a.pares);
+  return arr.map(c=>{
+    const ativa=segClienteAtivo===c.nome;
+    return '<div class="pd-row '+(ativa?'ativa':'')+'" onclick="toggleSegCliente('+segCliRef(c.nome)+')">'+
+        '<div class="pd-arrow">'+(ativa?'▾':'▸')+'</div>'+
+        '<div class="pd-nome">'+c.nome+'</div>'+
+        '<div class="pd-meta">'+c.pedidos.size+' ped.</div>'+
+        '<div class="pd-pares">'+f(c.pares)+' pares</div>'+
+      '</div>'+
+      (ativa?renderSegPedidosCliente(c.itens):'');
+  }).join('');
+}
+
+function segPedRef(v){SEG_PED_REF.push(v);return SEG_PED_REF.length-1;}
+function toggleSegPedido(idx){
+  const ped=SEG_PED_REF[idx];
+  segPedidoAtivo=(segPedidoAtivo===ped)?null:ped;
+  renderSegmentoDrill();
+}
+
+function renderSegPedidosCliente(itens){
+  const map={};
+  itens.forEach(it=>{
+    const k=it.pedido;
+    if(!map[k]) map[k]={pedido:k,semana:it.semana,pares:0,itens:[]};
+    map[k].pares+=it.pares;
+    map[k].itens.push(it);
+  });
+  const arr=Object.values(map).sort((a,b)=>b.pares-a.pares);
+  return '<div class="pd-detail">'+arr.map(p=>{
+    const ativa=segPedidoAtivo===p.pedido;
+    return '<div class="pd-row '+(ativa?'ativa':'')+'" onclick="event.stopPropagation();toggleSegPedido('+segPedRef(p.pedido)+')">'+
+        '<div class="pd-arrow">'+(ativa?'▾':'▸')+'</div>'+
+        '<div class="pd-nome">Pedido '+p.pedido+' · semana '+p.semana+'</div>'+
+        '<div class="pd-pares">'+f(p.pares)+' pares</div>'+
+      '</div>'+
+      (ativa?renderSegItensPedido(p.itens):'');
+  }).join('')+'</div>';
+}
+
+function renderSegItensPedido(itens){
+  return '<div class="pd-detail"><table>'+
+    '<thead><tr><th>Referência</th><th>Pares</th></tr></thead>'+
+    '<tbody>'+itens.map(it=>'<tr><td>'+it.ref+'</td><td>'+f(it.pares)+'</td></tr>').join('')+'</tbody>'+
+    '</table></div>';
+}
+
 // MESES
 function renderMeses(){
+  // Drilldown por segmento (Exportação/Armazém-PE/E-commerce) só existe na
+  // visão semanal, onde "período" = um mês só — na visão anual o DETALHE
+  // (que só cobre ~2 meses de histórico) não cobriria o ano inteiro direito.
+  segmentoAtivo=null;
+  const segWrap=document.getElementById('segmento-drill');
+  if(segWrap) segWrap.innerHTML='';
   const ms=Object.entries(MESES);
   const ano=periodoAtual.split('-')[0];
   document.getElementById('periodo-label').textContent='Ano '+ano;

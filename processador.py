@@ -852,12 +852,12 @@ def processar_programacao(linhas, output_dir='.'):
     mes_labels_rp   = {}
     semanas = defaultdict(lambda: {
         'CLASSIC':0,'EVA':0,'WORKS':0,'FIT':0,'DAY BY DAY':0,'OUTROS':0,
-        'total':0,'export':0,'pe':0,'mi':0,'convencional':0,'montado':0,'label':'',
+        'total':0,'export':0,'pe':0,'mi':0,'ecommerce':0,'convencional':0,'montado':0,'label':'',
         'pedidos':set(),'clientes':set(),'refs':Counter()
     })
     meses = defaultdict(lambda: {
         'CLASSIC':0,'EVA':0,'WORKS':0,'FIT':0,'DAY BY DAY':0,'OUTROS':0,
-        'total':0,'export':0,'pe':0,'mi':0,'convencional':0,'montado':0,
+        'total':0,'export':0,'pe':0,'mi':0,'ecommerce':0,'convencional':0,'montado':0,
         'label':'','semanas_keys':set(),'pedidos':set(),'refs':Counter()
     })
     refs_prog = Counter()
@@ -910,7 +910,17 @@ def processar_programacao(linhas, output_dir='.'):
         pedido = g(row, IDX['pedido'])
         ref = g(row, IDX['ref'])
         is_export = 'EXPORTA' in abr
-        is_mi     = ('MERCADO INTERNO' in abr or 'ISENTO' in abr) and not is_export and not is_pe
+        is_ecom   = 'ECOMMERCE' in abr or 'E-COMMERCE' in abr
+        is_mi     = ('MERCADO INTERNO' in abr or 'ISENTO' in abr) and not is_export and not is_pe and not is_ecom
+        # Segmento único por linha (prioridade: armazém > exportação > e-com
+        # > mercado interno) — usado no drilldown por segmento das telas de
+        # "Semanas de Produção"/"Meses", pra saber de qual KPI (Exportação/
+        # Armazém-PE/E-commerce) cada item do detalhe faz parte.
+        if is_pe: segmento = 'pe'
+        elif is_export: segmento = 'export'
+        elif is_ecom: segmento = 'ecommerce'
+        elif is_mi: segmento = 'mi'
+        else: segmento = 'outros'
         # Tipo de montagem
         tp = g(row, IDX['tipomontagem']).upper()
         is_conv = 'CONVENCIONAL' in tp
@@ -933,6 +943,7 @@ def processar_programacao(linhas, output_dir='.'):
         if is_export: s['export'] += qtd
         if is_pe:     s['pe'] += qtd
         if is_mi:     s['mi'] += qtd
+        if is_ecom:   s['ecommerce'] += qtd
         if is_conv: s['convencional'] += qtd
         if is_mont: s['montado'] += qtd
 
@@ -944,6 +955,7 @@ def processar_programacao(linhas, output_dir='.'):
         if is_export: m2['export'] += qtd
         if is_pe:     m2['pe'] += qtd
         if is_mi:     m2['mi'] += qtd
+        if is_ecom:   m2['ecommerce'] += qtd
         if is_conv: m2['convencional'] += qtd
         if is_mont: m2['montado'] += qtd
 
@@ -954,7 +966,7 @@ def processar_programacao(linhas, output_dir='.'):
         if dt >= cutoff_detalhe:
             cliente_d = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40]
             dt_plano = parse_date(g(row, IDX['dt_plano']))
-            chave = (cliente_d, pedido, ref, plano, dt_plano.strftime('%d/%m/%Y') if dt_plano else '')
+            chave = (cliente_d, pedido, ref, plano, dt_plano.strftime('%d/%m/%Y') if dt_plano else '', segmento)
             detalhe_raw[sem_key][chave] += qtd
         if sem_key not in sem_labels_rp: sem_labels_rp[sem_key] = s['label']
         if mes_key not in mes_labels_rp: mes_labels_rp[mes_key] = m2['label']
@@ -976,13 +988,14 @@ def processar_programacao(linhas, output_dir='.'):
             'ok':s['total'] >= META_SEMANAL,
             'pct_meta':round(s['total']/META_SEMANAL*100),
             'export':s['export'],'pe':s['pe'],
-            'mi':s['mi'],
+            'mi':s['mi'],'ecommerce':s['ecommerce'],
             'pct_mi':round(s['mi']/s['total']*100,1) if s['total'] else 0,
             'convencional':s['convencional'],'montado':s['montado'],
             'pct_conv':round(s['convencional']/s['total']*100,1) if s['total'] else 0,
             'pct_mont':round(s['montado']/s['total']*100,1) if s['total'] else 0,
             'pct_export':round(s['export']/s['total']*100,1) if s['total'] else 0,
             'pct_pe':round(s['pe']/s['total']*100,1) if s['total'] else 0,
+            'pct_ecommerce':round(s['ecommerce']/s['total']*100,1) if s['total'] else 0,
         }
 
     # Serializar meses
@@ -1002,13 +1015,14 @@ def processar_programacao(linhas, output_dir='.'):
             'ok':m2['total'] >= meta_mes,
             'pct_meta':round(m2['total']/meta_mes*100) if meta_mes else 0,
             'export':m2['export'],'pe':m2['pe'],
-            'mi':m2['mi'],
+            'mi':m2['mi'],'ecommerce':m2['ecommerce'],
             'pct_mi':round(m2['mi']/m2['total']*100,1) if m2['total'] else 0,
             'convencional':m2['convencional'],'montado':m2['montado'],
             'pct_conv':round(m2['convencional']/m2['total']*100,1) if m2['total'] else 0,
             'pct_mont':round(m2['montado']/m2['total']*100,1) if m2['total'] else 0,
             'pct_export':round(m2['export']/m2['total']*100,1) if m2['total'] else 0,
             'pct_pe':round(m2['pe']/m2['total']*100,1) if m2['total'] else 0,
+            'pct_ecommerce':round(m2['ecommerce']/m2['total']*100,1) if m2['total'] else 0,
         }
 
     # *** GRAVAR dados_refs_tabela.json ***
@@ -1028,8 +1042,8 @@ def processar_programacao(linhas, output_dir='.'):
     detalhe_out = {}
     for sem_key, itens in detalhe_raw.items():
         detalhe_out[sem_key] = [
-            {'cliente': c, 'pedido': p, 'ref': r, 'plano': pl, 'dt_plano': dtp, 'pares': qtd}
-            for (c, p, r, pl, dtp), qtd in itens.items()
+            {'cliente': c, 'pedido': p, 'ref': r, 'plano': pl, 'dt_plano': dtp, 'segmento': seg, 'pares': qtd}
+            for (c, p, r, pl, dtp, seg), qtd in itens.items()
         ]
     with open(os.path.join(output_dir, 'dados_programacao_detalhe.json'), 'w', encoding='utf-8') as f_:
         json.dump({
