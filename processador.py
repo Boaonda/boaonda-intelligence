@@ -700,6 +700,68 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
           f"{len(holdings):,} holdings, desde 01/01/{ano_atual})")
 
 
+def gerar_dados_vendas_diario(linhas, output_dir='.'):
+    """Totais DIÁRIOS de vendas (pares e valor) por canal — MI com tipo
+    (PROG/PE/MISTA), ME e EC já agregados num total só (mesmo formato
+    normalizado que o frontend de Vendas usa para os dados mensais:
+    {MI:{PROG,PE,MISTA}, ME, EC}). Alimenta o resumo 'Hoje/Semana/Mês/Ano
+    vs. ano anterior' da tela de Vendas — por isso cobre TODO o histórico
+    disponível no 3YS (não só o ano corrente, ao contrário de
+    dados_vendas_clientes.json), já que precisa comparar com o mesmo
+    período de ~12 meses atrás."""
+    print("\n  Gerando dados_vendas_diario.json...")
+    dias = defaultdict(lambda: {
+        'MI': {'PROG':0,'PE':0,'MISTA':0}, 'ME':0, 'EC':0,
+        'MIv': {'PROG':0.0,'PE':0.0,'MISTA':0.0}, 'MEv':0.0, 'ECv':0.0,
+    })
+    n = 0
+    for row in linhas:
+        abr = g(row, IDX['abr_grp']).upper()
+        cod = g(row, IDX['cod_esp'])
+        pos_item = g(row, IDX['pos_item'])
+        canal, tipo = classifica_venda(abr, cod, pos_item)
+        if canal not in ('MI', 'ME', 'ECOM'): continue
+        try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
+        except: qtd = 0
+        if qtd <= 0: continue
+        try: valor = float(g(row, IDX['vlr']).replace(',','.'))
+        except: valor = 0.0
+        dt = parse_date(g(row, IDX['dt_ent']))
+        if not dt: continue
+        d = dias[dt.strftime('%Y-%m-%d')]
+        if canal == 'MI':
+            # Alguns registros de MI trazem cod_esp fora do esperado (ex.:
+            # 32/ECOM) por inconsistência na origem — ignora o tipo nesse
+            # caso em vez de estourar (mesmo comportamento do frontend, que
+            # só soma PROG/PE/MISTA na visão de MI).
+            if tipo not in d['MI']: continue
+            d['MI'][tipo] += qtd
+            d['MIv'][tipo] += valor
+        elif canal == 'ME':
+            d['ME'] += qtd
+            d['MEv'] += valor
+        else:  # ECOM
+            d['EC'] += qtd
+            d['ECv'] += valor
+        n += 1
+
+    dias_out = {}
+    for k in sorted(dias):
+        d = dias[k]
+        dias_out[k] = {
+            'MI': d['MI'], 'ME': d['ME'], 'EC': d['EC'],
+            'MIv': {t: round(v,2) for t,v in d['MIv'].items()},
+            'MEv': round(d['MEv'],2), 'ECv': round(d['ECv'],2),
+        }
+    saida = {
+        'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        'dias': dias_out,
+    }
+    with open(os.path.join(output_dir, 'dados_vendas_diario.json'), 'w', encoding='utf-8') as f_:
+        json.dump(saida, f_, ensure_ascii=False, separators=(',', ':'))
+    print(f"    ✓ dados_vendas_diario.json gerado ({n:,} linhas em {len(dias_out):,} dias)")
+
+
 def gerar_dados_vendas_carteira(linhas, output_dir='.'):
     """Histórico mensal de vendas por holding/cliente (todo o histórico
     disponível no 3YS, não só o ano corrente) — granularidade de mês, sem
@@ -2043,6 +2105,7 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         processar_vendas_eva(linhas, mes_atual, output_dir)
         gerar_dados_vendas_clientes(linhas, output_dir)
         gerar_dados_vendas_carteira(linhas, output_dir)
+        gerar_dados_vendas_diario(linhas, output_dir)
         prog     = processar_programacao(linhas, output_dir)
         carteira = processar_carteira(linhas, output_dir)
         fat      = processar_faturamento(linhas, output_dir)
