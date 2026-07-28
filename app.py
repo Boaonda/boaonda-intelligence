@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+import gzip
 import html
 import io
 import json
@@ -1750,11 +1751,11 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
     {% endif %}
   </div>
 
-  <form class="card" method="post" enctype="multipart/form-data" id="form-upload" onsubmit="document.getElementById('btn').textContent='Enviando arquivo(s)...';document.getElementById('btn').disabled=true">
+  <form class="card" method="post" enctype="multipart/form-data" id="form-upload">
     <div class="field">
       <label>3YS.csv (vendas e programação)</label>
       <input type="file" name="arquivo_3ys" accept=".csv,.ods">
-      <div class="hint">Opcional — se não enviado, vendas e programação mantêm os dados anteriores. Arquivo pode ter ~200MB, o envio pode demorar.</div>
+      <div class="hint">Opcional — se não enviado, vendas e programação mantêm os dados anteriores. Arquivo pode ter ~200MB; é compactado automaticamente no navegador antes de enviar, pra reduzir bastante o tempo de envio.</div>
     </div>
     <div class="field">
       <label>ESQT — estoque PA (.csv ou .xls)</label>
@@ -1773,6 +1774,46 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
 // no status via polling e atualiza a mensagem/trava o form enquanto rodar,
 // sem precisar manter a requisição HTTP original aberta.
 let statusInicial = {{ (status or {})|tojson }};
+
+// Compacta o 3YS.csv (gzip) no próprio navegador antes de enviar — CSV
+// comprime muito bem (normalmente 80-90%+), e o tempo de envio de um
+// arquivo de ~200MB era o principal suspeito por trás do "upstream error"
+// mesmo depois de já termos aumentado o timeout do gunicorn e confirmado
+// que memória não é o problema — o gargalo parece ser um limite de tempo
+// de requisição na borda do próprio Railway, fora do nosso controle, que
+// só dá pra contornar reduzindo o tamanho/tempo da transferência em si.
+// O servidor detecta pelos bytes mágicos (não pelo nome do arquivo) se
+// veio gzipado, então funciona também em navegadores sem suporte a
+// CompressionStream (cai no envio cru, sem compactar).
+document.getElementById('form-upload').addEventListener('submit', async function(ev){
+  ev.preventDefault();
+  const btn = document.getElementById('btn');
+  const f3ys = document.querySelector('input[name=arquivo_3ys]').files[0];
+  const fesqt = document.querySelector('input[name=arquivo_esqt]').files[0];
+  const fd = new FormData();
+  try {
+    if (f3ys && window.CompressionStream) {
+      btn.disabled = true;
+      btn.textContent = 'Compactando 3YS.csv...';
+      const cs = f3ys.stream().pipeThrough(new CompressionStream('gzip'));
+      const blob = await new Response(cs).blob();
+      fd.append('arquivo_3ys', blob, f3ys.name + '.gz');
+    } else if (f3ys) {
+      fd.append('arquivo_3ys', f3ys, f3ys.name);
+    }
+    if (fesqt) fd.append('arquivo_esqt', fesqt, fesqt.name);
+    btn.disabled = true;
+    btn.textContent = 'Enviando arquivo(s)...';
+    const resp = await fetch('/upload', {method:'POST', body: fd});
+    const html = await resp.text();
+    document.open(); document.write(html); document.close();
+  } catch (err) {
+    document.getElementById('msg-area').innerHTML =
+      '<div class="msg err">Erro ao enviar: '+(err && err.message || err)+'</div>';
+    btn.disabled = false;
+    btn.textContent = 'Processar e atualizar dashboards';
+  }
+});
 
 function _minutosDesde(iniciadoEm){
   const m = (iniciadoEm||'').match(/(\\d{2})\\/(\\d{2})\\/(\\d{4}) (\\d{2}):(\\d{2})/);
@@ -1912,6 +1953,27 @@ def api_status_atualizacao():
     return jsonify(_ler_status_atualizacao())
 
 
+def _salvar_3ys_descomprimido(f_3ys):
+    """Salva o 3YS.csv enviado; se vier gzipado (a tela de Atualizar dados
+    compacta o arquivo no navegador antes de enviar, pra reduzir bastante o
+    tempo de transferência), descompacta pra um .csv plano antes de devolver
+    o caminho — o resto do pipeline (detectar_sep, csv.reader) espera texto
+    puro. Detecta gzip pelos BYTES MÁGICOS (não pelo nome do arquivo), então
+    funciona também se o JS de compressão não rodar (navegador sem suporte
+    a CompressionStream) e o arquivo chegar cru."""
+    path_bruto = UPLOADS_DIR / f_3ys.filename
+    f_3ys.save(path_bruto)
+    with open(path_bruto, 'rb') as fh:
+        magic = fh.read(2)
+    if magic != b'\x1f\x8b':
+        return path_bruto
+    path_csv = UPLOADS_DIR / (Path(f_3ys.filename).stem + '.csv')
+    with gzip.open(path_bruto, 'rb') as f_in, open(path_csv, 'wb') as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    path_bruto.unlink()
+    return path_csv
+
+
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
     if request.method == 'GET':
@@ -1934,8 +1996,7 @@ def upload():
 
     path_3ys = path_esqt = None
     if f_3ys and f_3ys.filename:
-        path_3ys = UPLOADS_DIR / f_3ys.filename
-        f_3ys.save(path_3ys)
+        path_3ys = _salvar_3ys_descomprimido(f_3ys)
 
     if f_esqt and f_esqt.filename:
         path_esqt = UPLOADS_DIR / f_esqt.filename
