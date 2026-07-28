@@ -65,7 +65,28 @@ GRADES_NUMERACAO = {
     '309': {'code': 'B39/40', 'sizes': ['39/40'], 'pattern': [6]},
 }
 
+# Posições DENSAS (0..N-1) usadas no array interno remapeado ('nova' em
+# carregar_linhas_3ys / linha em _linha_de_db_row) — é isso que todo o
+# resto do processamento usa via g(row, IDX['campo']). Antes essas mesmas
+# posições eram as posições HISTÓRICAS do 3YS.csv original (esparsas, até
+# 88), o que fazia cada linha em memória carregar um array de 89 posições
+# por linha em vez de 27 — com ~217 mil linhas isso sozinho já custava
+# ~100MB de RAM à toa. Corrigido em 2026-07-28 (ver [[project_perf_3ys_processador]]);
+# a posição histórica no CSV agora vive só em IDX_POS_FALLBACK, abaixo.
 IDX = {
+    'razao':0,'ref':1,'descr':2,'forma':3,'qtd':4,
+    'dt_ent':5,'dt_fat':6,'pedido':7,'anomes':8,
+    'marca':9,'linha':10,'vlr':11,'cod_esp':12,'abr_grp':13,
+    'holding':14,'nomeholder':15,'plano':16,'dt_plano':17,
+    'pos_item':18,'etapa':19,'local':20,'tipomontagem':21,'cfop':22,
+    'conta_contabil':23,'vlr_total':24,'uf':25,'representante':26,
+}
+
+# Posição histórica de cada campo no 3YS.csv ORIGINAL — usada só como
+# fallback em carregar_linhas_3ys quando o nome da coluna (CSV_COL_NAMES)
+# não é encontrado no cabeçalho (T.I. renomeou/removeu a coluna). NÃO usar
+# para indexar o array interno remapeado — isso é IDX, acima.
+IDX_POS_FALLBACK = {
     'razao':1,'ref':7,'descr':8,'forma':9,'qtd':10,
     'dt_ent':11,'dt_fat':12,'pedido':13,'anomes':18,
     'marca':20,'linha':23,'vlr':26,'cod_esp':27,'abr_grp':29,
@@ -331,11 +352,12 @@ def carregar_linhas_3ys(arquivo_3ys=None):
         header = next(reader, [])
         # Resolve, pra cada campo de IDX, a posição real da coluna no CSV
         # pelo NOME do cabeçalho (robusto a inserção/remoção/reordenação de
-        # colunas pelo T.I.) — fallback: posição fixa histórica de IDX.
+        # colunas pelo T.I.) — fallback: posição fixa histórica (IDX_POS_FALLBACK).
         hlow = {h.strip().lower(): i for i, h in enumerate(header)}
         origem = {}   # campo -> índice real no CSV
         usou_fallback = []
-        for campo, idx_fixo in IDX.items():
+        for campo in IDX:
+            idx_fixo = IDX_POS_FALLBACK[campo]
             nome = CSV_COL_NAMES.get(campo)
             pos = hlow.get(nome.strip().lower()) if nome else None
             if pos is None:
