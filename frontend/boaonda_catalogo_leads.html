@@ -151,6 +151,14 @@ let sortPedState={key:'criado_em', dir:-1};
 let pedidoAberto=null;
 
 function f(n){ return (n||0).toLocaleString('pt-BR'); }
+// catalogo_pedidos.status tem CHECK constraint fixa no banco: 'novo',
+// 'em_analise', 'convertido', 'descartado' — sem "cancelado" de verdade.
+// Cancelar um pedido no catálogo grava 'descartado'; aqui só traduzimos
+// pra rótulo amigável, sem inventar um status que o banco não aceita.
+function statusLabel(status){
+  const mapa={novo:'Novo',em_analise:'Em análise',convertido:'Convertido',descartado:'Cancelado'};
+  return mapa[(status||'novo').toLowerCase()] || status || '–';
+}
 function maskCnpj(v){
   v=(v||'').replace(/\D/g,'');
   if(v.length!==14) return v||'–';
@@ -265,7 +273,7 @@ function renderPedidos(){
       <td class="td-nome"><span class="arrow">${aberto?'▾':'▸'}</span> ${p.cli_nome||'–'}</td>
       <td>${p.cli_empresa||'–'}</td>
       <td>${maskCnpj(p.cli_cnpj)}</td>
-      <td><span class="badge-status ${statusCls}">${p.status||'–'}</span></td>
+      <td><span class="badge-status ${statusCls}">${statusLabel(p.status)}</span></td>
       <td>${p.representante_responsavel||'–'}</td>
       <td>${fmtData(p.criado_em)}</td>
       <td>${f(p.n_itens)}</td>

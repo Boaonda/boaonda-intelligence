@@ -1314,9 +1314,17 @@ def api_catalogo_representante_historico():
 
 @app.route('/api/catalogo/pedido/<pedido_id>/cancelar', methods=['POST'])
 def api_catalogo_pedido_cancelar(pedido_id):
-    """Cancela um pedido (soft-delete via status='Cancelado', nunca apaga a
-    linha) — só representante (pedidos da própria carteira) ou equipe
-    Boaonda (qualquer pedido). Cliente não tem esse botão nesta tela."""
+    """Cancela um pedido (soft-delete, nunca apaga a linha) — só
+    representante (pedidos da própria carteira) ou equipe Boaonda
+    (qualquer pedido). Cliente não tem esse botão nesta tela.
+
+    catalogo_pedidos.status tem CHECK constraint com valores fixos:
+    'novo', 'em_analise', 'convertido', 'descartado' (confirmado via
+    pg_get_constraintdef em 2026-07-27) — não existe um valor
+    "cancelado" de verdade; 'descartado' é o equivalente semântico mais
+    próximo e é o que usamos aqui. A UI mostra "Cancelado" como rótulo
+    amigável (ver statusLabel() no catalogo.html), mas o valor gravado
+    é sempre 'descartado'."""
     eh_rep = bool(session.get('catalogo_rep_id'))
     eh_equipe = bool(session.get('catalogo_equipe_username'))
     if not (eh_rep or eh_equipe):
@@ -1333,7 +1341,7 @@ def api_catalogo_pedido_cancelar(pedido_id):
             if not cursor.fetchone():
                 conexao.close()
                 return jsonify({'erro': 'Pedido não encontrado ou fora da sua carteira.'}), 403
-        cursor.execute("UPDATE catalogo_pedidos SET status = 'cancelado' WHERE id = %s", (pedido_id,))
+        cursor.execute("UPDATE catalogo_pedidos SET status = 'descartado' WHERE id = %s", (pedido_id,))
         conexao.commit()
         conexao.close()
         return jsonify({'status': 'ok'})

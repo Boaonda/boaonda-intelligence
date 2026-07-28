@@ -2432,6 +2432,16 @@ function toggleHistoricoPedido(idx) {
   renderHistoricoConteudo(document.getElementById('checkout-body'));
 }
 
+// catalogo_pedidos.status tem CHECK constraint fixa no banco: 'novo',
+// 'em_analise', 'convertido', 'descartado' — não existe um valor
+// "cancelado" de verdade (confirmado com o Leandro em 2026-07-27).
+// 'descartado' é o que gravamos ao cancelar; aqui só traduzimos pra um
+// rótulo amigável, sem inventar um status que o banco não aceita.
+function statusLabel(status) {
+  const mapa = { novo: 'Novo', em_analise: 'Em análise', convertido: 'Convertido', descartado: 'Cancelado' };
+  return mapa[(status||'novo').toLowerCase()] || status;
+}
+
 function renderLinhaHistorico(p, idx) {
   const aberto = historicoAberto === idx;
   const itens = p.itens || [];
@@ -2452,7 +2462,7 @@ function renderLinhaHistorico(p, idx) {
       <div class="co-item-row" style="margin-top:0">
         <div style="flex:1">
           <div class="co-item-ref">${aberto?'▾':'▸'} Pedido ${data||''}
-            <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;color:var(--txt-m);margin-left:6px">${esc(p.status||'novo')}</span>
+            <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;color:var(--txt-m);margin-left:6px">${esc(statusLabel(p.status))}</span>
           </div>
           ${clienteLinha}
           <div class="co-item-meta">${itens.length} referência${itens.length!==1?'s':''} · ${fN(totalPares)} pares</div>
@@ -2465,7 +2475,7 @@ function renderLinhaHistorico(p, idx) {
           <button class="co-btn-acao" style="flex:1;padding:9px" onclick="event.stopPropagation();gerarPDFHistorico(historicoCache[${idx}])">📄 Baixar PDF</button>
           <a class="co-btn-acao wpp" style="flex:1;padding:9px" href="https://wa.me/${WPP_NUMERO}?text=${msgWpp}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 Reenviar</a>
         </div>
-        ${ehSessaoInterna() && (p.status||'').toLowerCase() !== 'cancelado' ? `
+        ${ehSessaoInterna() && (p.status||'').toLowerCase() !== 'descartado' ? `
         <div class="co-item-row">
           <button class="co-btn-acao" style="flex:1;padding:9px;color:#b8462a;border-color:#b8462a"
             onclick="event.stopPropagation();cancelarPedidoHistorico(${idx})">🗑 Cancelar pedido</button>
@@ -2485,7 +2495,7 @@ async function cancelarPedidoHistorico(idx) {
     const r = await fetch(`/api/catalogo/pedido/${p.id}/cancelar`, { method: 'POST' });
     const d = await r.json();
     if (!r.ok) { alert(d.erro || 'Não foi possível cancelar o pedido.'); return; }
-    p.status = 'cancelado';
+    p.status = 'descartado';
     renderHistoricoConteudo(document.getElementById('checkout-body'));
   } catch(e) {
     alert('Não foi possível cancelar o pedido agora.');
