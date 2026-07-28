@@ -868,8 +868,8 @@ function coletarItensSegmento(seg){
   keys.forEach(k=>{
     const itens=(DETALHE.semanas||{})[k];
     if(!itens) return;
-    const semLabel=(SEMANAS[k]||{}).label||k;
-    itens.forEach(it=>{ if(it.segmento===seg) out.push(Object.assign({},it,{semana:semLabel})); });
+    const semNum=isoWeek(k);
+    itens.forEach(it=>{ if(it.segmento===seg) out.push(Object.assign({},it,{semana:semNum})); });
   });
   return out;
 }
@@ -890,9 +890,12 @@ function renderSegmentoDrill(){
   SEG_CLI_REF=[]; SEG_PED_REF=[];
   const totalPares=itens.reduce((s,it)=>s+it.pares,0);
   const totalPedidos=new Set(itens.map(it=>it.pedido)).size;
+  const totConv=itens.reduce((s,it)=>s+(it.tipo_mont==='conv'?it.pares:0),0);
+  const totMont=itens.reduce((s,it)=>s+(it.tipo_mont==='mont'?it.pares:0),0);
   wrap.innerHTML='<div class="prog-drill"><div class="pd-head">'+
     '<div><div class="pd-title">'+segmentoLabel+'</div>'+
-    '<div class="pd-sub">'+f(totalPares)+' pares · '+totalPedidos+' pedido(s) · '+new Set(itens.map(it=>it.cliente)).size+' cliente(s)</div></div>'+
+    '<div class="pd-sub">'+f(totalPares)+' pares · '+totalPedidos+' pedido(s) · '+new Set(itens.map(it=>it.cliente)).size+' cliente(s)'+
+    ' · '+f(totConv)+' conv. · '+f(totMont)+' mont.</div></div>'+
     '<span class="pd-close" onclick="toggleSegmento(\''+segmentoAtivo+'\',\'\')">fechar ✕</span>'+
     '</div>'+
     renderSegPorCliente(itens)+
@@ -911,17 +914,20 @@ function renderSegPorCliente(itens){
   const map={};
   itens.forEach(it=>{
     const k=it.cliente;
-    if(!map[k]) map[k]={nome:k,pares:0,pedidos:new Set(),itens:[]};
+    if(!map[k]) map[k]={nome:k,pares:0,pedidos:new Set(),semanas:new Set(),itens:[]};
     map[k].pares+=it.pares;
     map[k].pedidos.add(it.pedido);
+    map[k].semanas.add(it.semana);
     map[k].itens.push(it);
   });
   const arr=Object.values(map).sort((a,b)=>b.pares-a.pares);
   return arr.map(c=>{
     const ativa=segClienteAtivo===c.nome;
+    const sems=[...c.semanas].sort((a,b)=>a-b).join(', ');
     return '<div class="pd-row '+(ativa?'ativa':'')+'" onclick="toggleSegCliente('+segCliRef(c.nome)+')">'+
         '<div class="pd-arrow">'+(ativa?'▾':'▸')+'</div>'+
         '<div class="pd-nome">'+c.nome+'</div>'+
+        '<div class="pd-meta">sem. '+sems+'</div>'+
         '<div class="pd-meta">'+c.pedidos.size+' ped.</div>'+
         '<div class="pd-pares">'+f(c.pares)+' pares</div>'+
       '</div>'+
