@@ -37,6 +37,13 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   font-family:'Montserrat',sans-serif;transition:.15s
 }
 .btn-back:hover{border-color:var(--coral);color:var(--coral)}
+.status-atualizacao{
+  display:none;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#2f6690;
+  background:rgba(73,148,199,.1);border:1px solid rgba(73,148,199,.3);
+  border-radius:6px;padding:6px 10px;white-space:nowrap
+}
+.status-atualizacao .spin{display:inline-block;animation:girar 1s linear infinite}
+@keyframes girar{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
 /* PÁGINAS */
 .page{display:none;min-height:100vh}
@@ -257,6 +264,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
   </div>
   <div style="display:flex;align-items:center;gap:12px">
     <button class="btn-back" id="btn-back" onclick="goHome()">← Início</button>
+    <div class="status-atualizacao" id="status-atualizacao" title="Uma atualização de dados (3YS/ESQT) está rodando no servidor">
+      <span class="spin">⟳</span> Atualizando dados…
+    </div>
     <a href="/admin/configuracoes" id="nav-config" style="display:none;font-size:11px;color:var(--txt-s);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:6px 10px" title="Configurações (dados, fotos, home do catálogo, usuários)">⚙ Configurações</a>
     <a href="/logout" style="font-size:11px;color:var(--txt-s);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:6px 10px" title="Sair">⏻ Sair</a>
     <div class="hright">Base: 3YS · ESQT<br>Atualizado: <strong id="hdr-data">–</strong></div>
@@ -576,6 +586,20 @@ fetch('/api/whoami').then(r=>r.json()).then(d=>{
   }
   aplicarRestricoesModulos(d.modulos||[]);
 }).catch(()=>{});
+
+// Barra "Atualizando dados..." — some/aparece conforme o processamento em
+// segundo plano do /upload está rodando ou não. Fica visível em qualquer
+// tela do portal (é o header, compartilhado por todos os módulos/iframes).
+let _pollStatusAtual=null;
+function checarStatusAtualizacao(){
+  fetch('/api/status-atualizacao?_='+Date.now()).then(r=>r.json()).then(s=>{
+    const el=document.getElementById('status-atualizacao');
+    if(!el) return;
+    el.style.display = (s.estado==='rodando') ? 'flex' : 'none';
+  }).catch(()=>{});
+}
+checarStatusAtualizacao();
+_pollStatusAtual=setInterval(checarStatusAtualizacao, 15000);
 
 function aplicarRestricoesModulos(modulosPermitidos){
   document.querySelectorAll('[onclick^="abrirModulo("]').forEach(el=>{

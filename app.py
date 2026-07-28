@@ -1699,6 +1699,9 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
 .back{display:inline-block;margin-top:8px;font-size:12px;color:var(--txt-s);text-decoration:none}
 .back:hover{color:var(--coral)}
 .spinner{display:none}
+.msg.rodando{background:rgba(73,148,199,.1);color:#2f6690;border:1px solid rgba(73,148,199,.25)}
+.msg .dots::after{content:'';animation:dots 1.4s steps(4,end) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
 </style>
 </head>
 <body>
@@ -1707,15 +1710,17 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
   <h1>Atualizar dados</h1>
   <p class="sub">Envie os arquivos exportados do ERP para regenerar os dashboards (Vendas, Programação, Estoque).</p>
 
-  {% if message %}
-  <div class="msg {{ 'ok' if ok else 'err' }}">{{ message|safe }}</div>
-  {% endif %}
+  <div id="msg-area">
+    {% if message %}
+    <div class="msg {{ 'ok' if ok else 'err' }}">{{ message|safe }}</div>
+    {% endif %}
+  </div>
 
-  <form class="card" method="post" enctype="multipart/form-data" onsubmit="document.getElementById('btn').textContent='Processando... isso pode levar alguns minutos';document.getElementById('btn').disabled=true">
+  <form class="card" method="post" enctype="multipart/form-data" id="form-upload" onsubmit="document.getElementById('btn').textContent='Enviando arquivo(s)...';document.getElementById('btn').disabled=true">
     <div class="field">
       <label>3YS.csv (vendas e programação)</label>
       <input type="file" name="arquivo_3ys" accept=".csv,.ods">
-      <div class="hint">Opcional — se não enviado, vendas e programação mantêm os dados anteriores. Arquivo pode ter ~130MB, o envio pode demorar.</div>
+      <div class="hint">Opcional — se não enviado, vendas e programação mantêm os dados anteriores. Arquivo pode ter ~200MB, o envio pode demorar.</div>
     </div>
     <div class="field">
       <label>ESQT — estoque PA (.csv ou .xls)</label>
@@ -1729,40 +1734,62 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
   &nbsp;·&nbsp;
   <a class="back" href="/admin/configuracoes" target="_top">← Voltar às Configurações</a>
 </div>
+<script>
+// Processamento roda em segundo plano no servidor — aqui só fica de olho
+// no status via polling e atualiza a mensagem/trava o form enquanto rodar,
+// sem precisar manter a requisição HTTP original aberta.
+let statusInicial = {{ (status or {})|tojson }};
+
+function pollStatus(){
+  fetch('/api/status-atualizacao?_='+Date.now()).then(r=>r.json()).then(s=>{
+    if(s.estado==='rodando'){
+      document.getElementById('msg-area').innerHTML =
+        '<div class="msg rodando">⟳ Atualização em andamento (iniciada às '+(s.iniciado_em||'?')+')<span class="dots"></span></div>';
+      document.getElementById('btn').disabled = true;
+      document.getElementById('btn').textContent = 'Aguarde a atualização em andamento terminar...';
+      setTimeout(pollStatus, 4000);
+    } else if(s.estado==='concluido' || s.estado==='erro'){
+      document.getElementById('msg-area').innerHTML =
+        '<div class="msg '+(s.ok?'ok':'err')+'">'+(s.mensagem||'')+'</div>';
+      document.getElementById('btn').disabled = false;
+      document.getElementById('btn').textContent = 'Processar e atualizar dashboards';
+    }
+  }).catch(()=>{});
+}
+if(statusInicial.estado==='rodando') pollStatus();
+</script>
 </body>
 </html>'''
 
 
-@app.route('/upload', methods=['GET', 'POST'])
-def upload():
-    if request.method == 'GET':
-        return render_template_string(_UPLOAD_HTML, message=None, ok=True)
+# ── Status de atualização (processamento em segundo plano) ─────────────
+# O processamento do 3YS.csv pode levar vários minutos e só cresce junto
+# com a planilha — rodar dentro da própria requisição HTTP significa
+# depender de nenhum timeout (gunicorn, proxy do Railway) nunca ser mais
+# curto que o processamento, o que já não é mais verdade hoje. Por isso
+# o /upload agora só salva os arquivos e devolve a resposta na hora; o
+# processamento roda numa thread separada, e o progresso é acompanhado
+# via este arquivo de status (lido por qualquer worker/instância).
+STATUS_ATUALIZACAO_FILE = DATA_DIR / 'status_atualizacao.json'
 
-    f_3ys  = request.files.get('arquivo_3ys')
-    f_esqt = request.files.get('arquivo_esqt')
 
-    if (not f_esqt or not f_esqt.filename) and not (DATA_DIR / 'dados_estoque.json').exists():
-        return render_template_string(_UPLOAD_HTML, message='Envie ao menos o ESQT.xls na primeira atualização.', ok=False)
-
-    path_3ys = path_esqt = None
+def _ler_status_atualizacao():
     try:
-        if f_3ys and f_3ys.filename:
-            path_3ys = UPLOADS_DIR / f_3ys.filename
-            f_3ys.save(path_3ys)
+        return json.loads(STATUS_ATUALIZACAO_FILE.read_text(encoding='utf-8'))
+    except Exception:
+        return {'estado': 'idle'}
 
-        if f_esqt and f_esqt.filename:
-            path_esqt = UPLOADS_DIR / f_esqt.filename
-            f_esqt.save(path_esqt)
-        else:
-            # Mantém estoque atual — busca o backup salvo (CSV ou XLS)
-            path_esqt = next(
-                (UPLOADS_DIR / f'_ESQT_atual{ext}' for ext in ('.csv', '.xls')
-                 if (UPLOADS_DIR / f'_ESQT_atual{ext}').exists()),
-                None
-            )
-            if not path_esqt:
-                return render_template_string(_UPLOAD_HTML, message='ESQT não encontrado para reprocessar. Envie o arquivo.', ok=False)
 
+def _gravar_status_atualizacao(dados):
+    # Escrita atômica (tmp + replace) — evita um poll ler o arquivo pela
+    # metade enquanto outro processo grava.
+    tmp = STATUS_ATUALIZACAO_FILE.with_suffix('.tmp')
+    tmp.write_text(json.dumps(dados, ensure_ascii=False), encoding='utf-8')
+    tmp.replace(STATUS_ATUALIZACAO_FILE)
+
+
+def _processar_atualizacao_bg(path_3ys, path_esqt, f_esqt_filename):
+    try:
         resumo = processador.processar_tudo(
             arquivo_3ys=str(path_3ys) if path_3ys else None,
             arquivo_esqt=str(path_esqt),
@@ -1770,7 +1797,7 @@ def upload():
         )
 
         # Mix programado mudou — recalcula ocupação/eficiência contra a
-        # capacidade atual (não bloqueia o upload se ainda não houver
+        # capacidade atual (não bloqueia a atualização se ainda não houver
         # dados_capacidade.json ou dados_programacao_detalhe.json).
         try:
             import calculo_ocupacao_semanal
@@ -1779,8 +1806,8 @@ def upload():
             traceback.print_exc()
 
         # Guarda uma cópia do ESQT mais recente para reprocessamentos futuros
-        if f_esqt and f_esqt.filename:
-            esqt_ext = Path(f_esqt.filename).suffix.lower()
+        if f_esqt_filename:
+            esqt_ext = Path(f_esqt_filename).suffix.lower()
             (UPLOADS_DIR / f'_ESQT_atual{esqt_ext}').write_bytes(path_esqt.read_bytes())
 
         cm = resumo['vendas_mes']
@@ -1798,15 +1825,81 @@ def upload():
                         f"Verifique se o campo AAMM do CSV está no formato AAAAMM (ex: 202607).</b>")
             else:
                 msg += f"<br><small style='color:#888'>Anomes no CSV: {anomes_str}</small>"
-        return render_template_string(_UPLOAD_HTML, message=msg, ok=True)
-
+        _gravar_status_atualizacao({
+            'estado': 'concluido', 'ok': True, 'mensagem': msg,
+            'finalizado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        })
     except Exception as ex:
         traceback.print_exc()
-        return render_template_string(_UPLOAD_HTML, message=f'Erro ao processar: {ex}', ok=False)
+        _gravar_status_atualizacao({
+            'estado': 'erro', 'ok': False, 'mensagem': f'Erro ao processar: {ex}',
+            'finalizado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        })
     finally:
         # 3YS é grande — não manter no disco após processar
         if path_3ys and path_3ys.exists():
             path_3ys.unlink()
+
+
+@app.route('/api/status-atualizacao')
+def api_status_atualizacao():
+    """Usado pela tela de Atualizar dados (polling do resultado) e pela
+    barra no topo do portal (index.html), que fica visível em qualquer
+    tela enquanto uma atualização está rodando em segundo plano."""
+    return jsonify(_ler_status_atualizacao())
+
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if request.method == 'GET':
+        return render_template_string(_UPLOAD_HTML, message=None, ok=True,
+                                       status=_ler_status_atualizacao())
+
+    status_atual = _ler_status_atualizacao()
+    if status_atual.get('estado') == 'rodando':
+        return render_template_string(
+            _UPLOAD_HTML, ok=False, status=status_atual,
+            message=f"Já existe uma atualização em andamento (iniciada às {status_atual.get('iniciado_em','?')}). "
+                    f"Aguarde ela terminar antes de enviar novos arquivos.")
+
+    f_3ys  = request.files.get('arquivo_3ys')
+    f_esqt = request.files.get('arquivo_esqt')
+
+    if (not f_esqt or not f_esqt.filename) and not (DATA_DIR / 'dados_estoque.json').exists():
+        return render_template_string(_UPLOAD_HTML, message='Envie ao menos o ESQT.xls na primeira atualização.', ok=False,
+                                       status=status_atual)
+
+    path_3ys = path_esqt = None
+    if f_3ys and f_3ys.filename:
+        path_3ys = UPLOADS_DIR / f_3ys.filename
+        f_3ys.save(path_3ys)
+
+    if f_esqt and f_esqt.filename:
+        path_esqt = UPLOADS_DIR / f_esqt.filename
+        f_esqt.save(path_esqt)
+    else:
+        # Mantém estoque atual — busca o backup salvo (CSV ou XLS)
+        path_esqt = next(
+            (UPLOADS_DIR / f'_ESQT_atual{ext}' for ext in ('.csv', '.xls')
+             if (UPLOADS_DIR / f'_ESQT_atual{ext}').exists()),
+            None
+        )
+        if not path_esqt:
+            return render_template_string(_UPLOAD_HTML, message='ESQT não encontrado para reprocessar. Envie o arquivo.', ok=False,
+                                           status=status_atual)
+
+    novo_status = {'estado': 'rodando', 'iniciado_em': datetime.now().strftime('%d/%m/%Y %H:%M')}
+    _gravar_status_atualizacao(novo_status)
+    threading.Thread(
+        target=_processar_atualizacao_bg,
+        args=(path_3ys, path_esqt, f_esqt.filename if (f_esqt and f_esqt.filename) else None),
+        daemon=True,
+    ).start()
+
+    return render_template_string(
+        _UPLOAD_HTML, ok=True, status=novo_status,
+        message='Processamento iniciado — isso pode levar vários minutos. '
+                'Pode acompanhar aqui ou navegar pelo portal normalmente; o resultado aparece assim que terminar.')
 
 
 _CONFIG_HTML = '''<!DOCTYPE html>
