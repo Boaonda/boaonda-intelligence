@@ -1644,7 +1644,7 @@ body{background:var(--bg);color:var(--verde-dark);display:flex;flex-direction:co
   <div class="brand">BOAONDA <span>· Configurações</span></div>
   <div style="display:flex;align-items:center">
     <div class="status-atualizacao" id="status-atualizacao" title="Uma atualização de dados (3YS/ESQT) está rodando no servidor">
-      <span class="spin">⟳</span> Atualizando dados…
+      <span class="spin">⟳</span> Atualizando dados<span id="status-atualizacao-tempo"></span>…
     </div>
     <a class="back" href="/" target="_top">← Voltar ao portal</a>
   </div>
@@ -1675,11 +1675,21 @@ abrirSecao(new URLSearchParams(location.search).get('secao') || 'upload');
 
 // Barra "Atualizando dados..." — mesmo comportamento do portal (index.html):
 // só aparece enquanto o processamento em segundo plano do /upload está rodando.
+function _minutosDesde(iniciadoEm){
+  const m = (iniciadoEm||'').match(/(\\d{2})\\/(\\d{2})\\/(\\d{4}) (\\d{2}):(\\d{2})/);
+  if(!m) return null;
+  const d = new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5]);
+  const min = Math.round((Date.now()-d.getTime())/60000);
+  return min>=0 ? min : null;
+}
 function checarStatusAtualizacao(){
   fetch('/api/status-atualizacao?_='+Date.now()).then(r=>r.json()).then(s=>{
     const el=document.getElementById('status-atualizacao');
     if(!el) return;
     el.style.display = (s.estado==='rodando') ? 'flex' : 'none';
+    const min = _minutosDesde(s.iniciado_em);
+    const tempoEl = document.getElementById('status-atualizacao-tempo');
+    if(tempoEl) tempoEl.textContent = (min!=null) ? ' ('+min+' min)' : '';
   }).catch(()=>{});
 }
 checarStatusAtualizacao();
@@ -1764,11 +1774,21 @@ input[type=file]{width:100%;font-size:12px;color:var(--txt-s)}
 // sem precisar manter a requisição HTTP original aberta.
 let statusInicial = {{ (status or {})|tojson }};
 
+function _minutosDesde(iniciadoEm){
+  const m = (iniciadoEm||'').match(/(\\d{2})\\/(\\d{2})\\/(\\d{4}) (\\d{2}):(\\d{2})/);
+  if(!m) return null;
+  const d = new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5]);
+  const min = Math.round((Date.now()-d.getTime())/60000);
+  return min>=0 ? min : null;
+}
+
 function pollStatus(){
   fetch('/api/status-atualizacao?_='+Date.now()).then(r=>r.json()).then(s=>{
     if(s.estado==='rodando'){
+      const min = _minutosDesde(s.iniciado_em);
       document.getElementById('msg-area').innerHTML =
-        '<div class="msg rodando">⟳ Atualização em andamento (iniciada às '+(s.iniciado_em||'?')+')<span class="dots"></span></div>';
+        '<div class="msg rodando">⟳ Atualização em andamento (iniciada às '+(s.iniciado_em||'?')+
+        (min!=null ? ', há '+min+' min' : '')+')<span class="dots"></span></div>';
       document.getElementById('btn').disabled = true;
       document.getElementById('btn').textContent = 'Aguarde a atualização em andamento terminar...';
       setTimeout(pollStatus, 4000);
@@ -1810,6 +1830,25 @@ def _gravar_status_atualizacao(dados):
     tmp = STATUS_ATUALIZACAO_FILE.with_suffix('.tmp')
     tmp.write_text(json.dumps(dados, ensure_ascii=False), encoding='utf-8')
     tmp.replace(STATUS_ATUALIZACAO_FILE)
+
+
+def _resetar_status_orfao():
+    """Se o servidor foi reiniciado (deploy, crash) no meio de uma
+    atualização, o status fica travado em 'rodando' pra sempre — a thread
+    que gravaria o resultado final morreu junto com o processo antigo, e
+    ninguém mais escreve nesse arquivo. Sem isso, a barra de status e o
+    botão de novo upload ficam bloqueados pra sempre até alguém apagar o
+    arquivo na mão. Roda uma vez na subida do app."""
+    status = _ler_status_atualizacao()
+    if status.get('estado') == 'rodando':
+        _gravar_status_atualizacao({
+            'estado': 'erro', 'ok': False,
+            'mensagem': 'A atualização anterior foi interrompida (reinício do servidor) antes de terminar. Envie os arquivos novamente.',
+            'finalizado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        })
+
+
+_resetar_status_orfao()
 
 
 def _processar_atualizacao_bg(path_3ys, path_esqt, f_esqt_filename):
