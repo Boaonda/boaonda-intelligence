@@ -323,56 +323,52 @@ def carregar_linhas_3ys(arquivo_3ys=None):
         return [_linha_de_db_row(r) for r in db_rows]
 
     sep = detectar_sep(arquivo_3ys)
-    linhas_raw = []
-    header = []
+    max_idx = max(IDX.values())
+    linhas = []
+    primeira_row = None
     with open(arquivo_3ys, 'r', encoding='utf-8', errors='replace') as f_:
         reader = csv.reader(f_, delimiter=sep)
         header = next(reader, [])
+        # Resolve, pra cada campo de IDX, a posição real da coluna no CSV
+        # pelo NOME do cabeçalho (robusto a inserção/remoção/reordenação de
+        # colunas pelo T.I.) — fallback: posição fixa histórica de IDX.
+        hlow = {h.strip().lower(): i for i, h in enumerate(header)}
+        origem = {}   # campo -> índice real no CSV
+        usou_fallback = []
+        for campo, idx_fixo in IDX.items():
+            nome = CSV_COL_NAMES.get(campo)
+            pos = hlow.get(nome.strip().lower()) if nome else None
+            if pos is None:
+                pos = idx_fixo
+                usou_fallback.append(campo)
+            origem[campo] = pos
+
+        # Remapeia cada linha assim que é lida, sem acumular o CSV bruto —
+        # com 200MB+ de 3YS.csv, manter as linhas brutas e as remapeadas
+        # em memória ao mesmo tempo (como antes) quase dobra o pico de RAM
+        # do processo à toa (risco real de OOM em produção, não só de
+        # timeout). Corrigido em 2026-07-28.
         for row in reader:
-            linhas_raw.append(row)
+            if primeira_row is None:
+                primeira_row = row
+            nova = [''] * (max_idx + 1)
+            for campo, pos in origem.items():
+                if pos < len(row):
+                    nova[IDX[campo]] = row[pos]
+            linhas.append(nova)
 
-    print(f"    CSV: {len(linhas_raw):,} linhas, {len(header)} colunas, sep={sep!r}")
-    # Reordena cada linha para o layout do IDX resolvendo as colunas PELO NOME
-    # do cabeçalho (robusto a inserção/remoção/reordenação de colunas pelo T.I.).
-    linhas = _remapear_csv_por_nome(header, linhas_raw)
-    return linhas
-
-
-def _remapear_csv_por_nome(header, linhas_raw):
-    """Constrói linhas 'sintéticas' (indexáveis por IDX) a partir do CSV,
-    localizando cada coluna pelo NOME do cabeçalho (CSV_COL_NAMES). Se um nome
-    não for achado, cai no índice fixo de IDX como fallback e avisa no log."""
-    hlow = {h.strip().lower(): i for i, h in enumerate(header)}
-    origem = {}   # campo -> índice real no CSV
-    usou_fallback = []
-    for campo, idx_fixo in IDX.items():
-        nome = CSV_COL_NAMES.get(campo)
-        pos = hlow.get(nome.strip().lower()) if nome else None
-        if pos is None:
-            pos = idx_fixo          # fallback: posição fixa histórica
-            usou_fallback.append(campo)
-        origem[campo] = pos
-
+    print(f"    CSV: {len(linhas):,} linhas, {len(header)} colunas, sep={sep!r}")
     # Log de diagnóstico — mostra de onde cada campo-chave foi lido
     campos_chave = ('abr_grp', 'anomes', 'qtd', 'pos_item', 'cod_esp', 'local', 'plano')
     for c in campos_chave:
         pos = origem[c]
         hdr = header[pos] if pos < len(header) else '(fora)'
-        val = g(linhas_raw[0], pos) if linhas_raw else '—'
+        val = g(primeira_row, pos) if primeira_row else '—'
         marca = ' [POS.FIXA - nome nao encontrado!]' if c in usou_fallback else ''
         print(f"      {c:12s} <- col[{pos:2d}] {hdr!r:24s} ex={val!r}{marca}")
     if usou_fallback:
         print(f"    *** AVISO: campos sem coluna no CSV (usando posição fixa): "
               f"{', '.join(usou_fallback)} ***")
-
-    max_idx = max(IDX.values())
-    linhas = []
-    for row in linhas_raw:
-        nova = [''] * (max_idx + 1)
-        for campo, pos in origem.items():
-            if pos < len(row):
-                nova[IDX[campo]] = row[pos]
-        linhas.append(nova)
     return linhas
 
 
