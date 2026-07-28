@@ -1630,12 +1630,24 @@ body{background:var(--bg);color:var(--verde-dark);display:flex;flex-direction:co
 .side-icon{font-size:15px;width:20px;text-align:center}
 .content{flex:1;min-width:0;position:relative}
 .content iframe{width:100%;height:100%;border:none;display:block}
+.status-atualizacao{
+  display:none;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#2f6690;
+  background:rgba(73,148,199,.1);border:1px solid rgba(73,148,199,.3);
+  border-radius:6px;padding:6px 10px;white-space:nowrap;margin-right:12px
+}
+.status-atualizacao .spin{display:inline-block;animation:girar 1s linear infinite}
+@keyframes girar{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <div class="topbar">
   <div class="brand">BOAONDA <span>· Configurações</span></div>
-  <a class="back" href="/" target="_top">← Voltar ao portal</a>
+  <div style="display:flex;align-items:center">
+    <div class="status-atualizacao" id="status-atualizacao" title="Uma atualização de dados (3YS/ESQT) está rodando no servidor">
+      <span class="spin">⟳</span> Atualizando dados…
+    </div>
+    <a class="back" href="/" target="_top">← Voltar ao portal</a>
+  </div>
 </div>
 <div class="layout">
   <div class="sidebar">
@@ -1660,6 +1672,18 @@ function abrirSecao(id){
   history.replaceState(null, '', '/admin/configuracoes?secao='+id);
 }
 abrirSecao(new URLSearchParams(location.search).get('secao') || 'upload');
+
+// Barra "Atualizando dados..." — mesmo comportamento do portal (index.html):
+// só aparece enquanto o processamento em segundo plano do /upload está rodando.
+function checarStatusAtualizacao(){
+  fetch('/api/status-atualizacao?_='+Date.now()).then(r=>r.json()).then(s=>{
+    const el=document.getElementById('status-atualizacao');
+    if(!el) return;
+    el.style.display = (s.estado==='rodando') ? 'flex' : 'none';
+  }).catch(()=>{});
+}
+checarStatusAtualizacao();
+setInterval(checarStatusAtualizacao, 15000);
 </script>
 </body>
 </html>'''
