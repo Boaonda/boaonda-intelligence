@@ -487,14 +487,15 @@ function calcValMes(m, canais, tipos){
 function render(){
   const canais=estado.canal, tipos=estado.tipo;
   const D=dadosAtual();
-  const unidLabel=estado.unidade==='valor'?'em R$ no período':'pares no período';
+  // Totais para KPIs: só o mês vigente (último mês disponível na base),
+  // não o acumulado do período inteiro — o gráfico de evolução e a tabela
+  // de clientes continuam respeitando todos os meses/filtros normalmente.
+  const mesVigente=MESES_ALL[MESES_ALL.length-1];
+  const unidLabel=(estado.unidade==='valor'?'em R$ ':'pares ')+'em '+(mesVigente?mesLabel(mesVigente):'');
 
-  // Totais para KPIs (respeitam todos os filtros; sempre todos os meses
-  // disponíveis na base — o filtro de período no topo foi removido por
-  // não ser usado, ver [[project_filtro_periodo_vendas]])
   let mi_prog=0,mi_pe=0,mi_mista=0,me=0,ec=0;
-  MESES_ALL.forEach(m=>{
-    const d=D[m]||{};
+  {
+    const d=D[mesVigente]||{};
     if(canais.has('MI')){
       if(tipos.has('PROG')) mi_prog+=(d.MI||{}).PROG||0;
       if(tipos.has('PE'))   mi_pe+=(d.MI||{}).PE||0;
@@ -502,7 +503,7 @@ function render(){
     }
     if(canais.has('ME')) me+=(d.ME||{}).ME||0;
     if(canais.has('EC')) ec+=(d.EC||{}).EC||0;
-  });
+  }
   const total=mi_prog+mi_pe+mi_mista+me+ec;
 
   // KPIs
