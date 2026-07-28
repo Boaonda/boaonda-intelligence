@@ -72,14 +72,22 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .stitle::after{content:'';flex:1;height:1px;background:var(--line)}
 .stitle-info{font-size:10px;color:var(--txt-m);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px}
 
-/* KPIs */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
-.kpi{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--line2);border-radius:10px;padding:14px}
-.kpi.destaque{border-top-color:var(--coral)}
-.kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
-.kpi-v{font-size:1.75rem;font-weight:800;color:var(--txt);line-height:1}
-.kpi-v.destaque{color:var(--coral)}
-.kpi-s{font-size:10px;color:var(--txt-m);margin-top:4px}
+/* Resumo Hoje/Semana/Mês/Ano vs. ano anterior */
+.kpi2-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.kpi2{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi2-label{font-size:9px;font-weight:700;color:var(--txt-s);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.kpi2-real{font-size:11px;color:var(--txt-m);margin-bottom:10px}
+.kpi2-real strong{font-size:1.3rem;color:var(--txt);font-weight:800;margin-left:4px}
+.kpi2-bar{position:relative;height:6px;background:var(--line2);border-radius:3px;margin-bottom:8px}
+.kpi2-fill{position:absolute;left:0;top:0;height:100%;border-radius:3px;background:var(--coral)}
+.kpi2-fill.up{background:var(--verde)}
+.kpi2-marker{position:absolute;top:-3px;width:2px;height:12px;background:var(--txt-s)}
+.kpi2-foot{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;color:var(--txt-m);flex-wrap:wrap;gap:4px 8px}
+.kpi2-comp{white-space:nowrap}
+.kpi2-delta{font-weight:700;margin-left:4px}
+.kpi2-delta.down{color:var(--coral)}
+.kpi2-delta.up{color:var(--verde)}
+@media(max-width:900px){.kpi2-grid{grid-template-columns:repeat(2,1fr)}}
 
 /* Charts */
 .crow{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
@@ -233,7 +241,7 @@ td.seg-ecom-ecom, .cl-mini-table td.seg-ecom-ecom{background:#d9a44114}
 
 <div class="main">
   <div class="stitle" id="stitle-kpi">Resumo — <span id="stitle-desc" style="font-weight:400;text-transform:none;letter-spacing:0">Todos os canais · Todos os meses</span></div>
-  <div class="kpi-grid" id="kpi-area"></div>
+  <div id="kpi-area"></div>
 
   <div class="crow">
     <div class="ccard">
@@ -331,12 +339,19 @@ let DADOS={}, DADOS_VALOR={};
 // paralelo ao arquivo mensal; ausência não quebra o resto do painel.
 let CLIENTES_DATA = null;
 
+// dados_vendas_diario.json — totais diários por canal (todo o histórico),
+// usado só pelo resumo Hoje/Semana/Mês/Ano vs. ano anterior no topo da
+// página. Ausência não quebra o resto do painel (resumo fica vazio).
+let DIARIO = {};
+
 // Carregar JSON externo — gerado pelo atualizar.py
 Promise.all([
   fetch('dados_vendas.json?_='+Date.now()).then(r=>r.ok?r.json():null),
   fetch('dados_vendas_clientes.json?_='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
-]).then(([d, dCli])=>{
+  fetch('dados_vendas_diario.json?_='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
+]).then(([d, dCli, dDiario])=>{
     CLIENTES_DATA = dCli;
+    DIARIO = (dDiario && dDiario.dias) || {};
     if(!d) { render(); return; } // usa dados vazios
     // Adapta o formato gerado pelo processador.py (chave "mensal", canais
     // MI/ME/ECOM com tipos PROG/PE/MISTA/ECOM) para a estrutura usada pelo
@@ -483,38 +498,106 @@ function calcValMes(m, canais, tipos){
   return tot;
 }
 
+// ── RESUMO HOJE/SEMANA/MÊS/ANO vs. ANO ANTERIOR ──────────────────────
+// Metodologia (combinada com o Cássio em 2026-07-28):
+// - Hoje/Semana comparam com o mesmo dia da semana do ano anterior (-364
+//   dias, 52 semanas exatas) em vez de -365, senão o dia da semana
+//   desalinha (ex.: comparar uma terça-feira com um domingo não é justo
+//   num negócio B2B onde o ritmo de pedidos varia muito por dia).
+// - Mês/Ano comparam com o mesmo CORTE PARCIAL de dias no ano-calendário
+//   anterior (ex.: 1–28/Jul/26 vs. 1–28/Jul/25), nunca período parcial
+//   contra período fechado — isso sempre faria o mês corrente parecer
+//   pior do que está, mesmo com o mesmo ritmo diário de vendas.
+function _dataChave(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function _addDias(d, n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function _fmtDataCurta(d){
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()).slice(2);
+}
+function _valorDia(chave, canais, tipos, unidade){
+  const d = DIARIO[chave];
+  if(!d) return 0;
+  let tot = 0;
+  if(canais.has('MI')){
+    const mi = unidade==='valor' ? d.MIv : d.MI;
+    if(mi){
+      if(tipos.has('PROG')) tot += mi.PROG||0;
+      if(tipos.has('PE'))   tot += mi.PE||0;
+      if(tipos.has('MISTA'))tot += mi.MISTA||0;
+    }
+  }
+  if(canais.has('ME')) tot += (unidade==='valor'? d.MEv : d.ME)||0;
+  if(canais.has('EC')) tot += (unidade==='valor'? d.ECv : d.EC)||0;
+  return tot;
+}
+function _somaPeriodo(inicio, fim, canais, tipos, unidade){
+  let tot = 0, cur = new Date(inicio);
+  while(cur <= fim){ tot += _valorDia(_dataChave(cur), canais, tipos, unidade); cur = _addDias(cur, 1); }
+  return tot;
+}
+function _cardResumo(inicio, fim, inicioAnt, fimAnt, canais, tipos, unidade){
+  const real = _somaPeriodo(inicio, fim, canais, tipos, unidade);
+  const ant  = _somaPeriodo(inicioAnt, fimAnt, canais, tipos, unidade);
+  const pct  = ant ? ((real-ant)/ant*100) : (real>0 ? 100 : 0);
+  return {real, ant, pct, inicio, fim};
+}
+function _kpi2Html(label, c, unidade){
+  const fmt = unidade==='valor' ? fmoeda : f;
+  const maxV = Math.max(c.real, c.ant, 1);
+  const fill = Math.round(c.real/maxV*100);
+  const marker = Math.round(c.ant/maxV*100);
+  const up = c.pct >= 0;
+  const deltaTxt = (up?'+':'')+c.pct.toFixed(1).replace('.',',')+'%';
+  const periodo = c.inicio.getTime()===c.fim.getTime() ? _fmtDataCurta(c.inicio) : _fmtDataCurta(c.inicio)+' a '+_fmtDataCurta(c.fim);
+  return '<div class="kpi2"><div class="kpi2-label">'+label+'</div>'+
+    '<div class="kpi2-real">Realizado: <strong>'+fmt(c.real)+'</strong></div>'+
+    '<div class="kpi2-bar"><div class="kpi2-fill '+(up?'up':'')+'" style="width:'+fill+'%"></div>'+
+    '<div class="kpi2-marker" style="left:'+marker+'%"></div></div>'+
+    '<div class="kpi2-foot"><span class="kpi2-periodo">'+periodo+'</span>'+
+    '<span class="kpi2-comp">Ano anterior: '+fmt(c.ant)+' <span class="kpi2-delta '+(up?'up':'down')+'">'+deltaTxt+' '+(up?'▲':'▼')+'</span></span></div>'+
+    '</div>';
+}
+function renderResumoHSMA(canais, tipos){
+  const area = document.getElementById('kpi-area');
+  if(!Object.keys(DIARIO).length){ area.innerHTML=''; return; }
+
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const diaSemana = (hoje.getDay()+6)%7; // 0=segunda ... 6=domingo
+  const segundaSemana = _addDias(hoje, -diaSemana);
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const inicioAno = new Date(hoje.getFullYear(), 0, 1);
+
+  const hojeAnt = _addDias(hoje, -364);
+  const segundaSemanaAnt = _addDias(segundaSemana, -364);
+  const fimSemanaAnt = _addDias(segundaSemanaAnt, diaSemana); // mesmo nº de dias decorridos na semana
+
+  const inicioMesAnt = new Date(hoje.getFullYear()-1, hoje.getMonth(), 1);
+  const fimMesAnt     = new Date(hoje.getFullYear()-1, hoje.getMonth(), hoje.getDate());
+  const inicioAnoAnt  = new Date(hoje.getFullYear()-1, 0, 1);
+  const fimAnoAnt      = new Date(hoje.getFullYear()-1, hoje.getMonth(), hoje.getDate());
+
+  function linha(unidade){
+    const cHoje   = _cardResumo(hoje, hoje, hojeAnt, hojeAnt, canais, tipos, unidade);
+    const cSemana = _cardResumo(segundaSemana, hoje, segundaSemanaAnt, fimSemanaAnt, canais, tipos, unidade);
+    const cMes    = _cardResumo(inicioMes, hoje, inicioMesAnt, fimMesAnt, canais, tipos, unidade);
+    const cAno    = _cardResumo(inicioAno, hoje, inicioAnoAnt, fimAnoAnt, canais, tipos, unidade);
+    const pref = unidade==='valor' ? 'Venda' : 'Pares';
+    return '<div class="kpi2-grid">'+
+      _kpi2Html(pref+' HOJE', cHoje, unidade)+
+      _kpi2Html(pref+' SEMANA', cSemana, unidade)+
+      _kpi2Html(pref+' MÊS', cMes, unidade)+
+      _kpi2Html(pref+' ANO', cAno, unidade)+
+      '</div>';
+  }
+  area.innerHTML = linha('pares') + linha('valor');
+}
+
 // ── RENDER ──────────────────────────────────────────────────────────
 function render(){
   const canais=estado.canal, tipos=estado.tipo;
-  const D=dadosAtual();
-  // Totais para KPIs: só o mês vigente (último mês disponível na base),
-  // não o acumulado do período inteiro — o gráfico de evolução e a tabela
-  // de clientes continuam respeitando todos os meses/filtros normalmente.
-  const mesVigente=MESES_ALL[MESES_ALL.length-1];
-  const unidLabel=(estado.unidade==='valor'?'em R$ ':'pares ')+'em '+(mesVigente?mesLabel(mesVigente):'');
 
-  let mi_prog=0,mi_pe=0,mi_mista=0,me=0,ec=0;
-  {
-    const d=D[mesVigente]||{};
-    if(canais.has('MI')){
-      if(tipos.has('PROG')) mi_prog+=(d.MI||{}).PROG||0;
-      if(tipos.has('PE'))   mi_pe+=(d.MI||{}).PE||0;
-      if(tipos.has('MISTA'))mi_mista+=(d.MI||{}).MISTA||0;
-    }
-    if(canais.has('ME')) me+=(d.ME||{}).ME||0;
-    if(canais.has('EC')) ec+=(d.EC||{}).EC||0;
-  }
-  const total=mi_prog+mi_pe+mi_mista+me+ec;
-
-  // KPIs
-  let kpiHTML='';
-  kpiHTML+=kpi('destaque','Total selecionado',fmtv(total),unidLabel);
-  if(canais.has('MI') && tipos.has('PROG'))  kpiHTML+=kpi('','MI — Programação',fmtv(mi_prog),pct(mi_prog,total)+'% do total');
-  if(canais.has('MI') && tipos.has('PE'))    kpiHTML+=kpi('','MI — Pronta Entrega',fmtv(mi_pe),pct(mi_pe,total)+'% do total');
-  if(canais.has('MI') && tipos.has('MISTA')) kpiHTML+=kpi('','MI — Venda Mista',fmtv(mi_mista),pct(mi_mista,total)+'% do total');
-  if(canais.has('ME')) kpiHTML+=kpi('','Mercado Externo',fmtv(me),pct(me,total)+'% do total');
-  if(canais.has('EC')) kpiHTML+=kpi('','E-commerce',fmtv(ec),pct(ec,total)+'% do total');
-  document.getElementById('kpi-area').innerHTML=kpiHTML;
+  renderResumoHSMA(canais, tipos);
 
   // Descrição
   const cNomes={MI:'MI',ME:'ME',EC:'E-com'};
@@ -525,10 +608,6 @@ function render(){
   renderCharts(canais, tipos);
   renderClientes();
   renderRefsMix();
-}
-
-function kpi(cls,label,val,sub){
-  return '<div class="kpi '+cls+'"><div class="kpi-l">'+label+'</div><div class="kpi-v '+cls+'">'+val+'</div><div class="kpi-s">'+sub+'</div></div>';
 }
 
 // ── CLIENTES COM COMPRA (drilldown holding → ref → linha) ────────────
