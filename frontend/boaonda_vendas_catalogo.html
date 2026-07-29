@@ -245,7 +245,8 @@ td.seg-ecom-ecom, .cl-mini-table td.seg-ecom-ecom{background:#d9a44114}
 
   <div class="crow">
     <div class="ccard">
-      <div class="ctitle">Evolução mensal de vendas <span class="ctitle-badge" id="ev-badge">todos os meses</span></div>
+      <div class="ctitle">Evolução mensal de vendas <span class="ctitle-badge" id="ev-badge">todos os meses</span>
+        <span style="font-size:9px;color:var(--txt-m);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px">clique numa barra para ver Clientes/Mix daquele mês</span></div>
       <div style="position:relative;height:280px"><canvas id="c-ev"></canvas></div>
     </div>
     <div class="ccard">
@@ -613,7 +614,23 @@ function render(){
 // ── CLIENTES COM COMPRA (drilldown holding → ref → linha) ────────────
 let clPeriodo='dia_atual', clBusca='', clHoldingAberto=null, clRefAberto=null;
 let clSort={key:'total_pares', dir:'desc'};
-function clSetPeriodo(v){ clPeriodo=v; clHoldingAberto=null; clRefAberto=null; renderClientes(); renderRefsMix(); }
+// Mês específico — ativado clicando numa barra do gráfico "Evolução mensal
+// de vendas" (auditoria: comparar Boaonda Intelligence com outras bases mês
+// a mês). Fica por cima do seletor de período normal enquanto ativo; some
+// ao trocar o seletor manualmente ou clicar no "×" do badge.
+let clMesEspecifico = null; // ex.: '202507'
+function clSetMesEspecifico(anomes){
+  clMesEspecifico = anomes; clPeriodo = 'mes_especifico';
+  clHoldingAberto = null; clRefAberto = null;
+  renderClientes(); renderRefsMix();
+}
+function clLimparMesEspecifico(){
+  clMesEspecifico = null;
+  clPeriodo = document.getElementById('cl-periodo').value;
+  clHoldingAberto = null; clRefAberto = null;
+  renderClientes(); renderRefsMix();
+}
+function clSetPeriodo(v){ clMesEspecifico=null; clPeriodo=v; clHoldingAberto=null; clRefAberto=null; renderClientes(); renderRefsMix(); }
 function clSetBusca(v){ clBusca=v.toLowerCase(); renderClientes(); }
 function clSetSort(key){
   if(clSort.key===key){ clSort.dir = clSort.dir==='desc'?'asc':'desc'; }
@@ -650,6 +667,10 @@ function clPassaPeriodo(dt){
     const ont=new Date(hoje); ont.setDate(hoje.getDate()-1);
     return dd===ont.getDate() && mm===ont.getMonth()+1 && ano===ont.getFullYear();
   }
+  if(clPeriodo==='mes_especifico' && clMesEspecifico){
+    const anomesLinha = ano+String(mm).padStart(2,'0');
+    return anomesLinha===clMesEspecifico;
+  }
   // Meses-calendário completos, contados a partir do mês corrente (0 = mês
   // atual, 1 = mês anterior, etc.) — evita aritmética de Date com dia do
   // mês (setMonth pode "vazar" pro mês seguinte em dias como 31).
@@ -658,7 +679,8 @@ function clPassaPeriodo(dt){
   if(clPeriodo==='mes_anterior') return diffMeses===1;
   if(clPeriodo==='ult_3_meses')  return diffMeses>=0 && diffMeses<=2;
   if(clPeriodo==='ult_6_meses')  return diffMeses>=0 && diffMeses<=5;
-  return true; // 'ano' — arquivo já é só do ano corrente
+  if(clPeriodo==='ano')          return ano===hoje.getFullYear();
+  return true;
 }
 
 // Colunas na mesma ordem/nomenclatura já usada no resto do painel (MI Prog/PE/
@@ -725,10 +747,17 @@ function renderClientes(){
   if(!thead||!tb) return;
   const canais=estado.canal, tipos=estado.tipo;
   const cols = clColunasAtivas(canais, tipos);
-  const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',
-    mes_anterior:'mês anterior',ult_3_meses:'últimos 3 meses',ult_6_meses:'últimos 6 meses',
-    ano:'ano corrente'}[clPeriodo];
-  if(badge) badge.textContent=periodoLabel;
+  const periodoLabel = (clPeriodo==='mes_especifico' && clMesEspecifico)
+    ? mesLabel(clMesEspecifico)+' (mês selecionado no gráfico)'
+    : {dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',
+       mes_anterior:'mês anterior',ult_3_meses:'últimos 3 meses',ult_6_meses:'últimos 6 meses',
+       ano:'ano corrente'}[clPeriodo];
+  if(badge){
+    badge.textContent = periodoLabel + (clPeriodo==='mes_especifico' ? ' ✕' : '');
+    badge.onclick = clPeriodo==='mes_especifico' ? clLimparMesEspecifico : null;
+    badge.style.cursor = clPeriodo==='mes_especifico' ? 'pointer' : 'default';
+    badge.title = clPeriodo==='mes_especifico' ? 'Clique para voltar ao período do seletor' : '';
+  }
 
   // Cabeçalho — colunas de pares e R$ separadas por modalidade + total, todas
   // clicáveis para ordenar (item 4).
@@ -854,6 +883,15 @@ function renderCharts(canais, tipos){
     plugins:[totalLabelsPlugin],
     options:{responsive:true,maintainAspectRatio:false,
       layout:{padding:{top:18}},
+      // Clique numa barra (mês) do gráfico -> filtra "Clientes com compra" e
+      // "Mix de produto" pra aquele mês exato, sem precisar clicar mês a mês
+      // no seletor (auditoria de divergência mês a mês contra outras bases).
+      onClick:(evt,elements)=>{
+        if(!elements.length) return;
+        const anomes = MESES_ALL[elements[0].index];
+        if(anomes) clSetMesEspecifico(anomes);
+      },
+      onHover:(evt,elements)=>{ evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
       plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},tooltip:{...TIP,mode:'index',callbacks:{label:ctx=>ctx.dataset.label+': '+fmtv(ctx.raw)}}},
       scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:v=>fmtv(v)}}}}});
 
@@ -944,10 +982,17 @@ function renderRefsMix(){
   if(!tb||!thead) return;
   const canais=estado.canal, tipos=estado.tipo;
   const cols = clColunasAtivas(canais, tipos);
-  const periodoLabel={dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',
-    mes_anterior:'mês anterior',ult_3_meses:'últimos 3 meses',ult_6_meses:'últimos 6 meses',
-    ano:'ano corrente'}[clPeriodo];
-  if(badge) badge.textContent=periodoLabel;
+  const periodoLabel = (clPeriodo==='mes_especifico' && clMesEspecifico)
+    ? mesLabel(clMesEspecifico)+' (mês selecionado no gráfico)'
+    : {dia_anterior:'dia anterior',dia_atual:'dia atual',mes:'mês corrente',
+       mes_anterior:'mês anterior',ult_3_meses:'últimos 3 meses',ult_6_meses:'últimos 6 meses',
+       ano:'ano corrente'}[clPeriodo];
+  if(badge){
+    badge.textContent = periodoLabel + (clPeriodo==='mes_especifico' ? ' ✕' : '');
+    badge.onclick = clPeriodo==='mes_especifico' ? clLimparMesEspecifico : null;
+    badge.style.cursor = clPeriodo==='mes_especifico' ? 'pointer' : 'default';
+    badge.title = clPeriodo==='mes_especifico' ? 'Clique para voltar ao período do seletor' : '';
+  }
 
   let theadHtml = '<th>#</th><th class="sortable" onclick="refsSetSort(\'r\')">Referência'+refsSortArrow('r')+'</th>';
   cols.forEach(c=>{

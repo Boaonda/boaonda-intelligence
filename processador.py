@@ -666,13 +666,23 @@ def _extrair_cor(combinacao):
 
 
 def gerar_dados_vendas_clientes(linhas, output_dir='.'):
-    """Detalhe linha-a-linha de vendas por holding/cliente, do ano-calendário
-    corrente (1º de janeiro até hoje). Alimenta o quadro 'Clientes com
-    compra' (drilldown holding → referência → linha) e os cards 'Vendas do
-    dia/dia anterior' do dashboard de Vendas — ambos calculados no navegador
+    """Detalhe linha-a-linha de vendas por holding/cliente, cobrindo TODO o
+    histórico disponível no 3YS (antes era só o ano-calendário corrente —
+    ampliado em 2026-07-28 pra permitir clicar em qualquer mês do gráfico
+    'Evolução mensal de vendas' e ver o detalhe de clientes/referências
+    daquele mês exato, mesmo em anos anteriores; ver auditoria de
+    Cássio). Alimenta o quadro 'Clientes com compra' (drilldown holding →
+    referência → linha), os cards 'Vendas do dia/dia anterior' e o drilldown
+    por mês específico do dashboard de Vendas — tudo calculado no navegador
     filtrando este arquivo por data, sem chamada ao servidor. Também alimenta
     o quadro 'Mix de produto' (referência → linha/cor), que reaproveita os
     mesmos filtros de canal/tipo/período já usados em 'Clientes com compra'.
+
+    Cresce para sempre (mesma natureza de dados_vendas_carteira.json/
+    dados_vendas_diario.json) — se um dia o tamanho virar problema real, a
+    saída é separar "ano(s) recente(s)" de "histórico antigo" (ver
+    [[project_perf_3ys_processador]] pra raciocínio equivalente já feito
+    noutro arquivo), não redesenhar a arquitetura.
 
     Estrutura: {"campos": [...], "holdings": {holding: {ref: [[...]]}}}
     Cada linha é um array compacto (não dict) para reduzir tamanho — a
@@ -687,10 +697,9 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
     holding (ver holdings_sem_rep em gerar_dados_vendas_carteira).
     """
     print("\n  Gerando dados_vendas_clientes.json...")
-    ano_atual = datetime.now().strftime('%Y')
-    ano_ini = f'{ano_atual}01'
     holdings = defaultdict(lambda: defaultdict(list))
     n = 0
+    primeiro_anomes = None
     for row in linhas:
         abr = g(row, IDX['abr_grp']).upper()
         cod = g(row, IDX['cod_esp'])
@@ -700,7 +709,8 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
         canal, tipo = classifica_venda(abr, cod, pos_item, cfop, private_label)
         if canal not in ('MI', 'ME', 'ECOM'): continue
         anomes = g(row, IDX['anomes'])
-        if not anomes or anomes < ano_ini: continue
+        if not anomes or len(anomes) != 6 or not anomes.isdigit(): continue
+        if primeiro_anomes is None or anomes < primeiro_anomes: primeiro_anomes = anomes
         try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
         except: qtd = 0
         if qtd <= 0: continue
@@ -716,9 +726,10 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
         holdings[holding][ref].append([pedido, dt_ent, canal, tipo, qtd, valor, num_linha, cor, rep_val])
         n += 1
 
+    periodo_desde = f'01/{primeiro_anomes[4:6]}/{primeiro_anomes[:4]}' if primeiro_anomes else ''
     saida = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
-        'periodo_desde': f'01/01/{ano_atual}',
+        'periodo_desde': periodo_desde,
         # 'rep' (representante da LINHA, cru — '' quando vier em branco no 3YS,
         # venda direta/casa) permite ao drill-down por representante excluir
         # itens que não pertencem a ele, mesmo que o holding tenha outro rep
@@ -729,7 +740,7 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
     with open(os.path.join(output_dir, 'dados_vendas_clientes.json'), 'w', encoding='utf-8') as f_:
         json.dump(saida, f_, ensure_ascii=False, separators=(',', ':'))
     print(f"    ✓ dados_vendas_clientes.json gerado ({n:,} linhas, "
-          f"{len(holdings):,} holdings, desde 01/01/{ano_atual})")
+          f"{len(holdings):,} holdings, desde {periodo_desde or '?'})")
 
 
 def gerar_dados_vendas_diario(linhas, output_dir='.'):
