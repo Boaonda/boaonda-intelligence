@@ -176,6 +176,18 @@ VENDA_CANAL_POR_GRUPO = {
 #   32 = Ecommerce
 VENDA_TIPO_POR_COD = {'1':'PROG','10':'EQUIPARADA','22':'PE','31':'MISTA','32':'ECOM'}
 
+# CFOP de "Remessa em bonificação, doação ou brinde" (5910 = dentro do
+# estado, 6910 = interestadual) — usado pra tirar PDV/bonificação/brinde
+# dos NÚMEROS DE VENDAS (MI/ME/ECOM), nunca por "referência vazia" (auditoria
+# em 2026-07-28: a maioria desses registros vem mesmo sem referência, mas
+# excluir por referência vazia também apagaria vendas reais que só têm um
+# buraco de preenchimento no ERP — ex.: um pedido de calçado de ~6 mil pares
+# que veio sem Referencia/Descricao mas com CFOP de venda normal e Conta
+# Contábil 'VENDAS CALCADOS - MI'. CFOP é o sinal correto porque é a
+# classificação fiscal formal do tipo de operação, não um efeito colateral
+# de cadastro incompleto. Ver [[project_cfop_bonificacao_vendas]].
+CFOP_BONIFICACAO_DOACAO_BRINDE = {'5910', '6910'}
+
 # Espécies de orçamento de Mercado Externo — nunca serão faturadas (pedidos
 # não aprovados). Excluídas do faturamento previsto, CFOP, conta contábil e
 # pendências retroativas.
@@ -265,12 +277,16 @@ def classifica_canal(cod, abr):
     if 'MOULD' in abr: return 'GRUPO_MOULD'
     return None
 
-def classifica_venda(abr, cod, pos_item):
+def classifica_venda(abr, cod, pos_item, cfop=''):
     """Classifica uma linha de venda em (canal, tipo) para o relatório de
     Vendas (MI/ME/ECOM + tipo de pedido).
 
     Regras:
       - Itens 'Cancelado' (pos_item) nunca contam no volume de vendas.
+      - Itens com CFOP de bonificação/doação/brinde (5910/6910) nunca contam
+        como venda, em nenhum canal (MI/ME/ECOM) — são PDV/brinde, não
+        calçado vendido, mesmo quando têm referência preenchida (auditoria
+        2026-07-28, ver CFOP_BONIFICACAO_DOACAO_BRINDE).
       - Canal vem do abr_grp (CALCADO - MERCADO INTERNO/CLIENTES ISENTOS -> MI,
         EXPORTACAO - CALCADOS -> ME, E-COMMERCE -> ECOM).
       - Tipo vem do cod_esp_ent_sai (1=Programado, 10=Venda Equiparada,
@@ -279,6 +295,8 @@ def classifica_venda(abr, cod, pos_item):
         para manter o total dessa unidade de negócio visível.
     """
     if pos_item.strip().upper() == 'CANCELADO':
+        return None, None
+    if cfop.strip() in CFOP_BONIFICACAO_DOACAO_BRINDE:
         return None, None
     canal = VENDA_CANAL_POR_GRUPO.get(abr)
     tipo = VENDA_TIPO_POR_COD.get(cod)
@@ -493,7 +511,8 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
         abr = g(row, IDX['abr_grp']).upper()
         cod = g(row, IDX['cod_esp'])
         pos_item = g(row, IDX['pos_item'])
-        canal, tipo = classifica_venda(abr, cod, pos_item)
+        cfop = g(row, IDX['cfop'])
+        canal, tipo = classifica_venda(abr, cod, pos_item, cfop)
         if not canal: continue
         try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
         except: qtd = 0
@@ -665,7 +684,8 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
         abr = g(row, IDX['abr_grp']).upper()
         cod = g(row, IDX['cod_esp'])
         pos_item = g(row, IDX['pos_item'])
-        canal, tipo = classifica_venda(abr, cod, pos_item)
+        cfop = g(row, IDX['cfop'])
+        canal, tipo = classifica_venda(abr, cod, pos_item, cfop)
         if canal not in ('MI', 'ME', 'ECOM'): continue
         anomes = g(row, IDX['anomes'])
         if not anomes or anomes < ano_ini: continue
@@ -719,7 +739,8 @@ def gerar_dados_vendas_diario(linhas, output_dir='.'):
         abr = g(row, IDX['abr_grp']).upper()
         cod = g(row, IDX['cod_esp'])
         pos_item = g(row, IDX['pos_item'])
-        canal, tipo = classifica_venda(abr, cod, pos_item)
+        cfop = g(row, IDX['cfop'])
+        canal, tipo = classifica_venda(abr, cod, pos_item, cfop)
         if canal not in ('MI', 'ME', 'ECOM'): continue
         try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
         except: qtd = 0
@@ -801,7 +822,8 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
         abr = g(row, IDX['abr_grp']).upper()
         cod = g(row, IDX['cod_esp'])
         pos_item = g(row, IDX['pos_item'])
-        canal, tipo = classifica_venda(abr, cod, pos_item)
+        cfop = g(row, IDX['cfop'])
+        canal, tipo = classifica_venda(abr, cod, pos_item, cfop)
         if canal not in ('MI', 'ME', 'ECOM'): continue
         anomes = g(row, IDX['anomes'])
         if not anomes or len(anomes) != 6 or not anomes.isdigit(): continue
