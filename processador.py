@@ -80,6 +80,7 @@ IDX = {
     'holding':14,'nomeholder':15,'plano':16,'dt_plano':17,
     'pos_item':18,'etapa':19,'local':20,'tipomontagem':21,'cfop':22,
     'conta_contabil':23,'vlr_total':24,'uf':25,'representante':26,
+    'private_label':27,
 }
 
 # Posição histórica de cada campo no 3YS.csv ORIGINAL — usada só como
@@ -93,6 +94,7 @@ IDX_POS_FALLBACK = {
     'holding':16,'nomeholder':17,'plano':35,'dt_plano':77,
     'pos_item':40,'etapa':39,'local':72,'tipomontagem':85,'cfop':71,
     'conta_contabil':81,'vlr_total':86,'uf':87,'representante':88,
+    'private_label':49,
 }
 
 # Nome da coluna no cabeçalho do 3YS.csv para cada campo de IDX. Usado para
@@ -111,6 +113,7 @@ CSV_COL_NAMES = {
     'local':'LocalEstoque', 'tipomontagem':'CorPalmilha', 'cfop':'cfop',
     'conta_contabil':'ContaContabil', 'vlr_total':'valortotal',
     'uf':'uf', 'representante':'representante',
+    'private_label':'PrivateLabel',
 }
 
 # Query usada quando MYSQL_HOST está configurado (ver db_mysql.py) — substitui
@@ -277,7 +280,7 @@ def classifica_canal(cod, abr):
     if 'MOULD' in abr: return 'GRUPO_MOULD'
     return None
 
-def classifica_venda(abr, cod, pos_item, cfop=''):
+def classifica_venda(abr, cod, pos_item, cfop='', private_label=''):
     """Classifica uma linha de venda em (canal, tipo) para o relatório de
     Vendas (MI/ME/ECOM + tipo de pedido).
 
@@ -287,6 +290,11 @@ def classifica_venda(abr, cod, pos_item, cfop=''):
         como venda, em nenhum canal (MI/ME/ECOM) — são PDV/brinde, não
         calçado vendido, mesmo quando têm referência preenchida (auditoria
         2026-07-28, ver CFOP_BONIFICACAO_DOACAO_BRINDE).
+      - Itens de Private Label (campo PrivateLabel='1' no 3YS) nunca contam
+        como venda — são produtos fabricados pra OUTRAS marcas (cliente
+        principal: LANCA PERFUME), não compõem meta nem estratégia da
+        Boaonda, mesma régua já usada na Lemon/gestão comercial (combinado
+        com o Cássio em 2026-07-28).
       - Canal vem do abr_grp (CALCADO - MERCADO INTERNO/CLIENTES ISENTOS -> MI,
         EXPORTACAO - CALCADOS -> ME, E-COMMERCE -> ECOM).
       - Tipo vem do cod_esp_ent_sai (1=Programado, 10=Venda Equiparada,
@@ -297,6 +305,8 @@ def classifica_venda(abr, cod, pos_item, cfop=''):
     if pos_item.strip().upper() == 'CANCELADO':
         return None, None
     if cfop.strip() in CFOP_BONIFICACAO_DOACAO_BRINDE:
+        return None, None
+    if private_label.strip() == '1':
         return None, None
     canal = VENDA_CANAL_POR_GRUPO.get(abr)
     tipo = VENDA_TIPO_POR_COD.get(cod)
@@ -512,7 +522,8 @@ def processar_vendas(linhas, mes_atual, output_dir='.'):
         cod = g(row, IDX['cod_esp'])
         pos_item = g(row, IDX['pos_item'])
         cfop = g(row, IDX['cfop'])
-        canal, tipo = classifica_venda(abr, cod, pos_item, cfop)
+        private_label = g(row, IDX['private_label'])
+        canal, tipo = classifica_venda(abr, cod, pos_item, cfop, private_label)
         if not canal: continue
         try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
         except: qtd = 0
@@ -685,7 +696,8 @@ def gerar_dados_vendas_clientes(linhas, output_dir='.'):
         cod = g(row, IDX['cod_esp'])
         pos_item = g(row, IDX['pos_item'])
         cfop = g(row, IDX['cfop'])
-        canal, tipo = classifica_venda(abr, cod, pos_item, cfop)
+        private_label = g(row, IDX['private_label'])
+        canal, tipo = classifica_venda(abr, cod, pos_item, cfop, private_label)
         if canal not in ('MI', 'ME', 'ECOM'): continue
         anomes = g(row, IDX['anomes'])
         if not anomes or anomes < ano_ini: continue
@@ -740,7 +752,8 @@ def gerar_dados_vendas_diario(linhas, output_dir='.'):
         cod = g(row, IDX['cod_esp'])
         pos_item = g(row, IDX['pos_item'])
         cfop = g(row, IDX['cfop'])
-        canal, tipo = classifica_venda(abr, cod, pos_item, cfop)
+        private_label = g(row, IDX['private_label'])
+        canal, tipo = classifica_venda(abr, cod, pos_item, cfop, private_label)
         if canal not in ('MI', 'ME', 'ECOM'): continue
         try: qtd = int(float(g(row, IDX['qtd']).replace(',','.')))
         except: qtd = 0
@@ -823,7 +836,8 @@ def gerar_dados_vendas_carteira(linhas, output_dir='.'):
         cod = g(row, IDX['cod_esp'])
         pos_item = g(row, IDX['pos_item'])
         cfop = g(row, IDX['cfop'])
-        canal, tipo = classifica_venda(abr, cod, pos_item, cfop)
+        private_label = g(row, IDX['private_label'])
+        canal, tipo = classifica_venda(abr, cod, pos_item, cfop, private_label)
         if canal not in ('MI', 'ME', 'ECOM'): continue
         anomes = g(row, IDX['anomes'])
         if not anomes or len(anomes) != 6 or not anomes.isdigit(): continue
