@@ -209,6 +209,14 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rp-table tr:hover:not(.rp-foot) td{background:var(--card2)}
 .rp-empty{color:var(--line2)}
 .rp-total{font-weight:800;color:var(--coral)!important}
+.rp-row-ref{cursor:pointer}
+.rp-row-ref td:first-child{display:flex;align-items:center;gap:6px}
+.rp-arrow{font-size:9px;color:var(--txt-m);width:10px;display:inline-block}
+.rp-row-ref.ativa td:first-child{color:var(--coral)}
+.rp-sub td{color:var(--txt-m);font-size:10px}
+.rp-sub td:first-child{font-weight:400;padding-left:26px;color:var(--txt-s)}
+.rp-sub .rp-total{color:var(--txt-s)!important;font-weight:700}
+.rp-sub-empty td{color:var(--txt-m);font-size:10px;font-style:italic;padding-left:26px}
 /* Top refs */
 .tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;overflow-x:auto}
 table.top-refs{width:100%;border-collapse:collapse;font-size:12px}
@@ -1125,6 +1133,33 @@ function sortRp(key){
   renderRefsPeriodo();
 }
 
+// Drilldown por linha/cor dentro de "Referências por semana" — clique numa
+// referência abre, embaixo, uma linha por combinação linha+cor com os
+// mesmos pares/semana da tabela principal (auditoria: "de que grade/cor são
+// os 6.480 pares da Nellie na semana X"). Só funciona no modo 'semana',
+// porque usa DETALHE (item-a-item), que é uma janela rolante de ~2 meses —
+// no modo 'mes' as chaves não batem (mês vs. segunda-feira da semana) e o
+// histórico anual não caberia nesse detalhe de qualquer forma.
+let rpExpandido = null;
+function rpToggle(ref){
+  rpExpandido = (rpExpandido===ref) ? null : ref;
+  renderRefsPeriodo();
+}
+function rpColetarLinhaCor(ref, periodosSemana){
+  const map = new Map(); // 'linha|cor' -> {linha,cor,porSemana:{weekKey:pares},total}
+  periodosSemana.forEach(([wk])=>{
+    const itens = (DETALHE.semanas||{})[wk] || [];
+    itens.forEach(it=>{
+      if(it.ref !== ref) return;
+      const key = it.linha+'|'+it.cor;
+      if(!map.has(key)) map.set(key, {linha:it.linha, cor:it.cor, porSemana:{}, total:0});
+      const e = map.get(key);
+      e.porSemana[wk] = (e.porSemana[wk]||0) + it.pares;
+      e.total += it.pares;
+    });
+  });
+  return [...map.values()].sort((a,b)=>b.total-a.total);
+}
 function renderRefsPeriodo(){
   let periodos,periodLabels;
   if(modo==='semana'){
@@ -1148,12 +1183,30 @@ function renderRefsPeriodo(){
   periodLabels.forEach(l=>html+='<th>'+l+'</th>');
   html+='<th>Total</th></tr></thead><tbody>';
   arr.forEach(([ref,total])=>{
-    html+='<tr><td>'+ref+'</td>';
+    const ativa = modo==='semana' && rpExpandido===ref;
+    const clicavel = modo==='semana';
+    html+='<tr class="'+(clicavel?'rp-row-ref':'')+(ativa?' ativa':'')+'"'+(clicavel?' onclick="rpToggle(\''+ref.replace(/'/g,"\\'")+'\')"':'')+'>'+
+      '<td>'+(clicavel?'<span class="rp-arrow">'+(ativa?'▾':'▸')+'</span>':'')+ref+'</td>';
     periodos.forEach(([,pd])=>{
       const q=(pd.refs||{})[ref]||0;
       html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
     });
     html+='<td class="rp-total">'+f(total)+'</td></tr>';
+    if(ativa){
+      const linhasCor = rpColetarLinhaCor(ref, periodos);
+      if(!linhasCor.length){
+        html+='<tr class="rp-sub-empty"><td colspan="'+(periodLabels.length+2)+'">Sem detalhamento de linha/cor disponível (fora da janela de ~2 meses do detalhe item-a-item).</td></tr>';
+      } else {
+        linhasCor.forEach(lc=>{
+          html+='<tr class="rp-sub"><td>Linha '+lc.linha+' · '+lc.cor+'</td>';
+          periodos.forEach(([wk])=>{
+            const q=lc.porSemana[wk]||0;
+            html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
+          });
+          html+='<td class="rp-total">'+f(lc.total)+'</td></tr>';
+        });
+      }
+    }
   });
   html+='<tr class="rp-foot"><td>TOTAL</td>';
   periodos.forEach(([,pd])=>html+='<td class="rp-total">'+f(Object.values(pd.refs||{}).reduce((a,b)=>a+b,0))+'</td>');
