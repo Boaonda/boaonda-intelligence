@@ -1113,7 +1113,12 @@ def processar_programacao(linhas, output_dir='.'):
             cliente_d = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40]
             dt_plano = parse_date(g(row, IDX['dt_plano']))
             tipo_mont = 'conv' if is_conv else ('mont' if is_mont else '')
-            chave = (cliente_d, pedido, ref, plano, dt_plano.strftime('%d/%m/%Y') if dt_plano else '', segmento, tipo_mont)
+            # linha/cor (grade e cor do combinado) — mesma extração já usada
+            # em vendas (_extrair_num_linha/_extrair_cor), reaproveitada aqui
+            # pro drilldown por linha/cor de "Referências por semana".
+            linha_grade = _extrair_num_linha(g(row, IDX['descr'])) or '(sem linha)'
+            cor_val = _extrair_cor(corrigir_mojibake(g(row, IDX['forma']))) or '(sem cor)'
+            chave = (cliente_d, pedido, ref, plano, dt_plano.strftime('%d/%m/%Y') if dt_plano else '', segmento, tipo_mont, linha_grade, cor_val)
             detalhe_raw[sem_key][chave] += qtd
         if sem_key not in sem_labels_rp: sem_labels_rp[sem_key] = s['label']
         if mes_key not in mes_labels_rp: mes_labels_rp[mes_key] = m2['label']
@@ -1189,8 +1194,9 @@ def processar_programacao(linhas, output_dir='.'):
     detalhe_out = {}
     for sem_key, itens in detalhe_raw.items():
         detalhe_out[sem_key] = [
-            {'cliente': c, 'pedido': p, 'ref': r, 'plano': pl, 'dt_plano': dtp, 'segmento': seg, 'tipo_mont': tm, 'pares': qtd}
-            for (c, p, r, pl, dtp, seg, tm), qtd in itens.items()
+            {'cliente': c, 'pedido': p, 'ref': r, 'plano': pl, 'dt_plano': dtp, 'segmento': seg, 'tipo_mont': tm,
+             'linha': ln, 'cor': cor, 'pares': qtd}
+            for (c, p, r, pl, dtp, seg, tm, ln, cor), qtd in itens.items()
         ]
     with open(os.path.join(output_dir, 'dados_programacao_detalhe.json'), 'w', encoding='utf-8') as f_:
         json.dump({
