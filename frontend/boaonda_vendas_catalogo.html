@@ -89,12 +89,18 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .kpi2-delta.down{color:var(--coral)}
 .kpi2-delta.up{color:var(--verde)}
 @media(max-width:900px){.kpi2-grid{grid-template-columns:repeat(2,1fr)}}
-/* Celular estreito: 2 colunas ficam apertadas demais (texto de comparação
-   quebra linha, números espremidos) — 1 coluna por card dá a mesma largura
-   confortável que os cards têm no desktop, em vez de forçar 2 lado a lado. */
+/* Celular estreito: mantém a grade de 2 colunas (igual à referência que o
+   time já usa — densidade parecida com desktop, só reduzida), em vez de
+   empilhar em 1 coluna só. O que precisa mudar é a tipografia/espaçamento,
+   bem mais compactos, pra caber sem quebrar feio dentro do card estreito. */
 @media(max-width:560px){
-  .kpi2-grid{grid-template-columns:1fr}
-  .kpi2-foot{flex-wrap:nowrap}
+  .kpi2{padding:9px 10px}
+  .kpi2-label{font-size:7.5px;margin-bottom:5px;letter-spacing:.06em}
+  .kpi2-real{font-size:9px;margin-bottom:6px}
+  .kpi2-real strong{font-size:1.05rem;margin-left:3px}
+  .kpi2-bar{height:5px;margin-bottom:5px}
+  .kpi2-foot{font-size:8.5px;gap:2px 4px}
+  .kpi2-delta{margin-left:2px}
   .header{padding:14px 16px}
   .h-right{align-items:stretch;width:100%}
   .h-controls{justify-content:flex-start;width:100%}
