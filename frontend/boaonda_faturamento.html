@@ -73,7 +73,11 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .resumo-mes-sel:focus{border-color:var(--coral)}
 .btn-export-fat{margin-left:8px;background:transparent;border:1px solid var(--border);color:var(--txt-s,#b6b3ac);border-radius:6px;padding:2px 8px;font-size:9.5px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:all .15s}
 .btn-export-fat:hover{border-color:var(--coral);color:var(--coral)}
-.table-scroll{overflow-x:auto}
+.table-scroll{overflow-x:auto;position:relative}
+/* Dica visual de que a tabela rola pro lado (some sozinha assim que o
+   usuário rolar até o fim) — sem isso, numa tela estreita o usuário só via
+   a coluna "Grupo" e achava que o resto tinha sumido/cortado. */
+.table-scroll-hint{display:none;font-size:9.5px;color:var(--txt-m);text-align:center;padding:4px 0 8px;font-style:italic}
 
 /* Tabela resumo */
 .rt{width:100%;border-collapse:collapse}
@@ -245,6 +249,21 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .st-done{background:rgba(108,156,55,.12);color:var(--verde)}
 .st-open{background:rgba(237,104,66,.12);color:var(--coral)}
 .st-prev{background:rgba(113,112,111,.12);color:var(--cinza)}
+
+/* Celular estreito — o header ficava com o câmbio meio centralizado, e a
+   tabela de resumo (9+ colunas) só mostrava a coluna "Grupo" sem nenhuma
+   pista de que dava pra rolar pro lado pra ver Previsto/Total. */
+@media(max-width:560px){
+  .header{padding:14px 16px}
+  .h-right{align-items:stretch;width:100%}
+  .cambio-box{width:100%;justify-content:space-between}
+  .h-meta{text-align:left}
+  .main{padding:14px}
+  .rt th.th-grupo,.rt td.td-grupo{min-width:120px}
+  .rt th,.rt td{padding:7px 8px;font-size:9.5px}
+  .rt th.th-grp{padding:8px 10px}
+  .table-scroll-hint{display:block}
+}
 </style>
 </head>
 <body>
@@ -314,6 +333,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
         <select class="resumo-mes-sel" id="resumo-mes"></select>
       </div>
     </div>
+    <div class="table-scroll-hint">← desliza para o lado para ver Previsto e Total →</div>
     <div class="table-scroll">
       <table class="rt">
         <thead>
@@ -406,6 +426,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
         <select class="resumo-mes-sel" id="cfop-mes"></select>
       </div>
     </div>
+    <div class="table-scroll-hint">← desliza para o lado para ver Previsto e Total →</div>
     <div class="table-scroll">
       <table class="rt">
         <thead>
@@ -445,6 +466,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
         <select class="resumo-mes-sel" id="conta-mes"></select>
       </div>
     </div>
+    <div class="table-scroll-hint">← desliza para o lado para ver Previsto e Total →</div>
     <div class="table-scroll">
       <table class="rt">
         <thead>
