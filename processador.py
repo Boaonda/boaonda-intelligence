@@ -1608,6 +1608,13 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     # dados_pedidos_eva[mes_ref][cliente][pedido] = [fat_vlr, prev_vlr, fat_kg, prev_kg]
     # 2º nível do drilldown de Composto EVA — só EVA, conforme solicitado.
     dados_pedidos_eva = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])))
+    # dados_pedidos_ec[mes_ref][pedido] = {cliente, dt_ent, rv, pv, rq, pq}
+    # Drilldown de E-commerce no Resumo mensal — clique no grupo mostra os
+    # pedidos ainda em previsão (pv>0), com pedido/cliente/data de entrada
+    # (Cássio, 2026-07-28).
+    def _novo_pedido_ec():
+        return {'cliente': '', 'dt_ent': '', 'rv': 0.0, 'pv': 0.0, 'rq': 0, 'pq': 0}
+    dados_pedidos_ec = defaultdict(lambda: defaultdict(_novo_pedido_ec))
     # dados_pedidos_mi[tipo][mes_ref][pedido] = {cliente, etapa, refs:{ref:[rv,pv,rq,pq]}, rv, pv, rq, pq}
     # Drilldown de MI Venda Mista (espécie 31) e MI Pronta Entrega (espécie
     # 22) — lista plana de pedidos, para auditoria visual do número
@@ -1761,6 +1768,15 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 rf[vi] += vlr; rf[qi] += qtd
                 if status == 'fat': pm['rv'] += vlr; pm['rq'] += qtd
                 else:                pm['pv'] += vlr; pm['pq'] += qtd
+
+            if canal == 'EC':
+                pedido = g(row, IDX['pedido']).strip() or '(sem pedido)'
+                cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
+                pe = dados_pedidos_ec[mes_ref][pedido]
+                pe['cliente'] = cliente
+                if not pe['dt_ent']: pe['dt_ent'] = g(row, IDX['dt_ent'])
+                if status == 'fat': pe['rv'] += vlr; pe['rq'] += qtd
+                else:                pe['pv'] += vlr; pe['pq'] += qtd
 
             if status == 'fat':  total_fat  += qtd
             else:                total_prev += qtd
@@ -1989,12 +2005,26 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     dados_pedidos_mista_out = {k: build_pedidos_mi_mes(v) for k, v in sorted(dados_pedidos_mi['MISTA'].items())}
     dados_pedidos_pe_out = {k: build_pedidos_mi_mes(v) for k, v in sorted(dados_pedidos_mi['PE'].items())}
 
+    def build_pedidos_ec_mes(pm):
+        pedidos = []
+        for pedido, d in pm.items():
+            if not any([d['rv'], d['pv'], d['rq'], d['pq']]):
+                continue
+            pedidos.append({'pedido': pedido, 'cliente': d['cliente'], 'dt_ent': d['dt_ent'],
+                             'REALIZADO': round(d['rv'], 2), 'PREVISTO': round(d['pv'], 2),
+                             'REALIZADO_PARES': int(d['rq']), 'PREVISTO_PARES': int(d['pq'])})
+        pedidos.sort(key=lambda p: -(p['REALIZADO'] + p['PREVISTO']))
+        return pedidos
+
+    dados_pedidos_ec_out = {k: build_pedidos_ec_mes(v) for k, v in sorted(dados_pedidos_ec.items())}
+
     result = {'gerado_em':datetime.now().strftime('%d/%m/%Y %H:%M'),
               'taxa_cambio_me':taxa_cambio_me, 'dados':dados_out,
               'dados_cfop':dados_cfop_out, 'dados_conta':dados_conta_out,
               'dados_clientes':dados_clientes_out,
               'dados_pedidos_mista':dados_pedidos_mista_out,
               'dados_pedidos_pe':dados_pedidos_pe_out,
+              'dados_pedidos_ec':dados_pedidos_ec_out,
               'dados_retroativos':dados_retro_out,
               'sem_data':sem_data_out}
     with open(os.path.join(output_dir,'dados_faturamento.json'),'w',encoding='utf-8') as f_:
