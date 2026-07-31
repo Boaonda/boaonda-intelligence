@@ -83,11 +83,25 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .kpi2-fill.up{background:var(--verde)}
 .kpi2-marker{position:absolute;top:-3px;width:2px;height:12px;background:var(--txt-s)}
 .kpi2-foot{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;color:var(--txt-m);flex-wrap:wrap;gap:4px 8px}
+.kpi2-periodo{white-space:nowrap}
 .kpi2-comp{white-space:nowrap}
 .kpi2-delta{font-weight:700;margin-left:4px}
 .kpi2-delta.down{color:var(--coral)}
 .kpi2-delta.up{color:var(--verde)}
 @media(max-width:900px){.kpi2-grid{grid-template-columns:repeat(2,1fr)}}
+/* Celular estreito: 2 colunas ficam apertadas demais (texto de comparação
+   quebra linha, números espremidos) — 1 coluna por card dá a mesma largura
+   confortável que os cards têm no desktop, em vez de forçar 2 lado a lado. */
+@media(max-width:560px){
+  .kpi2-grid{grid-template-columns:1fr}
+  .kpi2-foot{flex-wrap:nowrap}
+  .header{padding:14px 16px}
+  .h-right{align-items:stretch;width:100%}
+  .h-controls{justify-content:flex-start;width:100%}
+  .dd-wrap{flex:1}
+  .dd-btn{width:100%;min-width:0}
+  .h-meta{text-align:left}
+}
 
 /* Charts */
 .crow{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
