@@ -855,7 +855,9 @@ function renderResumo() {
       <td class="td-t-q">${tQ ? fmtQ(tQ) : '–'}</td>
       <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
       <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
-    </tr>` + (canalDrill && drillAberto === canalDrill ? rowDrillClientes(canalDrill, key) : '');
+    </tr>` + (canalDrill && drillAberto === canalDrill
+        ? (canalDrill === 'EC' ? rowDrillPedidosEc(key) : rowDrillClientes(canalDrill, key))
+        : '');
   }
 
   function rowDrillClientes(canal, mesKey) {
@@ -909,6 +911,34 @@ function renderResumo() {
       <div class="drill-pedidos-title">Pedidos — ${e.cliente} · ${pedidos.length} pedido${pedidos.length > 1 ? 's' : ''}</div>
       <table>
         <thead><tr><th>Pedido</th><th>Realizado</th><th>Qtd.</th><th>Previsto</th><th>Qtd.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div></td></tr>`;
+  }
+
+  // Drilldown de E-commerce — só os pedidos AINDA EM PREVISÃO (não
+  // faturados), com pedido/cliente/data de entrada (Cássio, 2026-07-28).
+  function rowDrillPedidosEc(mesKey) {
+    const lista = ((DATA.dados_pedidos_ec || {})[mesKey]) || [];
+    const previstos = lista.filter(p => p.PREVISTO > 0);
+    const titulo = 'Pedidos em previsão — E-commerce · ' + mesLong(mesKey);
+    if (!previstos.length) {
+      return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
+        <div class="drill-clientes-title">${titulo}</div>
+        <div class="drill-clientes-empty">Nenhum pedido de e-commerce em previsão neste mês.</div>
+      </div></td></tr>`;
+    }
+    const rows = previstos.map(p => `<tr>
+        <td>${p.pedido}</td>
+        <td>${p.cliente}</td>
+        <td>${p.dt_ent || '–'}</td>
+        <td class="dc-prev">${fBRL(p.PREVISTO)}</td>
+        <td>${fPar(p.PREVISTO_PARES)}</td>
+      </tr>`).join('');
+    return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
+      <div class="drill-clientes-title">${titulo} · ${previstos.length} pedido${previstos.length > 1 ? 's' : ''}</div>
+      <table>
+        <thead><tr><th>Pedido</th><th>Cliente</th><th>Data de entrada</th><th>Previsto</th><th>Qtd.</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div></td></tr>`;
@@ -1130,7 +1160,7 @@ function renderResumo() {
     (mpe.rV || mpe.pV ? rowSubDrill('MI Pronta Entrega', mpe, 'PE') : rowSub('MI Pronta Entrega', mpe)) +
     (mmist.rV || mmist.pV ? rowSubDrill('MI Venda Mista', mmist, 'MISTA') : '') +
     rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV, fPar, 'ME', 'ME') +
-    rowGroup('Faturamento E-commerce', ecV, fPar, null, 'EC') +
+    rowGroup('Faturamento E-commerce', ecV, fPar, 'EC', 'EC') +
     (evaV.rV || evaV.pV ? rowGroup('Faturamento Composto EVA', evaV, fKg1, 'EVA', 'EVA') : '');
 
   const tQ = gt.rQ + gt.pQ, tV = gt.rV + gt.pV;
