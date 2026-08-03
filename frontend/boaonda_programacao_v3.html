@@ -217,6 +217,13 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rp-sub td:first-child{font-weight:400;padding-left:26px;color:var(--txt-s)}
 .rp-sub .rp-total{color:var(--txt-s)!important;font-weight:700}
 .rp-sub-empty td{color:var(--txt-m);font-size:10px;font-style:italic;padding-left:26px}
+/* Agrupado por cor de injeção */
+.rp-cor-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.rp-cor-busca{flex:1;min-width:180px;padding:6px 12px;border-radius:6px;border:1px solid var(--line2);background:var(--card2);color:var(--txt);font-size:11px;font-family:'Montserrat',sans-serif;outline:none}
+.rp-cor-busca:focus{border-color:var(--coral)}
+.rp-cor-busca::placeholder{color:var(--txt-m)}
+.rp-export-btn{padding:5px 12px;border-radius:5px;border:1px solid var(--line2);background:var(--card2);font-size:10px;font-weight:600;cursor:pointer;font-family:'Montserrat',sans-serif;color:var(--txt-s);white-space:nowrap;transition:.15s}
+.rp-export-btn:hover{border-color:var(--coral);color:var(--coral)}
 /* Top refs */
 .tcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;overflow-x:auto}
 table.top-refs{width:100%;border-collapse:collapse;font-size:12px}
@@ -325,6 +332,24 @@ table.top-refs tr:hover td{background:var(--card2);color:var(--txt)}
       </div>
     </div>
     <div id="rp-container"><div style="color:var(--txt-m);font-size:12px;padding:10px">Carregando...</div></div>
+  </div>
+  <div class="refs-card">
+    <div class="rp-controls">
+      <div class="rp-title">Agrupado por cor de injeção</div>
+      <div class="rp-sort">
+        <button class="rp-sort-btn active" id="sort-cor-vol" onclick="rpCorSetSort('total')">Por volume</button>
+        <button class="rp-sort-btn" id="sort-cor-nome" onclick="rpCorSetSort('nome')">Por nome</button>
+      </div>
+    </div>
+    <div class="rp-cor-tools">
+      <input type="text" class="rp-cor-busca" placeholder="Buscar referência ou cor..." oninput="rpCorSetBusca(this.value)">
+      <button class="rp-export-btn" onclick="exportarCorInjecao()">⬇ Exportar (por cor)</button>
+      <button class="rp-export-btn" onclick="exportarCorInjecaoPorLinha()">⬇ Exportar (por linha)</button>
+    </div>
+    <div class="bloco-desc" style="font-size:11px;color:var(--txt-m);margin-bottom:12px">
+      Agrupa pela cor de injeção (primeira cor do combinado) — mesma peça injetada, independente da linha/2ª cor. Clique numa linha pra ver as combinações que compõem o total. Só disponível no modo Semana.
+    </div>
+    <div id="rp-cor-container"><div style="color:var(--txt-m);font-size:12px;padding:10px">Carregando...</div></div>
   </div>
   <div class="stitle">Top referências em programação</div>
   <div class="tcard">
@@ -502,6 +527,7 @@ function setModo(m){
   modo=m;
   ocupAtiva=null;
   segmentoAtivo=null;
+  rpCorExpandido=null;
   document.getElementById('btn-semana').classList.toggle('active',m==='semana');
   document.getElementById('btn-mes').classList.toggle('active',m==='mes');
   document.getElementById('view-semana').style.display=m==='semana'?'block':'none';
@@ -515,12 +541,12 @@ function navPeriodo(dir){
   const arr=modo==='semana'?periodosSem():periodosMes();
   const idx=arr.indexOf(periodoAtual);
   const n=arr[Math.max(0,Math.min(arr.length-1,idx+dir))];
-  if(n!==periodoAtual){periodoAtual=n;segmentoAtivo=null;renderTudo();}
+  if(n!==periodoAtual){periodoAtual=n;segmentoAtivo=null;rpCorExpandido=null;renderTudo();}
 }
 
 function renderTudo(){
   if(modo==='semana') renderSemanas(); else renderMeses();
-  renderCharts(); renderMontagem(); renderRefsPeriodo(); renderRefs();
+  renderCharts(); renderMontagem(); renderRefsPeriodo(); renderRefsCorInjecao(); renderRefs();
 }
 
 // SEMANAS
@@ -1213,6 +1239,168 @@ function renderRefsPeriodo(){
   html+='<td class="rp-total">'+f(arr.reduce((s,[,v])=>s+v,0))+'</td></tr>';
   html+='</tbody></table>';
   document.getElementById('rp-container').innerHTML=html;
+}
+
+// ── AGRUPADO POR COR DE INJEÇÃO ──────────────────────────────────────
+// Lote mínimo de injeção é feito na ótica de MODELO (referência) + cor de
+// injeção — a primeira cor do combinado (ex.: "CANELA/ROSE NUDE" injeta
+// "CANELA"), independente da linha/grade ou da 2ª cor (cabedal). Duas
+// linhas da MESMA referência que injetam a mesma cor devem contar juntas
+// pro lote; referências diferentes NUNCA se juntam (molde/forma físico é
+// por referência) — combinado com o Cássio em 2026-07-31. Só funciona no
+// modo Semana (mesma limitação de janela de ~2 meses do DETALHE item-a-item
+// já usada no drilldown de linha/cor de "Referências por semana").
+let rpCorSort = 'total', rpCorBusca = '', rpCorExpandido = null;
+let _rpCorUltimoArr = null, _rpCorUltimoPeriodos = null, _rpCorUltimoLabels = null;
+
+function rpCorSetSort(key){
+  rpCorSort = key;
+  document.getElementById('sort-cor-vol').classList.toggle('active', key==='total');
+  document.getElementById('sort-cor-nome').classList.toggle('active', key==='nome');
+  renderRefsCorInjecao();
+}
+function rpCorSetBusca(v){ rpCorBusca = v.toLowerCase(); renderRefsCorInjecao(); }
+function rpCorToggle(key){ rpCorExpandido = (rpCorExpandido===key) ? null : key; renderRefsCorInjecao(); }
+
+function corInjecaoDe(cor){
+  return ((cor||'').split('/')[0] || '').trim() || '(sem cor)';
+}
+
+// Agrega DETALHE.semanas por (referência, cor de injeção), guardando também
+// os itens crus (linha/cor/semana/pares) pra poder abrir o detalhe por
+// linha depois, sem precisar varrer tudo de novo.
+function rpCorColetarDados(periodosSemana){
+  const map = new Map(); // 'ref|corInjecao' -> {ref,corInjecao,porSemana,total,itens}
+  periodosSemana.forEach(([wk])=>{
+    const itens = (DETALHE.semanas||{})[wk] || [];
+    itens.forEach(it=>{
+      const corInj = corInjecaoDe(it.cor);
+      const key = it.ref+'|'+corInj;
+      if(!map.has(key)) map.set(key, {ref:it.ref, corInjecao:corInj, porSemana:{}, total:0, itens:[]});
+      const e = map.get(key);
+      e.porSemana[wk] = (e.porSemana[wk]||0) + it.pares;
+      e.total += it.pares;
+      e.itens.push({wk, linha:it.linha, cor:it.cor, pares:it.pares});
+    });
+  });
+  return [...map.values()];
+}
+
+// Subgrupos linha+cor de uma entrada (ref,corInjecao) — usado tanto pra
+// abrir o detalhe na tela quanto pra exportação "por linha".
+function rpCorSubgrupos(entrada){
+  const map = new Map(); // 'linha|cor' -> {linha,cor,porSemana,total}
+  entrada.itens.forEach(it=>{
+    const key = it.linha+'|'+it.cor;
+    if(!map.has(key)) map.set(key, {linha:it.linha, cor:it.cor, porSemana:{}, total:0});
+    const e = map.get(key);
+    e.porSemana[it.wk] = (e.porSemana[it.wk]||0) + it.pares;
+    e.total += it.pares;
+  });
+  return [...map.values()].sort((a,b)=>b.total-a.total);
+}
+
+function renderRefsCorInjecao(){
+  const container = document.getElementById('rp-cor-container');
+  if(!container) return;
+  if(modo!=='semana'){
+    container.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">Agrupado por cor de injeção só está disponível no modo Semana.</div>';
+    _rpCorUltimoArr = null;
+    return;
+  }
+  const periodos = Object.entries(REFS_TABELA.semanas||{}).filter(([k])=>mesRef(k,SEMANAS[k])===periodoAtual);
+  const periodLabels = periodos.map(([,v])=>v.label?v.label.split('-')[0]:'');
+  if(!periodos.length){
+    container.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">Sem dados para este período.</div>';
+    _rpCorUltimoArr = null;
+    return;
+  }
+
+  let arr = rpCorColetarDados(periodos);
+  if(rpCorBusca){
+    arr = arr.filter(e => e.ref.toLowerCase().includes(rpCorBusca) || e.corInjecao.toLowerCase().includes(rpCorBusca));
+  }
+  if(rpCorSort==='total') arr.sort((a,b)=>b.total-a.total);
+  else arr.sort((a,b)=>(a.ref+' '+a.corInjecao).localeCompare(b.ref+' '+b.corInjecao));
+
+  _rpCorUltimoArr = arr; _rpCorUltimoPeriodos = periodos; _rpCorUltimoLabels = periodLabels;
+
+  if(!arr.length){
+    container.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">Nenhuma referência/cor encontrada para os filtros.</div>';
+    return;
+  }
+
+  let html='<table class="rp-table"><thead><tr><th>Referência · Cor de injeção</th>';
+  periodLabels.forEach(l=>html+='<th>'+l+'</th>');
+  html+='<th>Total</th></tr></thead><tbody>';
+  arr.forEach(e=>{
+    const key = e.ref+'|'+e.corInjecao;
+    const ativa = rpCorExpandido===key;
+    html+='<tr class="rp-row-ref'+(ativa?' ativa':'')+'" onclick="rpCorToggle(\''+key.replace(/'/g,"\\'")+'\')">'+
+      '<td><span class="rp-arrow">'+(ativa?'▾':'▸')+'</span>'+e.ref+' · '+e.corInjecao+'</td>';
+    periodos.forEach(([wk])=>{
+      const q=e.porSemana[wk]||0;
+      html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
+    });
+    html+='<td class="rp-total">'+f(e.total)+'</td></tr>';
+    if(ativa){
+      rpCorSubgrupos(e).forEach(se=>{
+        html+='<tr class="rp-sub"><td>Linha '+se.linha+' · '+se.cor+'</td>';
+        periodos.forEach(([wk])=>{
+          const q=se.porSemana[wk]||0;
+          html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
+        });
+        html+='<td class="rp-total">'+f(se.total)+'</td></tr>';
+      });
+    }
+  });
+  html+='<tr class="rp-foot"><td>TOTAL</td>';
+  periodos.forEach(([wk])=>html+='<td class="rp-total">'+f(arr.reduce((s,e)=>s+(e.porSemana[wk]||0),0))+'</td>');
+  html+='<td class="rp-total">'+f(arr.reduce((s,e)=>s+e.total,0))+'</td></tr>';
+  html+='</tbody></table>';
+  container.innerHTML=html;
+}
+
+// Exportação — CSV (abre direto no Excel); não precisa de biblioteca extra
+// nem de ida ao servidor, e reflete exatamente o que está filtrado/ordenado
+// na tela no momento do clique.
+function _csvEscape(v){
+  v = String(v==null?'':v);
+  if(/["\n;]/.test(v)) return '"'+v.replace(/"/g,'""')+'"';
+  return v;
+}
+function _baixarCsv(nome, linhas){
+  const conteudo = linhas.map(l=>l.map(_csvEscape).join(';')).join('\r\n');
+  const blob = new Blob(['\uFEFF'+conteudo], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function exportarCorInjecao(){
+  if(!_rpCorUltimoArr || !_rpCorUltimoArr.length) return;
+  const linhas = [['Referência','Cor de injeção', ..._rpCorUltimoLabels, 'Total']];
+  _rpCorUltimoArr.forEach(e=>{
+    const row = [e.ref, e.corInjecao];
+    _rpCorUltimoPeriodos.forEach(([wk])=>row.push(e.porSemana[wk]||0));
+    row.push(e.total);
+    linhas.push(row);
+  });
+  _baixarCsv('agrupado_cor_injecao_'+periodoAtual+'.csv', linhas);
+}
+function exportarCorInjecaoPorLinha(){
+  if(!_rpCorUltimoArr || !_rpCorUltimoArr.length) return;
+  const linhas = [['Referência','Cor de injeção','Linha','Cor completa', ..._rpCorUltimoLabels, 'Total']];
+  _rpCorUltimoArr.forEach(e=>{
+    rpCorSubgrupos(e).forEach(se=>{
+      const row = [e.ref, e.corInjecao, se.linha, se.cor];
+      _rpCorUltimoPeriodos.forEach(([wk])=>row.push(se.porSemana[wk]||0));
+      row.push(se.total);
+      linhas.push(row);
+    });
+  });
+  _baixarCsv('agrupado_cor_injecao_por_linha_'+periodoAtual+'.csv', linhas);
 }
 
 // TOP REFS
