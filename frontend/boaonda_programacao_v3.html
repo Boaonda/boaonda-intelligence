@@ -217,6 +217,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rp-sub td:first-child{font-weight:400;padding-left:26px;color:var(--txt-s)}
 .rp-sub .rp-total{color:var(--txt-s)!important;font-weight:700}
 .rp-sub-empty td{color:var(--txt-m);font-size:10px;font-style:italic;padding-left:26px}
+.rp-sub2 td{color:var(--txt-m);font-size:9.5px}
+.rp-sub2 td:first-child{font-weight:400;padding-left:42px;color:var(--txt-s)}
+.rp-sub2 .rp-total{color:var(--txt-s)!important;font-weight:600}
 /* Agrupado por cor de injeção */
 .rp-cor-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .rp-cor-busca{flex:1;min-width:180px;padding:6px 12px;border-radius:6px;border:1px solid var(--line2);background:var(--card2);color:var(--txt);font-size:11px;font-family:'Montserrat',sans-serif;outline:none}
@@ -527,7 +530,8 @@ function setModo(m){
   modo=m;
   ocupAtiva=null;
   segmentoAtivo=null;
-  rpCorExpandido=null;
+  rpCorRefExpandido=null;
+  rpCorCorExpandido=null;
   document.getElementById('btn-semana').classList.toggle('active',m==='semana');
   document.getElementById('btn-mes').classList.toggle('active',m==='mes');
   document.getElementById('view-semana').style.display=m==='semana'?'block':'none';
@@ -541,7 +545,7 @@ function navPeriodo(dir){
   const arr=modo==='semana'?periodosSem():periodosMes();
   const idx=arr.indexOf(periodoAtual);
   const n=arr[Math.max(0,Math.min(arr.length-1,idx+dir))];
-  if(n!==periodoAtual){periodoAtual=n;segmentoAtivo=null;rpCorExpandido=null;renderTudo();}
+  if(n!==periodoAtual){periodoAtual=n;segmentoAtivo=null;rpCorRefExpandido=null;rpCorCorExpandido=null;renderTudo();}
 }
 
 function renderTudo(){
@@ -1250,7 +1254,14 @@ function renderRefsPeriodo(){
 // por referência) — combinado com o Cássio em 2026-07-31. Só funciona no
 // modo Semana (mesma limitação de janela de ~2 meses do DETALHE item-a-item
 // já usada no drilldown de linha/cor de "Referências por semana").
-let rpCorSort = 'total', rpCorBusca = '', rpCorExpandido = null;
+//
+// Layout em 3 níveis (ajustado em 2026-07-31 a pedido do Cássio — o quadro
+// inicial ficava uma lista enorme de ref+cor; agora abre igual à
+// "Referências por semana"): nível 1 = referência, nível 2 = cor de injeção
+// (só ao abrir a ref), nível 3 = linha+cor real (só ao abrir a cor).
+let rpCorSort = 'total', rpCorBusca = '';
+let rpCorRefExpandido = null;  // nível 1: qual referência está aberta
+let rpCorCorExpandido = null;  // nível 2: qual cor de injeção (dentro da ref acima) está aberta
 let _rpCorUltimoArr = null, _rpCorUltimoPeriodos = null, _rpCorUltimoLabels = null;
 
 function rpCorSetSort(key){
@@ -1260,20 +1271,46 @@ function rpCorSetSort(key){
   renderRefsCorInjecao();
 }
 function rpCorSetBusca(v){ rpCorBusca = v.toLowerCase(); renderRefsCorInjecao(); }
-function rpCorToggle(key){ rpCorExpandido = (rpCorExpandido===key) ? null : key; renderRefsCorInjecao(); }
+function rpCorRefToggle(ref){
+  rpCorRefExpandido = (rpCorRefExpandido===ref) ? null : ref;
+  rpCorCorExpandido = null; // trocar de referência fecha a cor que estava aberta
+  renderRefsCorInjecao();
+}
+function rpCorCorToggle(corInj){
+  rpCorCorExpandido = (rpCorCorExpandido===corInj) ? null : corInj;
+  renderRefsCorInjecao();
+}
 
 function corInjecaoDe(cor){
   return ((cor||'').split('/')[0] || '').trim() || '(sem cor)';
 }
 
-// Agrega DETALHE.semanas por (referência, cor de injeção), guardando também
-// os itens crus (linha/cor/semana/pares) pra poder abrir o detalhe por
-// linha depois, sem precisar varrer tudo de novo.
-function rpCorColetarDados(periodosSemana){
+// Nível 1 — total por referência (mesmo dado de "Referências por semana",
+// só que aqui é a porta de entrada pro agrupamento por cor de injeção).
+function rpCorColetarPorRef(periodosSemana){
+  const map = new Map(); // ref -> {ref,porSemana,total}
+  periodosSemana.forEach(([wk])=>{
+    const itens = (DETALHE.semanas||{})[wk] || [];
+    itens.forEach(it=>{
+      if(!map.has(it.ref)) map.set(it.ref, {ref:it.ref, porSemana:{}, total:0});
+      const e = map.get(it.ref);
+      e.porSemana[wk] = (e.porSemana[wk]||0) + it.pares;
+      e.total += it.pares;
+    });
+  });
+  return [...map.values()];
+}
+
+// Nível 2 — agrega por (referência, cor de injeção). Sem refFiltro, devolve
+// TODAS as combinações (usado só pra exportação, que reflete o dado inteiro
+// independente do que está expandido na tela); com refFiltro, só as cores
+// daquela referência (usado pra abrir o nível 2 na tela).
+function rpCorColetarDados(periodosSemana, refFiltro){
   const map = new Map(); // 'ref|corInjecao' -> {ref,corInjecao,porSemana,total,itens}
   periodosSemana.forEach(([wk])=>{
     const itens = (DETALHE.semanas||{})[wk] || [];
     itens.forEach(it=>{
+      if(refFiltro && it.ref!==refFiltro) return;
       const corInj = corInjecaoDe(it.cor);
       const key = it.ref+'|'+corInj;
       if(!map.has(key)) map.set(key, {ref:it.ref, corInjecao:corInj, porSemana:{}, total:0, itens:[]});
@@ -1286,8 +1323,8 @@ function rpCorColetarDados(periodosSemana){
   return [...map.values()];
 }
 
-// Subgrupos linha+cor de uma entrada (ref,corInjecao) — usado tanto pra
-// abrir o detalhe na tela quanto pra exportação "por linha".
+// Nível 3 — subgrupos linha+cor de uma entrada (ref,corInjecao) — usado pra
+// abrir o detalhe na tela e pra exportação "por linha".
 function rpCorSubgrupos(entrada){
   const map = new Map(); // 'linha|cor' -> {linha,cor,porSemana,total}
   entrada.itens.forEach(it=>{
@@ -1316,47 +1353,71 @@ function renderRefsCorInjecao(){
     return;
   }
 
-  let arr = rpCorColetarDados(periodos);
+  // Flat (ref,cor) completo — só pra exportação, independente do que está
+  // expandido na tela.
+  _rpCorUltimoArr = rpCorColetarDados(periodos);
+  _rpCorUltimoPeriodos = periodos; _rpCorUltimoLabels = periodLabels;
+
+  // Nível 1: por referência (o que aparece fechado, igual "Referências por semana").
+  let arrRef = rpCorColetarPorRef(periodos);
   if(rpCorBusca){
-    arr = arr.filter(e => e.ref.toLowerCase().includes(rpCorBusca) || e.corInjecao.toLowerCase().includes(rpCorBusca));
+    // busca vale por nome de referência OU por alguma cor de injeção que
+    // aquela referência contenha (mesmo sem estar expandida ainda).
+    const refsComMatch = new Set(
+      _rpCorUltimoArr.filter(e => e.ref.toLowerCase().includes(rpCorBusca) || e.corInjecao.toLowerCase().includes(rpCorBusca))
+                     .map(e => e.ref)
+    );
+    arrRef = arrRef.filter(e => refsComMatch.has(e.ref));
   }
-  if(rpCorSort==='total') arr.sort((a,b)=>b.total-a.total);
-  else arr.sort((a,b)=>(a.ref+' '+a.corInjecao).localeCompare(b.ref+' '+b.corInjecao));
+  if(rpCorSort==='total') arrRef.sort((a,b)=>b.total-a.total);
+  else arrRef.sort((a,b)=>a.ref.localeCompare(b.ref));
 
-  _rpCorUltimoArr = arr; _rpCorUltimoPeriodos = periodos; _rpCorUltimoLabels = periodLabels;
-
-  if(!arr.length){
-    container.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">Nenhuma referência/cor encontrada para os filtros.</div>';
+  if(!arrRef.length){
+    container.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">Nenhuma referência encontrada para os filtros.</div>';
     return;
   }
 
-  let html='<table class="rp-table"><thead><tr><th>Referência · Cor de injeção</th>';
+  let html='<table class="rp-table"><thead><tr><th>Referência</th>';
   periodLabels.forEach(l=>html+='<th>'+l+'</th>');
   html+='<th>Total</th></tr></thead><tbody>';
-  arr.forEach(e=>{
-    const key = e.ref+'|'+e.corInjecao;
-    const ativa = rpCorExpandido===key;
-    html+='<tr class="rp-row-ref'+(ativa?' ativa':'')+'" onclick="rpCorToggle(\''+key.replace(/'/g,"\\'")+'\')">'+
-      '<td><span class="rp-arrow">'+(ativa?'▾':'▸')+'</span>'+e.ref+' · '+e.corInjecao+'</td>';
+  arrRef.forEach(e=>{
+    const ativaRef = rpCorRefExpandido===e.ref;
+    html+='<tr class="rp-row-ref'+(ativaRef?' ativa':'')+'" onclick="rpCorRefToggle(\''+e.ref.replace(/'/g,"\\'")+'\')">'+
+      '<td><span class="rp-arrow">'+(ativaRef?'▾':'▸')+'</span>'+e.ref+'</td>';
     periodos.forEach(([wk])=>{
       const q=e.porSemana[wk]||0;
       html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
     });
     html+='<td class="rp-total">'+f(e.total)+'</td></tr>';
-    if(ativa){
-      rpCorSubgrupos(e).forEach(se=>{
-        html+='<tr class="rp-sub"><td>Linha '+se.linha+' · '+se.cor+'</td>';
+
+    if(ativaRef){
+      const corArr = rpCorColetarDados(periodos, e.ref).sort((a,b)=>b.total-a.total);
+      corArr.forEach(ce=>{
+        const ativaCor = rpCorCorExpandido===ce.corInjecao;
+        html+='<tr class="rp-sub rp-row-ref'+(ativaCor?' ativa':'')+'" onclick="rpCorCorToggle(\''+ce.corInjecao.replace(/'/g,"\\'")+'\')">'+
+          '<td><span class="rp-arrow">'+(ativaCor?'▾':'▸')+'</span>'+ce.corInjecao+'</td>';
         periodos.forEach(([wk])=>{
-          const q=se.porSemana[wk]||0;
+          const q=ce.porSemana[wk]||0;
           html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
         });
-        html+='<td class="rp-total">'+f(se.total)+'</td></tr>';
+        html+='<td class="rp-total">'+f(ce.total)+'</td></tr>';
+
+        if(ativaCor){
+          rpCorSubgrupos(ce).forEach(se=>{
+            html+='<tr class="rp-sub2"><td>Linha '+se.linha+' · '+se.cor+'</td>';
+            periodos.forEach(([wk])=>{
+              const q=se.porSemana[wk]||0;
+              html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
+            });
+            html+='<td class="rp-total">'+f(se.total)+'</td></tr>';
+          });
+        }
       });
     }
   });
   html+='<tr class="rp-foot"><td>TOTAL</td>';
-  periodos.forEach(([wk])=>html+='<td class="rp-total">'+f(arr.reduce((s,e)=>s+(e.porSemana[wk]||0),0))+'</td>');
-  html+='<td class="rp-total">'+f(arr.reduce((s,e)=>s+e.total,0))+'</td></tr>';
+  periodos.forEach(([wk])=>html+='<td class="rp-total">'+f(arrRef.reduce((s,e)=>s+(e.porSemana[wk]||0),0))+'</td>');
+  html+='<td class="rp-total">'+f(arrRef.reduce((s,e)=>s+e.total,0))+'</td></tr>';
   html+='</tbody></table>';
   container.innerHTML=html;
 }
