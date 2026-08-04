@@ -1118,7 +1118,12 @@ def processar_programacao(linhas, output_dir='.'):
             # pro drilldown por linha/cor de "Referências por semana".
             linha_grade = _extrair_num_linha(g(row, IDX['descr'])) or '(sem linha)'
             cor_val = _extrair_cor(corrigir_mojibake(g(row, IDX['forma']))) or '(sem cor)'
-            chave = (cliente_d, pedido, ref, plano, dt_plano.strftime('%d/%m/%Y') if dt_plano else '', segmento, tipo_mont, linha_grade, cor_val)
+            # 'ln' aqui é a LINHA DE PRODUTO (CLASSIC/EVA/WORKS/FIT/DAY BY DAY/
+            # OUTROS, já calculada acima pro "Mix de linhas") — não confundir
+            # com linha_grade (número de grade extraído da Descricao). É o que
+            # decide o lote mínimo de injeção: EVA usa 600 pares, o resto 300
+            # (regra combinada com o Cássio em 2026-08-04).
+            chave = (cliente_d, pedido, ref, plano, dt_plano.strftime('%d/%m/%Y') if dt_plano else '', segmento, tipo_mont, linha_grade, cor_val, ln)
             detalhe_raw[sem_key][chave] += qtd
         if sem_key not in sem_labels_rp: sem_labels_rp[sem_key] = s['label']
         if mes_key not in mes_labels_rp: mes_labels_rp[mes_key] = m2['label']
@@ -1195,8 +1200,8 @@ def processar_programacao(linhas, output_dir='.'):
     for sem_key, itens in detalhe_raw.items():
         detalhe_out[sem_key] = [
             {'cliente': c, 'pedido': p, 'ref': r, 'plano': pl, 'dt_plano': dtp, 'segmento': seg, 'tipo_mont': tm,
-             'linha': ln, 'cor': cor, 'pares': qtd}
-            for (c, p, r, pl, dtp, seg, tm, ln, cor), qtd in itens.items()
+             'linha': lg, 'cor': cor, 'linha_prod': lp, 'pares': qtd}
+            for (c, p, r, pl, dtp, seg, tm, lg, cor, lp), qtd in itens.items()
         ]
     with open(os.path.join(output_dir, 'dados_programacao_detalhe.json'), 'w', encoding='utf-8') as f_:
         json.dump({
