@@ -193,6 +193,10 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .mont-total-val.conv{color:var(--verde)}
 .mont-total-val.mont{color:var(--coral)}
 .mont-total-label{font-size:9px;color:var(--txt-m);text-transform:uppercase;letter-spacing:.08em}
+.lote-gap-row{display:flex;gap:14px;margin-top:16px;flex-wrap:wrap}
+.lote-gap-item{flex:1;min-width:150px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.lote-gap-val{font-weight:800;font-size:1.5rem;line-height:1}
+.lote-gap-label{font-size:9.5px;color:var(--txt-m);text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
 /* Tabela refs período */
 .refs-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:20px;overflow-x:auto}
 .rp-controls{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
@@ -329,6 +333,20 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     </div>
     <div id="rp-container"><div style="color:var(--txt-m);font-size:12px;padding:10px">Carregando...</div></div>
   </div>
+  <div class="refs-card" id="lote-resumo-card" style="display:none">
+    <div class="rp-title" style="margin-bottom:14px">Lote mínimo — visão geral</div>
+    <div class="crow" style="grid-template-columns:1fr 1fr">
+      <div class="ccard">
+        <div class="ctitle">Itens (referência × cor) — dentro vs. fora do lote</div>
+        <div style="position:relative;height:220px"><canvas id="c-lote-itens"></canvas></div>
+      </div>
+      <div class="ccard">
+        <div class="ctitle">Pares — dentro vs. fora do lote</div>
+        <div style="position:relative;height:220px"><canvas id="c-lote-pares"></canvas></div>
+      </div>
+    </div>
+    <div class="lote-gap-row" id="lote-gap-boxes"></div>
+  </div>
   <div class="refs-card">
     <div class="rp-controls">
       <div class="rp-title">Agrupado por cor de injeção</div>
@@ -364,6 +382,7 @@ const _REFS  = {"semanas":{"2026-05-04":{"label":"04/Mai-08/Mai","refs":{"2523 C
 let SEMANAS={}, MESES={}, REFS_TABELA={semanas:{},meses:{}};
 let modo='semana', periodoAtual='', rpSort='total';
 let chartEv=null, chartMix=null, chartMontBar=null, chartMontDonut=null;
+let chartLoteItens=null, chartLotePares=null;
 let CONFIG={prazo_producao_dias:45};
 let semanaRefKey='', semanaRefLabel='';
 let DETALHE={semanas:{},cutoff:null};
@@ -542,7 +561,7 @@ function navPeriodo(dir){
 
 function renderTudo(){
   if(modo==='semana') renderSemanas(); else renderMeses();
-  renderCharts(); renderMontagem(); renderRefsPeriodo(); renderRefsCorInjecao();
+  renderCharts(); renderMontagem(); renderRefsPeriodo(); renderRefsCorInjecao(); renderLoteResumo();
 }
 
 // SEMANAS
@@ -1471,6 +1490,58 @@ function renderRefsCorInjecao(){
   html+='<td class="rp-total">'+f(arrRef.reduce((s,e)=>s+e.total,0))+'</td></tr>';
   html+='</tbody></table>';
   container.innerHTML=html;
+}
+
+// Visão geral do lote mínimo — 2 roscas (itens e pares, dentro/fora do
+// lote) + 3 caixas de "quanto falta produzir pra fechar o lote em todo
+// mundo" (EVA / demais / total). Sempre sobre o dado COMPLETO (não respeita
+// busca nem o toggle Todos/Abaixo/Acima — é um resumo fixo de contexto,
+// igual o #rp-cor-resumo) — depende de _rpCorUltimoArr, por isso só pode
+// rodar depois de renderRefsCorInjecao() ter passado por ali.
+function renderLoteResumo(){
+  const card = document.getElementById('lote-resumo-card');
+  if(!card) return;
+  if(modo!=='semana' || !_rpCorUltimoArr || !_rpCorUltimoArr.length){
+    card.style.display='none';
+    if(chartLoteItens){chartLoteItens.destroy();chartLoteItens=null;}
+    if(chartLotePares){chartLotePares.destroy();chartLotePares=null;}
+    return;
+  }
+  card.style.display='';
+
+  let nAbaixo=0, nAcima=0, paresAbaixo=0, paresAcima=0, gapEva=0, gapResto=0;
+  _rpCorUltimoArr.forEach(e=>{
+    const minimo = rpCorLoteMinimo(e.isEva);
+    if(e.total < minimo){
+      nAbaixo++; paresAbaixo += e.total;
+      const falta = minimo - e.total;
+      if(e.isEva) gapEva += falta; else gapResto += falta;
+    } else {
+      nAcima++; paresAcima += e.total;
+    }
+  });
+  const gapTotal = gapEva + gapResto;
+
+  if(chartLoteItens) chartLoteItens.destroy();
+  if(chartLotePares) chartLotePares.destroy();
+
+  const donutOpts = totalLabel => ({responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}},
+      tooltip:{callbacks:{label:ctx=>ctx.label+': '+f(ctx.raw)+' '+totalLabel+' ('+pct(ctx.raw, ctx.dataset.data.reduce((a,b)=>a+b,0))+'%)'}}}});
+
+  chartLoteItens=new Chart(document.getElementById('c-lote-itens'),{type:'doughnut',
+    data:{labels:['Acima do lote','Abaixo do lote'],
+      datasets:[{data:[nAcima,nAbaixo],backgroundColor:['#6c9c37','#ed6842'],borderWidth:0,hoverOffset:6}]},
+    options:donutOpts('itens')});
+  chartLotePares=new Chart(document.getElementById('c-lote-pares'),{type:'doughnut',
+    data:{labels:['Acima do lote','Abaixo do lote'],
+      datasets:[{data:[paresAcima,paresAbaixo],backgroundColor:['#6c9c37','#ed6842'],borderWidth:0,hoverOffset:6}]},
+    options:donutOpts('pares')});
+
+  document.getElementById('lote-gap-boxes').innerHTML =
+    '<div class="lote-gap-item"><div class="lote-gap-val" style="color:var(--azul)">'+f(gapEva)+'</div><div class="lote-gap-label">pares faltando · linha EVA</div></div>'+
+    '<div class="lote-gap-item"><div class="lote-gap-val" style="color:var(--txt)">'+f(gapResto)+'</div><div class="lote-gap-label">pares faltando · demais linhas</div></div>'+
+    '<div class="lote-gap-item"><div class="lote-gap-val" style="color:var(--coral)">'+f(gapTotal)+'</div><div class="lote-gap-label">total pra fechar todos os lotes</div></div>';
 }
 
 // Exportação — CSV (abre direto no Excel); não precisa de biblioteca extra
