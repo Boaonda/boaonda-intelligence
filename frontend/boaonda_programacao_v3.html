@@ -334,6 +334,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
       <div class="rp-sort">
         <button class="rp-sort-btn active" id="filtro-lote-todos" onclick="rpCorSetFiltroLote('todos')">Todos</button>
         <button class="rp-sort-btn" id="filtro-lote-abaixo" onclick="rpCorSetFiltroLote('abaixo')">Abaixo do lote mínimo</button>
+        <button class="rp-sort-btn" id="filtro-lote-acima" onclick="rpCorSetFiltroLote('acima')">Acima do lote mínimo</button>
       </div>
       <div class="rp-sort">
         <button class="rp-sort-btn active" id="sort-cor-vol" onclick="rpCorSetSort('total')">Por volume</button>
@@ -345,6 +346,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
       <button class="rp-export-btn" onclick="exportarCorInjecao()">⬇ Exportar (por cor)</button>
       <button class="rp-export-btn" onclick="exportarCorInjecaoPorLinha()">⬇ Exportar (por linha)</button>
     </div>
+    <div id="rp-cor-resumo" style="font-size:10.5px;color:var(--txt-m);margin-bottom:10px"></div>
     <div class="bloco-desc" style="font-size:11px;color:var(--txt-m);margin-bottom:12px">
       Agrupa pela cor de injeção (primeira cor do combinado) — mesma peça injetada, independente da linha/2ª cor. Clique numa referência pra ver as cores, e numa cor pra ver as linhas. Lote mínimo hoje: <strong id="lote-minimo-label">300 pares/mês</strong> por (referência, cor de injeção) — em "Abaixo do lote mínimo", a referência aparece completa, mas só as cores abaixo do mínimo ficam visíveis ao abrir; a exportação também respeita esse filtro. Só disponível no modo Semana.
     </div>
@@ -1273,6 +1275,7 @@ function rpCorSetFiltroLote(v){
   rpCorFiltroLote = v;
   document.getElementById('filtro-lote-todos').classList.toggle('active', v==='todos');
   document.getElementById('filtro-lote-abaixo').classList.toggle('active', v==='abaixo');
+  document.getElementById('filtro-lote-acima').classList.toggle('active', v==='acima');
   rpCorRefExpandido = null; rpCorCorExpandido = null;
   renderRefsCorInjecao();
 }
@@ -1374,22 +1377,34 @@ function renderRefsCorInjecao(){
     );
     arrRef = arrRef.filter(e => refsComMatch.has(e.ref));
   }
-  if(rpCorFiltroLote==='abaixo'){
+  // Resumo — quantas combinações (referência,cor) ficam de cada lado do
+  // lote mínimo, sempre sobre o dado completo (ignora busca/filtro ativo,
+  // pra servir de contexto fixo independente do que está sendo olhado).
+  const resumoEl = document.getElementById('rp-cor-resumo');
+  if(resumoEl){
+    const totalCombos = _rpCorUltimoArr.length;
+    const nAbaixo = _rpCorUltimoArr.filter(e=>rpCorAbaixoDoLote(e.total)).length;
+    const nAcima = totalCombos - nAbaixo;
+    resumoEl.textContent = totalCombos
+      ? nAbaixo+' de '+totalCombos+' combinações (referência, cor) estão abaixo do lote mínimo ('+f(LOTE_MINIMO_PARES_MES)+' pares/mês) · '+nAcima+' estão acima'
+      : '';
+  }
+
+  if(rpCorFiltroLote!=='todos'){
     // Mantém a referência COMPLETA na lista (total cheio, sem reduzir) desde
-    // que ela tenha AO MENOS uma cor de injeção abaixo do lote mínimo — o
-    // filtro por cor de verdade só acontece ao abrir a referência (nível 2).
-    const refsAbaixo = new Set(
-      _rpCorUltimoArr.filter(e => rpCorAbaixoDoLote(e.total)).map(e => e.ref)
-    );
-    arrRef = arrRef.filter(e => refsAbaixo.has(e.ref));
+    // que ela tenha AO MENOS uma cor de injeção do lado do filtro escolhido
+    // — o filtro por cor de verdade só acontece ao abrir a referência (nível 2).
+    const bate = e => rpCorFiltroLote==='abaixo' ? rpCorAbaixoDoLote(e.total) : !rpCorAbaixoDoLote(e.total);
+    const refsFiltro = new Set(_rpCorUltimoArr.filter(bate).map(e => e.ref));
+    arrRef = arrRef.filter(e => refsFiltro.has(e.ref));
   }
   if(rpCorSort==='total') arrRef.sort((a,b)=>b.total-a.total);
   else arrRef.sort((a,b)=>a.ref.localeCompare(b.ref));
 
   if(!arrRef.length){
-    const msg = rpCorFiltroLote==='abaixo'
-      ? 'Nenhuma referência com cor de injeção abaixo do lote mínimo ('+f(LOTE_MINIMO_PARES_MES)+' pares/mês) neste período.'
-      : 'Nenhuma referência encontrada para os filtros.';
+    const msg = rpCorFiltroLote==='todos'
+      ? 'Nenhuma referência encontrada para os filtros.'
+      : 'Nenhuma referência com cor de injeção '+(rpCorFiltroLote==='abaixo'?'abaixo':'acima')+' do lote mínimo ('+f(LOTE_MINIMO_PARES_MES)+' pares/mês) neste período.';
     container.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">'+msg+'</div>';
     return;
   }
@@ -1410,8 +1425,9 @@ function renderRefsCorInjecao(){
     if(ativaRef){
       let corArr = rpCorColetarDados(periodos, e.ref).sort((a,b)=>b.total-a.total);
       if(rpCorFiltroLote==='abaixo') corArr = corArr.filter(ce=>rpCorAbaixoDoLote(ce.total));
-      if(rpCorFiltroLote==='abaixo' && !corArr.length){
-        html+='<tr class="rp-sub-empty"><td colspan="'+(periodLabels.length+2)+'">Nenhuma cor abaixo do lote mínimo nesta referência.</td></tr>';
+      else if(rpCorFiltroLote==='acima') corArr = corArr.filter(ce=>!rpCorAbaixoDoLote(ce.total));
+      if(rpCorFiltroLote!=='todos' && !corArr.length){
+        html+='<tr class="rp-sub-empty"><td colspan="'+(periodLabels.length+2)+'">Nenhuma cor '+(rpCorFiltroLote==='abaixo'?'abaixo':'acima')+' do lote mínimo nesta referência.</td></tr>';
       }
       corArr.forEach(ce=>{
         const ativaCor = rpCorCorExpandido===ce.corInjecao;
@@ -1466,9 +1482,14 @@ function _baixarCsv(nome, linhas){
 // lote, que é justamente a lista que precisa de ação (Cássio, 2026-07-31).
 function _rpCorArrParaExportar(){
   if(!_rpCorUltimoArr) return [];
-  return rpCorFiltroLote==='abaixo'
-    ? _rpCorUltimoArr.filter(e=>rpCorAbaixoDoLote(e.total))
-    : _rpCorUltimoArr;
+  if(rpCorFiltroLote==='abaixo') return _rpCorUltimoArr.filter(e=>rpCorAbaixoDoLote(e.total));
+  if(rpCorFiltroLote==='acima')  return _rpCorUltimoArr.filter(e=>!rpCorAbaixoDoLote(e.total));
+  return _rpCorUltimoArr;
+}
+function _rpCorSufixoArquivo(){
+  return rpCorFiltroLote==='abaixo' ? '_abaixo_lote_minimo'
+       : rpCorFiltroLote==='acima'  ? '_acima_lote_minimo'
+       : '';
 }
 function exportarCorInjecao(){
   const arr = _rpCorArrParaExportar();
@@ -1480,7 +1501,7 @@ function exportarCorInjecao(){
     row.push(e.total, rpCorAbaixoDoLote(e.total) ? 'Sim' : 'Não');
     linhas.push(row);
   });
-  const sufixo = rpCorFiltroLote==='abaixo' ? '_abaixo_lote_minimo' : '';
+  const sufixo = _rpCorSufixoArquivo();
   _baixarCsv('agrupado_cor_injecao'+sufixo+'_'+periodoAtual+'.csv', linhas);
 }
 function exportarCorInjecaoPorLinha(){
@@ -1495,7 +1516,7 @@ function exportarCorInjecaoPorLinha(){
       linhas.push(row);
     });
   });
-  const sufixo = rpCorFiltroLote==='abaixo' ? '_abaixo_lote_minimo' : '';
+  const sufixo = _rpCorSufixoArquivo();
   _baixarCsv('agrupado_cor_injecao_por_linha'+sufixo+'_'+periodoAtual+'.csv', linhas);
 }
 
