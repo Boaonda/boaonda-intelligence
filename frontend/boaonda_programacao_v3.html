@@ -222,6 +222,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .rp-sub2 .rp-total{color:var(--txt-s)!important;font-weight:600}
 .rp-abaixo-lote td:first-child{color:var(--coral)!important}
 .rp-lote-badge{font-size:8.5px;font-weight:700;color:var(--coral);background:rgba(237,104,66,.12);border:1px solid rgba(237,104,66,.3);border-radius:10px;padding:1px 7px;margin-left:8px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+.rp-eva-badge{font-size:8.5px;font-weight:700;color:var(--azul);background:rgba(73,148,199,.12);border:1px solid rgba(73,148,199,.3);border-radius:10px;padding:1px 7px;margin-left:8px;letter-spacing:.03em;white-space:nowrap}
 /* Agrupado por cor de injeção */
 .rp-cor-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .rp-cor-busca{flex:1;min-width:180px;padding:6px 12px;border-radius:6px;border:1px solid var(--line2);background:var(--card2);color:var(--txt);font-size:11px;font-family:'Montserrat',sans-serif;outline:none}
@@ -348,7 +349,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     </div>
     <div id="rp-cor-resumo" style="font-size:10.5px;color:var(--txt-m);margin-bottom:10px"></div>
     <div class="bloco-desc" style="font-size:11px;color:var(--txt-m);margin-bottom:12px">
-      Agrupa pela cor de injeção (primeira cor do combinado) — mesma peça injetada, independente da linha/2ª cor. Clique numa referência pra ver as cores, e numa cor pra ver as linhas. Lote mínimo hoje: <strong id="lote-minimo-label">300 pares/mês</strong> por (referência, cor de injeção) — em "Abaixo do lote mínimo", a referência aparece completa, mas só as cores abaixo do mínimo ficam visíveis ao abrir; a exportação também respeita esse filtro. Só disponível no modo Semana.
+      Agrupa pela cor de injeção (primeira cor do combinado) — mesma peça injetada, independente da linha/2ª cor. Clique numa referência pra ver as cores, e numa cor pra ver as linhas. Lote mínimo por (referência, cor de injeção): <strong id="lote-minimo-label">300 pares/mês</strong> (linha EVA: <strong>600 pares/mês</strong>, marcadas com o selo "EVA") — em "Abaixo"/"Acima do lote mínimo", a referência aparece completa, mas só as cores daquele lado ficam visíveis ao abrir; a exportação também respeita o filtro ativo. Só disponível no modo Semana.
     </div>
     <div id="rp-cor-container"><div style="color:var(--txt-m);font-size:12px;padding:10px">Carregando...</div></div>
   </div>
@@ -1250,13 +1251,19 @@ function renderRefsPeriodo(){
 // inicial ficava uma lista enorme de ref+cor; agora abre igual à
 // "Referências por semana"): nível 1 = referência, nível 2 = cor de injeção
 // (só ao abrir a ref), nível 3 = linha+cor real (só ao abrir a cor).
-// Lote mínimo por (referência, cor de injeção) — hoje é um valor único pra
-// todo mundo (300 pares/mês), combinado com o Cássio em 2026-07-31 como
-// ponto de partida. Se um dia isso variar por referência/linha, troque essa
-// constante por uma tabela e ajuste rpCorAbaixoDoLote() — o resto do código
-// não precisa mudar, só consulta essa função.
+// Lote mínimo por (referência, cor de injeção) — 300 pares/mês pra a
+// maioria das linhas, combinado com o Cássio em 2026-07-31, e **600
+// pares/mês pra linha EVA** (combinado em 2026-08-04, já que EVA é a linha
+// de produto — CLASSIC/EVA/WORKS/FIT/DAY BY DAY — do campo `Linha` do 3YS,
+// a mesma classificação já usada no gráfico "Mix de linhas"; não confundir
+// com `linha` = número de grade). Se um dia isso variar por referência
+// específica, troque essas constantes por uma tabela e ajuste
+// rpCorLoteMinimo()/rpCorAbaixoDoLote() — o resto do código não precisa
+// mudar, só consulta essas funções.
 const LOTE_MINIMO_PARES_MES = 300;
-function rpCorAbaixoDoLote(totalMes){ return totalMes < LOTE_MINIMO_PARES_MES; }
+const LOTE_MINIMO_EVA_PARES_MES = 600;
+function rpCorLoteMinimo(isEva){ return isEva ? LOTE_MINIMO_EVA_PARES_MES : LOTE_MINIMO_PARES_MES; }
+function rpCorAbaixoDoLote(totalMes, isEva){ return totalMes < rpCorLoteMinimo(isEva); }
 
 let rpCorSort = 'total', rpCorBusca = '';
 let rpCorFiltroLote = 'todos'; // 'todos' | 'abaixo'
@@ -1314,18 +1321,22 @@ function rpCorColetarPorRef(periodosSemana){
 // independente do que está expandido na tela); com refFiltro, só as cores
 // daquela referência (usado pra abrir o nível 2 na tela).
 function rpCorColetarDados(periodosSemana, refFiltro){
-  const map = new Map(); // 'ref|corInjecao' -> {ref,corInjecao,porSemana,total,itens}
+  const map = new Map(); // 'ref|corInjecao' -> {ref,corInjecao,porSemana,total,itens,isEva}
   periodosSemana.forEach(([wk])=>{
     const itens = (DETALHE.semanas||{})[wk] || [];
     itens.forEach(it=>{
       if(refFiltro && it.ref!==refFiltro) return;
       const corInj = corInjecaoDe(it.cor);
       const key = it.ref+'|'+corInj;
-      if(!map.has(key)) map.set(key, {ref:it.ref, corInjecao:corInj, porSemana:{}, total:0, itens:[]});
+      if(!map.has(key)) map.set(key, {ref:it.ref, corInjecao:corInj, porSemana:{}, total:0, itens:[], isEva:false});
       const e = map.get(key);
       e.porSemana[wk] = (e.porSemana[wk]||0) + it.pares;
       e.total += it.pares;
       e.itens.push({wk, linha:it.linha, cor:it.cor, pares:it.pares});
+      // Uma (referência, cor de injeção) nunca mistura linhas de produto
+      // diferentes na prática (validado com os dados reais) — mas por
+      // segurança, "isEva" fica true se QUALQUER item da combinação for EVA.
+      if(it.linha_prod==='EVA') e.isEva = true;
     });
   });
   return [...map.values()];
@@ -1383,10 +1394,10 @@ function renderRefsCorInjecao(){
   const resumoEl = document.getElementById('rp-cor-resumo');
   if(resumoEl){
     const totalCombos = _rpCorUltimoArr.length;
-    const nAbaixo = _rpCorUltimoArr.filter(e=>rpCorAbaixoDoLote(e.total)).length;
+    const nAbaixo = _rpCorUltimoArr.filter(e=>rpCorAbaixoDoLote(e.total, e.isEva)).length;
     const nAcima = totalCombos - nAbaixo;
     resumoEl.textContent = totalCombos
-      ? nAbaixo+' de '+totalCombos+' combinações (referência, cor) estão abaixo do lote mínimo ('+f(LOTE_MINIMO_PARES_MES)+' pares/mês) · '+nAcima+' estão acima'
+      ? nAbaixo+' de '+totalCombos+' combinações (referência, cor) estão abaixo do lote mínimo ('+f(LOTE_MINIMO_PARES_MES)+' pares/mês · '+f(LOTE_MINIMO_EVA_PARES_MES)+' pares/mês pra EVA) · '+nAcima+' estão acima'
       : '';
   }
 
@@ -1394,7 +1405,7 @@ function renderRefsCorInjecao(){
     // Mantém a referência COMPLETA na lista (total cheio, sem reduzir) desde
     // que ela tenha AO MENOS uma cor de injeção do lado do filtro escolhido
     // — o filtro por cor de verdade só acontece ao abrir a referência (nível 2).
-    const bate = e => rpCorFiltroLote==='abaixo' ? rpCorAbaixoDoLote(e.total) : !rpCorAbaixoDoLote(e.total);
+    const bate = e => rpCorFiltroLote==='abaixo' ? rpCorAbaixoDoLote(e.total, e.isEva) : !rpCorAbaixoDoLote(e.total, e.isEva);
     const refsFiltro = new Set(_rpCorUltimoArr.filter(bate).map(e => e.ref));
     arrRef = arrRef.filter(e => refsFiltro.has(e.ref));
   }
@@ -1404,7 +1415,7 @@ function renderRefsCorInjecao(){
   if(!arrRef.length){
     const msg = rpCorFiltroLote==='todos'
       ? 'Nenhuma referência encontrada para os filtros.'
-      : 'Nenhuma referência com cor de injeção '+(rpCorFiltroLote==='abaixo'?'abaixo':'acima')+' do lote mínimo ('+f(LOTE_MINIMO_PARES_MES)+' pares/mês) neste período.';
+      : 'Nenhuma referência com cor de injeção '+(rpCorFiltroLote==='abaixo'?'abaixo':'acima')+' do lote mínimo ('+f(LOTE_MINIMO_PARES_MES)+' pares/mês, '+f(LOTE_MINIMO_EVA_PARES_MES)+' pra EVA) neste período.';
     container.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">'+msg+'</div>';
     return;
   }
@@ -1424,16 +1435,18 @@ function renderRefsCorInjecao(){
 
     if(ativaRef){
       let corArr = rpCorColetarDados(periodos, e.ref).sort((a,b)=>b.total-a.total);
-      if(rpCorFiltroLote==='abaixo') corArr = corArr.filter(ce=>rpCorAbaixoDoLote(ce.total));
-      else if(rpCorFiltroLote==='acima') corArr = corArr.filter(ce=>!rpCorAbaixoDoLote(ce.total));
+      if(rpCorFiltroLote==='abaixo') corArr = corArr.filter(ce=>rpCorAbaixoDoLote(ce.total, ce.isEva));
+      else if(rpCorFiltroLote==='acima') corArr = corArr.filter(ce=>!rpCorAbaixoDoLote(ce.total, ce.isEva));
       if(rpCorFiltroLote!=='todos' && !corArr.length){
         html+='<tr class="rp-sub-empty"><td colspan="'+(periodLabels.length+2)+'">Nenhuma cor '+(rpCorFiltroLote==='abaixo'?'abaixo':'acima')+' do lote mínimo nesta referência.</td></tr>';
       }
       corArr.forEach(ce=>{
         const ativaCor = rpCorCorExpandido===ce.corInjecao;
-        const abaixo = rpCorAbaixoDoLote(ce.total);
+        const abaixo = rpCorAbaixoDoLote(ce.total, ce.isEva);
+        const loteCor = rpCorLoteMinimo(ce.isEva);
         html+='<tr class="rp-sub rp-row-ref'+(ativaCor?' ativa':'')+(abaixo?' rp-abaixo-lote':'')+'" onclick="rpCorCorToggle(\''+ce.corInjecao.replace(/'/g,"\\'")+'\')">'+
-          '<td><span class="rp-arrow">'+(ativaCor?'▾':'▸')+'</span>'+ce.corInjecao+(abaixo?' <span class="rp-lote-badge" title="Abaixo do lote mínimo ('+f(LOTE_MINIMO_PARES_MES)+' pares/mês)">⚠ abaixo do lote</span>':'')+'</td>';
+          '<td><span class="rp-arrow">'+(ativaCor?'▾':'▸')+'</span>'+ce.corInjecao+(ce.isEva?' <span class="rp-eva-badge" title="Linha EVA — lote mínimo de 600 pares/mês">EVA</span>':'')+
+          (abaixo?' <span class="rp-lote-badge" title="Abaixo do lote mínimo ('+f(loteCor)+' pares/mês)">⚠ abaixo do lote</span>':'')+'</td>';
         periodos.forEach(([wk])=>{
           const q=ce.porSemana[wk]||0;
           html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
@@ -1482,8 +1495,8 @@ function _baixarCsv(nome, linhas){
 // lote, que é justamente a lista que precisa de ação (Cássio, 2026-07-31).
 function _rpCorArrParaExportar(){
   if(!_rpCorUltimoArr) return [];
-  if(rpCorFiltroLote==='abaixo') return _rpCorUltimoArr.filter(e=>rpCorAbaixoDoLote(e.total));
-  if(rpCorFiltroLote==='acima')  return _rpCorUltimoArr.filter(e=>!rpCorAbaixoDoLote(e.total));
+  if(rpCorFiltroLote==='abaixo') return _rpCorUltimoArr.filter(e=>rpCorAbaixoDoLote(e.total, e.isEva));
+  if(rpCorFiltroLote==='acima')  return _rpCorUltimoArr.filter(e=>!rpCorAbaixoDoLote(e.total, e.isEva));
   return _rpCorUltimoArr;
 }
 function _rpCorSufixoArquivo(){
@@ -1494,11 +1507,11 @@ function _rpCorSufixoArquivo(){
 function exportarCorInjecao(){
   const arr = _rpCorArrParaExportar();
   if(!arr.length) return;
-  const linhas = [['Referência','Cor de injeção', ..._rpCorUltimoLabels, 'Total','Abaixo do lote mínimo?']];
+  const linhas = [['Referência','Cor de injeção', ..._rpCorUltimoLabels, 'Total','Linha EVA?','Lote mínimo aplicado','Abaixo do lote mínimo?']];
   arr.forEach(e=>{
     const row = [e.ref, e.corInjecao];
     _rpCorUltimoPeriodos.forEach(([wk])=>row.push(e.porSemana[wk]||0));
-    row.push(e.total, rpCorAbaixoDoLote(e.total) ? 'Sim' : 'Não');
+    row.push(e.total, e.isEva ? 'Sim' : 'Não', rpCorLoteMinimo(e.isEva), rpCorAbaixoDoLote(e.total, e.isEva) ? 'Sim' : 'Não');
     linhas.push(row);
   });
   const sufixo = _rpCorSufixoArquivo();
