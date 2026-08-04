@@ -180,16 +180,17 @@ VENDA_CANAL_POR_GRUPO = {
 VENDA_TIPO_POR_COD = {'1':'PROG','10':'EQUIPARADA','22':'PE','31':'MISTA','32':'ECOM'}
 
 # CFOP de "Remessa em bonificação, doação ou brinde" (5910 = dentro do
-# estado, 6910 = interestadual) — usado pra tirar PDV/bonificação/brinde
-# dos NÚMEROS DE VENDAS (MI/ME/ECOM), nunca por "referência vazia" (auditoria
-# em 2026-07-28: a maioria desses registros vem mesmo sem referência, mas
-# excluir por referência vazia também apagaria vendas reais que só têm um
-# buraco de preenchimento no ERP — ex.: um pedido de calçado de ~6 mil pares
-# que veio sem Referencia/Descricao mas com CFOP de venda normal e Conta
-# Contábil 'VENDAS CALCADOS - MI'. CFOP é o sinal correto porque é a
-# classificação fiscal formal do tipo de operação, não um efeito colateral
-# de cadastro incompleto. Ver [[project_cfop_bonificacao_vendas]].
-CFOP_BONIFICACAO_DOACAO_BRINDE = {'5910', '6910'}
+# estado, 6910 = interestadual) e de amostra/bonificação remetida em
+# exportação (7949) — usado pra tirar PDV/bonificação/brinde/amostra dos
+# NÚMEROS DE VENDAS (MI/ME/ECOM), nunca por "referência vazia" (auditoria
+# em 2026-07-28, reconfirmada em 2026-08-04 olhando mai-jul/2026: a maioria
+# dos itens sem referência vem de vendas reais com buraco de preenchimento
+# no ERP — ex.: um pedido de calçado de ~6 mil pares que veio sem
+# Referencia/Descricao mas com CFOP de venda normal e Conta Contábil
+# 'VENDAS CALCADOS - MI'. CFOP é o sinal correto porque é a classificação
+# fiscal formal do tipo de operação, não um efeito colateral de cadastro
+# incompleto. Ver [[project_cfop_bonificacao_vendas]].
+CFOP_BONIFICACAO_DOACAO_BRINDE = {'5910', '6910', '7949'}
 
 # Espécies de orçamento de Mercado Externo — nunca serão faturadas (pedidos
 # não aprovados). Excluídas do faturamento previsto, CFOP, conta contábil e
@@ -286,10 +287,11 @@ def classifica_venda(abr, cod, pos_item, cfop='', private_label=''):
 
     Regras:
       - Itens 'Cancelado' (pos_item) nunca contam no volume de vendas.
-      - Itens com CFOP de bonificação/doação/brinde (5910/6910) nunca contam
-        como venda, em nenhum canal (MI/ME/ECOM) — são PDV/brinde, não
-        calçado vendido, mesmo quando têm referência preenchida (auditoria
-        2026-07-28, ver CFOP_BONIFICACAO_DOACAO_BRINDE).
+      - Itens com CFOP de bonificação/doação/brinde/amostra (5910/6910/7949)
+        nunca contam como venda, em nenhum canal (MI/ME/ECOM) — são PDV/
+        brinde/amostra, não calçado vendido, mesmo quando têm referência
+        preenchida (auditoria 2026-07-28, CFOP 7949 add. em 2026-08-04, ver
+        CFOP_BONIFICACAO_DOACAO_BRINDE).
       - Itens de Private Label (campo PrivateLabel='1' no 3YS) nunca contam
         como venda — são produtos fabricados pra OUTRAS marcas (cliente
         principal: LANCA PERFUME), não compõem meta nem estratégia da
