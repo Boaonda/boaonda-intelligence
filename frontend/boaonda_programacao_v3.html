@@ -345,6 +345,30 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     </div>
     <div id="rp-cor-container"><div style="color:var(--txt-m);font-size:12px;padding:10px">Carregando...</div></div>
   </div>
+  <div class="refs-card">
+    <div class="rp-controls">
+      <div class="rp-title">Agrupado por cor</div>
+      <div class="rp-sort">
+        <button class="rp-sort-btn active" id="flat-filtro-lote-todos" onclick="rpFlatSetFiltroLote('todos')">Todos</button>
+        <button class="rp-sort-btn" id="flat-filtro-lote-abaixo" onclick="rpFlatSetFiltroLote('abaixo')">Abaixo do lote mínimo</button>
+        <button class="rp-sort-btn" id="flat-filtro-lote-acima" onclick="rpFlatSetFiltroLote('acima')">Acima do lote mínimo</button>
+      </div>
+      <div class="rp-sort">
+        <button class="rp-sort-btn active" id="flat-sort-vol" onclick="rpFlatSetSort('total')">Por volume</button>
+        <button class="rp-sort-btn" id="flat-sort-nome" onclick="rpFlatSetSort('nome')">Por nome</button>
+      </div>
+    </div>
+    <div class="rp-cor-tools">
+      <input type="text" class="rp-cor-busca" placeholder="Buscar referência ou cor..." oninput="rpFlatSetBusca(this.value)">
+      <button class="rp-export-btn" onclick="exportarAgrupadoPorCor()">⬇ Exportar (por cor)</button>
+      <button class="rp-export-btn" onclick="exportarAgrupadoPorCorPorLinha()">⬇ Exportar (por linha)</button>
+    </div>
+    <div id="rp-flat-resumo" style="font-size:10.5px;color:var(--txt-m);margin-bottom:10px"></div>
+    <div class="bloco-desc" style="font-size:11px;color:var(--txt-m);margin-bottom:12px">
+      Mesmo dado do quadro "Agrupado por cor de injeção" acima, mas sem esconder a cor dentro da referência: cada combinação <strong>referência + cor de injeção</strong> já aparece como uma linha própria — melhor pra varrer/buscar pelas cores sem abrir referência por referência. Clique numa linha pra ver o detalhe por linha/grade do produto (200, 211, etc.). Lote mínimo por (referência, cor de injeção): <strong>300 pares/mês</strong> (linha EVA: <strong>600 pares/mês</strong>). Só disponível no modo Semana.
+    </div>
+    <div id="rp-flat-container"><div style="color:var(--txt-m);font-size:12px;padding:10px">Carregando...</div></div>
+  </div>
 </div>
 
 <script>
@@ -530,12 +554,12 @@ function navPeriodo(dir){
   const arr=modo==='semana'?periodosSem():periodosMes();
   const idx=arr.indexOf(periodoAtual);
   const n=arr[Math.max(0,Math.min(arr.length-1,idx+dir))];
-  if(n!==periodoAtual){periodoAtual=n;segmentoAtivo=null;rpCorRefExpandido=null;rpCorCorExpandido=null;renderTudo();}
+  if(n!==periodoAtual){periodoAtual=n;segmentoAtivo=null;rpCorRefExpandido=null;rpCorCorExpandido=null;rpFlatExpandido=null;renderTudo();}
 }
 
 function renderTudo(){
   if(modo==='semana') renderSemanas(); else renderMeses();
-  renderCharts(); renderRefsPeriodo(); renderRefsCorInjecao(); renderLoteResumo();
+  renderCharts(); renderRefsPeriodo(); renderRefsCorInjecao(); renderLoteResumo(); renderAgrupadoPorCor();
 }
 
 // SEMANAS
@@ -1541,6 +1565,153 @@ function exportarCorInjecaoPorLinha(){
   });
   const sufixo = _rpCorSufixoArquivo();
   _baixarCsv('agrupado_cor_injecao_por_linha'+sufixo+'_'+periodoAtual+'.csv', linhas);
+}
+
+// ─── AGRUPADO POR COR (achatado — pedido do Cássio em 2026-08-04) ───────
+// Mesmo dado de "Agrupado por cor de injeção" (_rpCorUltimoArr, montado por
+// renderRefsCorInjecao logo antes desta função rodar), mas em 2 níveis em
+// vez de 3: nível 1 já mostra referência+cor de injeção juntas numa linha só
+// (sem precisar abrir a referência pra ver a cor); clique abre nível 2 =
+// linha/grade do produto (200, 211 etc.), igual ao nível 3 de cima.
+let rpFlatSort = 'total', rpFlatBusca = '';
+let rpFlatFiltroLote = 'todos'; // 'todos' | 'abaixo' | 'acima'
+let rpFlatExpandido = null; // chave 'ref|corInjecao' da linha aberta
+
+function rpFlatSetSort(key){
+  rpFlatSort = key;
+  document.getElementById('flat-sort-vol').classList.toggle('active', key==='total');
+  document.getElementById('flat-sort-nome').classList.toggle('active', key==='nome');
+  renderAgrupadoPorCor();
+}
+function rpFlatSetBusca(v){ rpFlatBusca = v.toLowerCase(); renderAgrupadoPorCor(); }
+function rpFlatSetFiltroLote(v){
+  rpFlatFiltroLote = v;
+  document.getElementById('flat-filtro-lote-todos').classList.toggle('active', v==='todos');
+  document.getElementById('flat-filtro-lote-abaixo').classList.toggle('active', v==='abaixo');
+  document.getElementById('flat-filtro-lote-acima').classList.toggle('active', v==='acima');
+  rpFlatExpandido = null;
+  renderAgrupadoPorCor();
+}
+function rpFlatToggle(chave){
+  rpFlatExpandido = (rpFlatExpandido===chave) ? null : chave;
+  renderAgrupadoPorCor();
+}
+
+function renderAgrupadoPorCor(){
+  const container = document.getElementById('rp-flat-container');
+  if(!container) return;
+  if(modo!=='semana' || !_rpCorUltimoArr){
+    container.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">'+
+      (modo!=='semana' ? 'Agrupado por cor só está disponível no modo Semana.' : 'Sem dados para este período.')+'</div>';
+    return;
+  }
+
+  const resumoEl = document.getElementById('rp-flat-resumo');
+  if(resumoEl){
+    const totalCombos = _rpCorUltimoArr.length;
+    const nAbaixo = _rpCorUltimoArr.filter(e=>rpCorAbaixoDoLote(e.total, e.isEva)).length;
+    const nAcima = totalCombos - nAbaixo;
+    resumoEl.textContent = totalCombos
+      ? nAbaixo+' de '+totalCombos+' combinações (referência, cor) estão abaixo do lote mínimo ('+f(LOTE_MINIMO_PARES_MES)+' pares/mês · '+f(LOTE_MINIMO_EVA_PARES_MES)+' pares/mês pra EVA) · '+nAcima+' estão acima'
+      : '';
+  }
+
+  let arr = _rpCorUltimoArr.slice();
+  if(rpFlatBusca){
+    arr = arr.filter(e => e.ref.toLowerCase().includes(rpFlatBusca) || e.corInjecao.toLowerCase().includes(rpFlatBusca));
+  }
+  if(rpFlatFiltroLote!=='todos'){
+    const bate = e => rpFlatFiltroLote==='abaixo' ? rpCorAbaixoDoLote(e.total, e.isEva) : !rpCorAbaixoDoLote(e.total, e.isEva);
+    arr = arr.filter(bate);
+  }
+  if(rpFlatSort==='total') arr.sort((a,b)=>b.total-a.total);
+  else arr.sort((a,b)=>a.corInjecao.localeCompare(b.corInjecao) || a.ref.localeCompare(b.ref));
+
+  if(!arr.length){
+    const msg = rpFlatFiltroLote==='todos'
+      ? 'Nenhuma combinação encontrada para os filtros.'
+      : 'Nenhuma combinação (referência, cor) '+(rpFlatFiltroLote==='abaixo'?'abaixo':'acima')+' do lote mínimo neste período.';
+    container.innerHTML='<div style="color:var(--txt-m);font-size:12px;padding:10px">'+msg+'</div>';
+    return;
+  }
+
+  const periodos = _rpCorUltimoPeriodos, periodLabels = _rpCorUltimoLabels;
+  let html='<table class="rp-table"><thead><tr><th>Referência + cor</th>';
+  periodLabels.forEach(l=>html+='<th>'+l+'</th>');
+  html+='<th>Total</th></tr></thead><tbody>';
+  arr.forEach(e=>{
+    const chave = e.ref+'|'+e.corInjecao;
+    const ativa = rpFlatExpandido===chave;
+    const abaixo = rpCorAbaixoDoLote(e.total, e.isEva);
+    const lote = rpCorLoteMinimo(e.isEva);
+    html+='<tr class="rp-row-ref'+(ativa?' ativa':'')+(abaixo?' rp-abaixo-lote':'')+'" onclick="rpFlatToggle(\''+chave.replace(/'/g,"\\'")+'\')">'+
+      '<td><span class="rp-arrow">'+(ativa?'▾':'▸')+'</span>'+e.ref+' — '+e.corInjecao+
+      (e.isEva?' <span class="rp-eva-badge" title="Linha EVA — lote mínimo de 600 pares/mês">EVA</span>':'')+
+      (abaixo?' <span class="rp-lote-badge" title="Abaixo do lote mínimo ('+f(lote)+' pares/mês)">⚠ abaixo do lote</span>':'')+'</td>';
+    periodos.forEach(([wk])=>{
+      const q=e.porSemana[wk]||0;
+      html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
+    });
+    html+='<td class="rp-total">'+f(e.total)+'</td></tr>';
+
+    if(ativa){
+      rpCorSubgrupos(e).forEach(se=>{
+        html+='<tr class="rp-sub2"><td>Linha '+se.linha+' · '+se.cor+'</td>';
+        periodos.forEach(([wk])=>{
+          const q=se.porSemana[wk]||0;
+          html+=q>0?'<td>'+f(q)+'</td>':'<td class="rp-empty">—</td>';
+        });
+        html+='<td class="rp-total">'+f(se.total)+'</td></tr>';
+      });
+    }
+  });
+  html+='<tr class="rp-foot"><td>TOTAL</td>';
+  periodos.forEach(([wk])=>html+='<td class="rp-total">'+f(arr.reduce((s,e)=>s+(e.porSemana[wk]||0),0))+'</td>');
+  html+='<td class="rp-total">'+f(arr.reduce((s,e)=>s+e.total,0))+'</td></tr>';
+  html+='</tbody></table>';
+  container.innerHTML=html;
+}
+
+// Exportação — mesmo padrão de _rpCorArrParaExportar/_rpCorSufixoArquivo,
+// mas respeitando o filtro Todos/Abaixo/Acima DESTE quadro (rpFlatFiltroLote).
+function _rpFlatArrParaExportar(){
+  if(!_rpCorUltimoArr) return [];
+  if(rpFlatFiltroLote==='abaixo') return _rpCorUltimoArr.filter(e=>rpCorAbaixoDoLote(e.total, e.isEva));
+  if(rpFlatFiltroLote==='acima')  return _rpCorUltimoArr.filter(e=>!rpCorAbaixoDoLote(e.total, e.isEva));
+  return _rpCorUltimoArr;
+}
+function _rpFlatSufixoArquivo(){
+  return rpFlatFiltroLote==='abaixo' ? '_abaixo_lote_minimo'
+       : rpFlatFiltroLote==='acima'  ? '_acima_lote_minimo'
+       : '';
+}
+function exportarAgrupadoPorCor(){
+  const arr = _rpFlatArrParaExportar();
+  if(!arr.length) return;
+  const linhas = [['Referência','Cor de injeção', ..._rpCorUltimoLabels, 'Total','Linha EVA?','Lote mínimo aplicado','Abaixo do lote mínimo?']];
+  arr.forEach(e=>{
+    const row = [e.ref, e.corInjecao];
+    _rpCorUltimoPeriodos.forEach(([wk])=>row.push(e.porSemana[wk]||0));
+    row.push(e.total, e.isEva ? 'Sim' : 'Não', rpCorLoteMinimo(e.isEva), rpCorAbaixoDoLote(e.total, e.isEva) ? 'Sim' : 'Não');
+    linhas.push(row);
+  });
+  const sufixo = _rpFlatSufixoArquivo();
+  _baixarCsv('agrupado_por_cor'+sufixo+'_'+periodoAtual+'.csv', linhas);
+}
+function exportarAgrupadoPorCorPorLinha(){
+  const arr = _rpFlatArrParaExportar();
+  if(!arr.length) return;
+  const linhas = [['Referência','Cor de injeção','Linha','Cor completa', ..._rpCorUltimoLabels, 'Total']];
+  arr.forEach(e=>{
+    rpCorSubgrupos(e).forEach(se=>{
+      const row = [e.ref, e.corInjecao, se.linha, se.cor];
+      _rpCorUltimoPeriodos.forEach(([wk])=>row.push(se.porSemana[wk]||0));
+      row.push(se.total);
+      linhas.push(row);
+    });
+  });
+  const sufixo = _rpFlatSufixoArquivo();
+  _baixarCsv('agrupado_por_cor_por_linha'+sufixo+'_'+periodoAtual+'.csv', linhas);
 }
 
 </script>
