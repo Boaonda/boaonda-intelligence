@@ -360,8 +360,7 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     </div>
     <div class="rp-cor-tools">
       <input type="text" class="rp-cor-busca" placeholder="Buscar referência ou cor..." oninput="rpFlatSetBusca(this.value)">
-      <button class="rp-export-btn" onclick="exportarAgrupadoPorCor()">⬇ Exportar (por cor)</button>
-      <button class="rp-export-btn" onclick="exportarAgrupadoPorCorPorLinha()">⬇ Exportar (por linha)</button>
+      <button class="rp-export-btn" id="btn-export-agrupado-cor" onclick="exportarAgrupadoPorCorExcel()">⬇ Exportar Excel (cor + linha)</button>
     </div>
     <div id="rp-flat-resumo" style="font-size:10.5px;color:var(--txt-m);margin-bottom:10px"></div>
     <div class="bloco-desc" style="font-size:11px;color:var(--txt-m);margin-bottom:12px">
@@ -1685,33 +1684,45 @@ function _rpFlatSufixoArquivo(){
        : rpFlatFiltroLote==='acima'  ? '_acima_lote_minimo'
        : '';
 }
-function exportarAgrupadoPorCor(){
+// Exporta um .xlsx com 2 abas (Por cor / Detalhado por linha) via
+// /api/programacao/exportar-agrupado-cor — precisa ir ao servidor porque CSV
+// não tem como ter aba nem formatação diferenciada (Cássio, 2026-08-04).
+async function exportarAgrupadoPorCorExcel(){
   const arr = _rpFlatArrParaExportar();
   if(!arr.length) return;
-  const linhas = [['Referência','Cor de injeção', ..._rpCorUltimoLabels, 'Total','Linha EVA?','Lote mínimo aplicado','Abaixo do lote mínimo?']];
-  arr.forEach(e=>{
-    const row = [e.ref, e.corInjecao];
-    _rpCorUltimoPeriodos.forEach(([wk])=>row.push(e.porSemana[wk]||0));
-    row.push(e.total, e.isEva ? 'Sim' : 'Não', rpCorLoteMinimo(e.isEva), rpCorAbaixoDoLote(e.total, e.isEva) ? 'Sim' : 'Não');
-    linhas.push(row);
-  });
-  const sufixo = _rpFlatSufixoArquivo();
-  _baixarCsv('agrupado_por_cor'+sufixo+'_'+periodoAtual+'.csv', linhas);
-}
-function exportarAgrupadoPorCorPorLinha(){
-  const arr = _rpFlatArrParaExportar();
-  if(!arr.length) return;
-  const linhas = [['Referência','Cor de injeção','Linha','Cor completa', ..._rpCorUltimoLabels, 'Total']];
-  arr.forEach(e=>{
-    rpCorSubgrupos(e).forEach(se=>{
-      const row = [e.ref, e.corInjecao, se.linha, se.cor];
-      _rpCorUltimoPeriodos.forEach(([wk])=>row.push(se.porSemana[wk]||0));
-      row.push(se.total);
-      linhas.push(row);
+  const btn = document.getElementById('btn-export-agrupado-cor');
+  const textoOriginal = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Gerando...'; }
+  try{
+    const payload = {
+      periodo: periodoAtual,
+      filtro: rpFlatFiltroLote,
+      labels: _rpCorUltimoLabels,
+      wks: _rpCorUltimoPeriodos.map(([wk])=>wk),
+      rows: arr.map(e=>({
+        ref: e.ref, corInjecao: e.corInjecao, isEva: e.isEva, total: e.total,
+        loteMinimo: rpCorLoteMinimo(e.isEva), abaixo: rpCorAbaixoDoLote(e.total, e.isEva),
+        porSemana: e.porSemana, itens: e.itens,
+      })),
+    };
+    const resp = await fetch('/api/programacao/exportar-agrupado-cor', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload),
     });
-  });
-  const sufixo = _rpFlatSufixoArquivo();
-  _baixarCsv('agrupado_por_cor_por_linha'+sufixo+'_'+periodoAtual+'.csv', linhas);
+    if(!resp.ok){
+      const erro = await resp.json().catch(()=>({}));
+      alert('Falha ao gerar a planilha: ' + (erro.erro || resp.statusText));
+      return;
+    }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const sufixo = _rpFlatSufixoArquivo();
+    a.href = url; a.download = 'agrupado_por_cor'+sufixo+'_'+periodoAtual+'.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = textoOriginal; }
+  }
 }
 
 </script>

@@ -3035,6 +3035,118 @@ def api_faturamento_detalhe():
         return jsonify({'erro': f'Falha ao gerar o detalhe: {ex}'}), 500
 
 
+# Exportação em Excel do quadro "Agrupado por cor" (Programação) — o
+# frontend já tem os dados prontos (client-side, vindos de DETALHE), então
+# só manda o payload calculado e o servidor monta o .xlsx com 2 abas: "Por
+# cor" (mesmo dado do CSV flat) e "Detalhado por linha" (o acumulado por
+# referência+cor de injeção, seguido das linhas/grades que o compõem,
+# formatados de forma diferente pra ficar visualmente óbvio qual é o total
+# e o que é o detalhe — CSV não tem como fazer isso, por isso migrou pra
+# xlsx real via openpyxl, pedido do Cássio em 2026-08-04).
+@app.route('/api/programacao/exportar-agrupado-cor', methods=['POST'])
+def api_programacao_exportar_agrupado_cor():
+    bloqueio = _exige_modulo('programacao')
+    if bloqueio:
+        return bloqueio
+    payload = request.get_json(silent=True) or {}
+    labels = payload.get('labels') or []
+    wks    = payload.get('wks') or []
+    rows   = payload.get('rows') or []
+    periodo = (payload.get('periodo') or 'periodo').strip()
+    filtro  = (payload.get('filtro') or 'todos').strip()
+    if not rows or len(labels) != len(wks):
+        return jsonify({'erro': 'Payload inválido (linhas ou colunas de semana ausentes).'}), 400
+
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        wb = Workbook()
+
+        # ── Aba 1: Por cor — mesmo dado do CSV "por cor" de hoje ──
+        ws1 = wb.active
+        ws1.title = 'Por cor'
+        ws1.append(['Referência', 'Cor de injeção'] + labels +
+                   ['Total', 'Linha EVA?', 'Lote mínimo aplicado', 'Abaixo do lote mínimo?'])
+        for cell in ws1[1]:
+            cell.font = Font(bold=True)
+        for r in rows:
+            porsem = r.get('porSemana') or {}
+            linha = [r.get('ref', ''), r.get('corInjecao', '')]
+            linha += [porsem.get(wk, 0) for wk in wks]
+            linha += [r.get('total', 0), 'Sim' if r.get('isEva') else 'Não',
+                      r.get('loteMinimo', ''), 'Sim' if r.get('abaixo') else 'Não']
+            ws1.append(linha)
+        ws1.freeze_panes = 'A2'
+        ws1.column_dimensions['A'].width = 22
+        ws1.column_dimensions['B'].width = 20
+
+        # ── Aba 2: Detalhado por linha — acumulado por (ref, cor de injeção)
+        # em destaque, seguido das linhas/grades que somam aquele total.
+        ws2 = wb.create_sheet('Detalhado por linha')
+        ws2.append(['Item'] + labels +
+                   ['Total', 'Nível', 'Linha EVA?', 'Lote mínimo aplicado', 'Abaixo do lote mínimo?'])
+        for cell in ws2[1]:
+            cell.font = Font(bold=True)
+
+        fill_total = PatternFill('solid', fgColor='FBE4D8')  # coral bem claro (MIV)
+        font_total = Font(bold=True)
+        font_linha = Font(color='6B6A69')
+        align_linha = Alignment(indent=1)
+
+        for r in rows:
+            porsem = r.get('porSemana') or {}
+            linha_total = [f"{r.get('ref', '')} — {r.get('corInjecao', '')}"]
+            linha_total += [porsem.get(wk, 0) for wk in wks]
+            linha_total += [r.get('total', 0), 'Cor (acumulado)',
+                            'Sim' if r.get('isEva') else 'Não',
+                            r.get('loteMinimo', ''), 'Sim' if r.get('abaixo') else 'Não']
+            ws2.append(linha_total)
+            for cell in ws2[ws2.max_row]:
+                cell.font = font_total
+                cell.fill = fill_total
+
+            # Agrupa os itens dessa combinação por (linha, cor) — mesma
+            # lógica de rpCorSubgrupos() no frontend — maior volume primeiro.
+            subgrupos = {}
+            ordem = []
+            for it in (r.get('itens') or []):
+                chave = (it.get('linha', ''), it.get('cor', ''))
+                if chave not in subgrupos:
+                    subgrupos[chave] = {'porSemana': {}, 'total': 0}
+                    ordem.append(chave)
+                sg = subgrupos[chave]
+                wk = it.get('wk')
+                pares = it.get('pares', 0)
+                sg['porSemana'][wk] = sg['porSemana'].get(wk, 0) + pares
+                sg['total'] += pares
+            ordem.sort(key=lambda k: -subgrupos[k]['total'])
+            for chave in ordem:
+                lin, cor = chave
+                sg = subgrupos[chave]
+                linha_sub = [f"Linha {lin} · {cor}"]
+                linha_sub += [sg['porSemana'].get(wk, 0) for wk in wks]
+                linha_sub += [sg['total'], 'Linha', '', '', '']
+                ws2.append(linha_sub)
+                row_idx = ws2.max_row
+                ws2.cell(row=row_idx, column=1).font = font_linha
+                ws2.cell(row=row_idx, column=1).alignment = align_linha
+
+        ws2.freeze_panes = 'A2'
+        ws2.column_dimensions['A'].width = 34
+
+        bio = io.BytesIO(); wb.save(bio); bio.seek(0)
+        sufixo = {'abaixo': '_abaixo_lote_minimo', 'acima': '_acima_lote_minimo'}.get(filtro, '')
+        return send_file(
+            bio, as_attachment=True,
+            download_name=f'agrupado_por_cor{sufixo}_{periodo}.xlsx',
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'erro': f'Falha ao gerar a planilha: {ex}'}), 500
+
+
 # ─────────────────────────────────────────────
 #  INTELIGÊNCIA — chat com IA sobre os dados do portal (Fase A)
 # ─────────────────────────────────────────────
