@@ -117,6 +117,10 @@ tr:hover td{background:var(--card2);color:var(--txt)}
 
     <div class="stitle">Pedidos <span class="stitle-badge" id="badge-pedidos">–</span></div>
     <div class="bloco-desc">Clique num pedido para ver os itens.</div>
+    <div class="toolbar">
+      <span class="filtro-label">Período</span>
+      <select class="inp" id="filtro-mes-ped" style="min-width:160px" onchange="mesFiltroPed=this.value;renderPedidos()"></select>
+    </div>
     <div class="tcard">
       <table>
         <thead><tr>
@@ -149,6 +153,7 @@ let DADOS=null;
 let sortCadState={key:'criado_em', dir:-1};
 let sortPedState={key:'criado_em', dir:-1};
 let pedidoAberto=null;
+let mesFiltroPed=''; // '' = Todos os meses
 
 function f(n){ return (n||0).toLocaleString('pt-BR'); }
 // catalogo_pedidos.status tem CHECK constraint fixa no banco: 'novo',
@@ -178,6 +183,23 @@ function mesAtualChave(){
 function anomes(v){
   const m=/^(\d{4})-(\d{2})/.exec(v||'');
   return m ? m[1]+m[2] : null;
+}
+const MESES_LABEL=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function mesLabel(am){
+  const ano=am.slice(0,4), mes=+am.slice(4,6);
+  return MESES_LABEL[mes-1]+'/'+ano;
+}
+// Preenche o filtro de período dos Pedidos com "Todos" + um item por mês
+// que realmente tem pedido (mais recente primeiro) — evita listar meses
+// vazios só pra parecer completo.
+function popularFiltroMesPed(){
+  const sel=document.getElementById('filtro-mes-ped');
+  const meses=[...new Set(DADOS.pedidos.map(p=>anomes(p.criado_em)).filter(Boolean))].sort().reverse();
+  const mesRef=mesAtualChave();
+  if(!mesFiltroPed) mesFiltroPed = meses.includes(mesRef) ? mesRef : '';
+  sel.innerHTML = '<option value="">Todos os meses</option>' +
+    meses.map(m=>`<option value="${m}"${m===mesFiltroPed?' selected':''}>${mesLabel(m)}</option>`).join('');
+  sel.value=mesFiltroPed;
 }
 
 function kpi(cls,label,val,sub){
@@ -253,10 +275,12 @@ function itensDoPedido(pedidoId){
 }
 
 function renderPedidos(){
-  const linhas=DADOS.pedidos.map(p=>{
-    const itens=itensDoPedido(p.id);
-    return {...p, n_itens:itens.length, total_pares:itens.reduce((a,i)=>a+(i.quantidade||0),0)};
-  });
+  let linhas=DADOS.pedidos
+    .filter(p=>!mesFiltroPed || anomes(p.criado_em)===mesFiltroPed)
+    .map(p=>{
+      const itens=itensDoPedido(p.id);
+      return {...p, n_itens:itens.length, total_pares:itens.reduce((a,i)=>a+(i.quantidade||0),0)};
+    });
   const {key,dir}=sortPedState;
   linhas.sort((a,b)=>{
     const av=a[key], bv=b[key];
@@ -264,7 +288,8 @@ function renderPedidos(){
     return dir*String(av||'').localeCompare(String(bv||''),'pt');
   });
   marcarSort('p', sortPedState);
-  document.getElementById('badge-pedidos').textContent=linhas.length+' pedidos';
+  document.getElementById('badge-pedidos').textContent=
+    (mesFiltroPed ? linhas.length+' de '+DADOS.pedidos.length : linhas.length)+' pedidos';
 
   const html=linhas.map(p=>{
     const aberto=pedidoAberto===p.id;
@@ -311,6 +336,7 @@ fetch('/api/catalogo/dados?_='+Date.now())
     document.getElementById('conteudo').style.display='block';
     renderKpis();
     renderCadastros();
+    popularFiltroMesPed();
     renderPedidos();
   })
   .catch(()=>{ document.getElementById('ind-vazio').style.display='block'; });
