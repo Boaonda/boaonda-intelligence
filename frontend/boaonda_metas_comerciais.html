@@ -503,7 +503,7 @@ function detalheRep(rep,meses,mesesSet){
   return {
     rep, realizado, vendas, atend:cli.atend, novos:cli.novos,
     meta: temMeta?meta:null, metaProp: temMeta?metaProp:null,
-    faltando: temMeta?Math.max(0,metaProp-realizado):null,
+    faltando: temMeta?Math.max(0,meta-realizado):null,
     pct: (temMeta&&metaProp)?realizado/metaProp*100:null,
   };
 }
