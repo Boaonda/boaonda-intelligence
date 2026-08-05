@@ -3060,34 +3060,55 @@ def api_programacao_exportar_agrupado_cor():
     try:
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
 
         wb = Workbook()
+
+        # Estilo de cabeçalho: colunas de identificação/resumo (Referência,
+        # Cor, Item, Total, Lote mínimo, Adicional) num tom, e as colunas de
+        # semana noutro — pra ficar óbvio de cara qual bloco é o quê (Cássio,
+        # 2026-08-04, "deixar a coluna das semanas melhor identificada").
+        fill_head_id  = PatternFill('solid', fgColor='2B2A29')  # cinza-escuro
+        fill_head_sem = PatternFill('solid', fgColor='4994C7')  # azul oceânico MIV
+        font_head     = Font(bold=True, color='FFFFFF')
+
+        def _lote_adicional(total, lote_minimo):
+            try:
+                falta = float(lote_minimo) - float(total)
+            except (TypeError, ValueError):
+                return ''
+            return round(falta, 0) if falta > 0 else 0
 
         # ── Aba 1: Por cor — mesmo dado do CSV "por cor" de hoje ──
         ws1 = wb.active
         ws1.title = 'Por cor'
-        ws1.append(['Referência', 'Cor de injeção'] + labels +
-                   ['Total', 'Linha EVA?', 'Lote mínimo aplicado', 'Abaixo do lote mínimo?'])
-        for cell in ws1[1]:
-            cell.font = Font(bold=True)
+        cabecalho1 = ['Referência', 'Cor de injeção'] + labels + ['Total', 'Lote mínimo aplicado', 'Adicional sugerido']
+        ws1.append(cabecalho1)
+        n_id1 = 2  # Referência, Cor de injeção
+        for idx, cell in enumerate(ws1[1], start=1):
+            cell.font = font_head
+            cell.fill = fill_head_sem if n_id1 < idx <= n_id1 + len(labels) else fill_head_id
         for r in rows:
             porsem = r.get('porSemana') or {}
+            total = r.get('total', 0)
+            lote = r.get('loteMinimo', '')
             linha = [r.get('ref', ''), r.get('corInjecao', '')]
             linha += [porsem.get(wk, 0) for wk in wks]
-            linha += [r.get('total', 0), 'Sim' if r.get('isEva') else 'Não',
-                      r.get('loteMinimo', ''), 'Sim' if r.get('abaixo') else 'Não']
+            linha += [total, lote, _lote_adicional(total, lote)]
             ws1.append(linha)
-        ws1.freeze_panes = 'A2'
+        ws1.freeze_panes = get_column_letter(n_id1 + 1) + '2'
         ws1.column_dimensions['A'].width = 22
         ws1.column_dimensions['B'].width = 20
 
         # ── Aba 2: Detalhado por linha — acumulado por (ref, cor de injeção)
         # em destaque, seguido das linhas/grades que somam aquele total.
         ws2 = wb.create_sheet('Detalhado por linha')
-        ws2.append(['Item'] + labels +
-                   ['Total', 'Nível', 'Linha EVA?', 'Lote mínimo aplicado', 'Abaixo do lote mínimo?'])
-        for cell in ws2[1]:
-            cell.font = Font(bold=True)
+        cabecalho2 = ['Item'] + labels + ['Total', 'Lote mínimo aplicado', 'Adicional sugerido']
+        ws2.append(cabecalho2)
+        n_id2 = 1  # Item
+        for idx, cell in enumerate(ws2[1], start=1):
+            cell.font = font_head
+            cell.fill = fill_head_sem if n_id2 < idx <= n_id2 + len(labels) else fill_head_id
 
         fill_total = PatternFill('solid', fgColor='FBE4D8')  # coral bem claro (MIV)
         font_total = Font(bold=True)
@@ -3096,11 +3117,11 @@ def api_programacao_exportar_agrupado_cor():
 
         for r in rows:
             porsem = r.get('porSemana') or {}
+            total = r.get('total', 0)
+            lote = r.get('loteMinimo', '')
             linha_total = [f"{r.get('ref', '')} — {r.get('corInjecao', '')}"]
             linha_total += [porsem.get(wk, 0) for wk in wks]
-            linha_total += [r.get('total', 0), 'Cor (acumulado)',
-                            'Sim' if r.get('isEva') else 'Não',
-                            r.get('loteMinimo', ''), 'Sim' if r.get('abaixo') else 'Não']
+            linha_total += [total, lote, _lote_adicional(total, lote)]
             ws2.append(linha_total)
             for cell in ws2[ws2.max_row]:
                 cell.font = font_total
@@ -3126,13 +3147,13 @@ def api_programacao_exportar_agrupado_cor():
                 sg = subgrupos[chave]
                 linha_sub = [f"Linha {lin} · {cor}"]
                 linha_sub += [sg['porSemana'].get(wk, 0) for wk in wks]
-                linha_sub += [sg['total'], 'Linha', '', '', '']
+                linha_sub += [sg['total'], '', '']
                 ws2.append(linha_sub)
                 row_idx = ws2.max_row
                 ws2.cell(row=row_idx, column=1).font = font_linha
                 ws2.cell(row=row_idx, column=1).alignment = align_linha
 
-        ws2.freeze_panes = 'A2'
+        ws2.freeze_panes = get_column_letter(n_id2 + 1) + '2'
         ws2.column_dimensions['A'].width = 34
 
         bio = io.BytesIO(); wb.save(bio); bio.seek(0)
