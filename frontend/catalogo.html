@@ -2155,7 +2155,13 @@ async function abrirPedidosArea(abaPreferida) {
       checkoutClientesCache = d.clientes || [];
     } catch(e) { checkoutClientesCache = []; }
   }
-  document.getElementById('checkout-view').style.display = 'block';
+  // 'flex', não 'block' — .checkout-view é display:flex no CSS (cabeçalho +
+  // .co-layout em coluna); sobrescrever pra 'block' aqui quebra o contexto
+  // flex inteiro (.co-layout/.co-content perdem a altura contida e o
+  // overflow-y:auto some, sem scrollbar nenhuma — bug real encontrado em
+  // 2026-08-05, confirmado com clientHeight/scrollHeight no DevTools do
+  // Cássio em produção).
+  document.getElementById('checkout-view').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   renderCheckout();
 }
