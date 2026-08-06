@@ -560,16 +560,31 @@ function renderDemanda() {
   }
   document.getElementById('ce-conteudo').style.display = '';
 
-  // Aviso parcial: parte do volume ainda sem fator (o total mostrado subestima)
+  // Avisos: (a) volume EVA sem fator kg/par — o total mostrado subestima;
+  // (b) referência fora do cadastro técnico cuja linha comercial é EVA —
+  // provável produto novo que ainda não entra na conta de jeito nenhum.
   const av = document.getElementById('ce-aviso');
+  const avisos = [];
   const semFator = (cob.refs_sem_fator || []);
   if (semFator.length) {
     const paresSem = semFator.reduce((s, r) => s + r.pares, 0);
-    av.style.display = '';
-    av.innerHTML = '<strong>Cobertura parcial — os kg abaixo estão subestimados.</strong><br>' +
+    avisos.push('<strong>Cobertura parcial — os kg abaixo estão subestimados.</strong><br>' +
       semFator.length + ' referência(s) EVA sem fator kg/par (' + paresSem.toLocaleString('pt-BR') +
       ' pares não convertidos): ' + semFator.slice(0, 6).map(r => r.ref).join(', ') +
-      (semFator.length > 6 ? '…' : '') + '. Complete a planilha para fechar o número.';
+      (semFator.length > 6 ? '…' : '') + '. Complete a planilha para fechar o número.');
+  }
+  const novos = (cob.refs_material_desconhecido || []).filter(r => r.linha_comercial_eva);
+  if (novos.length) {
+    const paresNovos = novos.reduce((s, r) => s + r.pares, 0);
+    avisos.push('<strong>Possível produto novo de EVA fora da conta.</strong><br>' +
+      novos.length + ' referência(s) aparecem na programação com linha comercial EVA mas não têm ' +
+      'material no cadastro técnico (' + paresNovos.toLocaleString('pt-BR') + ' pares): ' +
+      novos.slice(0, 6).map(r => r.ref).join(', ') + (novos.length > 6 ? '…' : '') +
+      '. Cadastre em Capacidade Fabril e depois informe o kg/par aqui.');
+  }
+  if (avisos.length) {
+    av.style.display = '';
+    av.innerHTML = avisos.join('<hr style="border:none;border-top:1px solid rgba(217,164,65,.25);margin:10px 0">');
   } else {
     av.style.display = 'none';
   }

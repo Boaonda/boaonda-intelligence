@@ -205,6 +205,12 @@ def processar_demanda_composto(detalhe_path, capacidade_path, fatores_path, outp
     pares_com_fator = 0
     refs_sem_fator = defaultdict(int)
     origem_fator = defaultdict(int)
+    # Referência que a programação tem mas o cadastro técnico não conhece:
+    # sem material, não dá para saber se é EVA. Antes isso era descartado em
+    # silêncio — é justamente onde um PRODUTO NOVO DE EVA cairia, sumindo da
+    # necessidade sem nenhum aviso. Agora é reportado, e quando a linha
+    # comercial diz EVA vira alerta explícito na tela.
+    refs_desconhecidas = defaultdict(lambda: {'pares': 0, 'linha_eva': False})
 
     for wk, itens in (det.get('semanas') or {}).items():
         mk = mes_ref_da_semana(wk)
@@ -214,7 +220,14 @@ def processar_demanda_composto(detalhe_path, capacidade_path, fatores_path, outp
             pares = it.get('pares') or 0
             if pares <= 0:
                 continue
-            if material_de(por_ref_linha, por_ref, ref, linha) != 'EVA':
+            material = material_de(por_ref_linha, por_ref, ref, linha)
+            if material is None:
+                d = refs_desconhecidas[ref]
+                d['pares'] += pares
+                if (it.get('linha_prod') or '').strip().upper() == 'EVA':
+                    d['linha_eva'] = True
+                continue
+            if material != 'EVA':
                 continue
 
             pares_eva_total += pares
@@ -274,6 +287,10 @@ def processar_demanda_composto(detalhe_path, capacidade_path, fatores_path, outp
                 [{'ref': r, 'pares': p} for r, p in refs_sem_fator.items()],
                 key=lambda x: -x['pares']),
             'refs_com_fator_cadastrado': len(fatores),
+            'refs_material_desconhecido': sorted(
+                [{'ref': r, 'pares': v['pares'], 'linha_comercial_eva': v['linha_eva']}
+                 for r, v in refs_desconhecidas.items()],
+                key=lambda x: -x['pares']),
         },
     }
 
@@ -288,6 +305,10 @@ def processar_demanda_composto(detalhe_path, capacidade_path, fatores_path, outp
     if refs_sem_fator:
         print(f"    ⚠ {len(refs_sem_fator)} referência(s) EVA sem fator cadastrado "
               f"({sum(refs_sem_fator.values()):,} pares não convertidos)")
+    suspeitas = [r for r, v in refs_desconhecidas.items() if v['linha_eva']]
+    if suspeitas:
+        print(f"    ⚠ {len(suspeitas)} referência(s) fora do cadastro técnico com linha "
+              f"comercial EVA — possível produto novo: {', '.join(sorted(suspeitas)[:5])}")
     print(f"    ✓ {DEMANDA_JSON} gerado")
     return out
 
