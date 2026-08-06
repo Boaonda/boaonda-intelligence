@@ -133,7 +133,7 @@ MODULOS = {
     'vendas_eva': {
         'label': 'Vendas Composto EVA',
         'htmls': ['boaonda_vendas_eva.html'],
-        'jsons': ['dados_vendas_eva.json'],
+        'jsons': ['dados_vendas_eva.json', 'dados_composto_demanda.json'],
         'ia': ['vendas_eva'],
     },
     'carteira': {
@@ -2958,6 +2958,70 @@ def metas_importar():
             str(DATA_DIR / 'dados_metas.json'),
             str(DATA_DIR),
         )
+        return jsonify(resultado)
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'status': 'erro', 'mensagem': str(ex)}), 500
+    finally:
+        if path_xlsx.exists():
+            path_xlsx.unlink()
+
+
+# Composto EVA — fator kg/par por referência, mantido à mão por round-trip de
+# Excel enquanto a ficha técnica (BOM) do ERP não fica pronta. É o que traduz a
+# programação de calçado EVA (pares) em necessidade de composto (kg).
+@app.route('/api/composto/exportar')
+def composto_exportar():
+    bloqueio = _exige_modulo('vendas_eva')
+    if bloqueio:
+        return bloqueio
+    from processador_composto_eva import exportar_fatores_excel, FATORES_JSON
+    try:
+        buf = exportar_fatores_excel(
+            str(DATA_DIR / 'dados_capacidade.json'),
+            str(DATA_DIR / 'dados_programacao_detalhe.json'),
+            str(DATA_DIR / FATORES_JSON),
+        )
+        return send_file(
+            buf,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='Boaonda_Composto_EVA_Fatores.xlsx',
+        )
+    except Exception as ex:
+        traceback.print_exc()
+        return jsonify({'erro': str(ex)}), 500
+
+
+@app.route('/api/composto/importar', methods=['POST'])
+def composto_importar():
+    bloqueio = _exige_modulo('vendas_eva')
+    if bloqueio:
+        return bloqueio
+    from processador_composto_eva import (importar_fatores_excel,
+                                          processar_demanda_composto, FATORES_JSON)
+    f = request.files.get('arquivo')
+    if not f or not f.filename:
+        return jsonify({'status': 'erro', 'mensagem': 'Nenhum arquivo enviado.'}), 400
+    path_xlsx = UPLOADS_DIR / 'composto_fatores_import.xlsx'
+    f.save(str(path_xlsx))
+    try:
+        resultado = importar_fatores_excel(
+            str(path_xlsx), str(DATA_DIR / FATORES_JSON), str(DATA_DIR))
+        # Fator mudou — recalcula a demanda contra a programação atual, senão a
+        # tela continuaria mostrando os kg antigos até o próximo upload do 3YS.
+        if resultado.get('status') == 'ok':
+            try:
+                demanda = processar_demanda_composto(
+                    str(DATA_DIR / 'dados_programacao_detalhe.json'),
+                    str(DATA_DIR / 'dados_capacidade.json'),
+                    str(DATA_DIR / FATORES_JSON),
+                    str(DATA_DIR),
+                )
+                if demanda:
+                    resultado['cobertura'] = demanda.get('cobertura')
+            except Exception:
+                traceback.print_exc()
         return jsonify(resultado)
     except Exception as ex:
         traceback.print_exc()

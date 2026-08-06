@@ -2199,6 +2199,20 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         prog     = processar_programacao(linhas, output_dir)
         carteira = processar_carteira(linhas, output_dir)
         fat      = processar_faturamento(linhas, output_dir)
+        # Demanda interna de Composto EVA — depende da programação recém-gerada
+        # (detalhe item-a-item) + do cadastro de material e do fator kg/par.
+        # Não bloqueia o pipeline: sem fator cadastrado ou sem capacidade, o
+        # módulo apenas gera cobertura zerada e o resto do portal segue igual.
+        try:
+            import processador_composto_eva
+            processador_composto_eva.processar_demanda_composto(
+                os.path.join(output_dir, 'dados_programacao_detalhe.json'),
+                os.path.join(output_dir, 'dados_capacidade.json'),
+                os.path.join(output_dir, processador_composto_eva.FATORES_JSON),
+                output_dir,
+            )
+        except Exception as _ex_composto:
+            print(f"    ⚠ Demanda de Composto EVA não gerada: {_ex_composto}")
     else:
         vendas, prog, carteira = _carregar_vendas_prog_existentes(output_dir)
         fat = _carregar_faturamento_existente(output_dir)
@@ -2217,7 +2231,8 @@ def processar_tudo(arquivo_3ys=None, arquivo_esqt=None, output_dir='.'):
         'arquivos': ['dados_portal.json','dados_programacao.json','dados_programacao_detalhe.json',
                       'dados_refs_tabela.json','dados_vendas.json','dados_vendas_eva.json','dados_estoque.json',
                       'dados_vendas_clientes.json','dados_vendas_carteira.json',
-                      'dados_carteira.json','dados_faturamento.json','boaonda_dados_completos.json'],
+                      'dados_carteira.json','dados_faturamento.json','dados_composto_demanda.json',
+                      'boaonda_dados_completos.json'],
     }
 
 # ─── CLI ─────────────────────────────────────────────────────────────

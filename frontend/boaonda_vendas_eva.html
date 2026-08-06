@@ -91,6 +91,28 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .empty-icon{font-size:42px}
 .empty-msg{font-size:13px;font-weight:600}
 .empty-sub{font-size:10px;text-align:center;max-width:340px;line-height:1.8}
+
+/* ── Demanda interna de composto (produção Boaonda) ── */
+.ce-desc{font-size:11px;color:var(--txt-m);line-height:1.6;margin-bottom:14px}
+.ce-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.ce-btn{background:var(--card2,#1c2030);border:1px solid var(--line2,#333a4d);color:var(--txt-s);
+        border-radius:7px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;
+        font-family:inherit;transition:.15s}
+.ce-btn:hover{border-color:var(--verde);color:var(--txt)}
+.ce-btn:disabled{opacity:.5;cursor:not-allowed}
+.ce-aviso{background:rgba(217,164,65,.08);border:1px solid rgba(217,164,65,.35);border-radius:9px;
+          padding:12px 16px;font-size:11px;color:var(--amarelo,#d9a441);line-height:1.7;margin-bottom:16px}
+.ce-cor-row{cursor:pointer}
+.ce-cor-row:hover td{background:rgba(108,156,55,.07)}
+.ce-cor-row.ativa td{color:var(--verde)}
+.ce-arrow{display:inline-block;width:13px;color:var(--txt-m);font-size:9px}
+.ce-sub td{background:rgba(255,255,255,.02);font-size:11px;color:var(--txt-m)}
+.ce-sub td:first-child{padding-left:30px}
+.ce-bar{height:5px;border-radius:3px;background:var(--verde);opacity:.75;min-width:2px}
+.ce-periodo-tag{font-size:10px;background:rgba(108,156,55,.14);color:var(--verde);
+                padding:3px 9px;border-radius:10px;font-weight:700;margin-left:8px}
+.ce-limpar{background:none;border:none;color:var(--coral);cursor:pointer;font-size:10px;
+           font-weight:700;padding:0 4px;font-family:inherit}
 </style>
 </head>
 <body>
@@ -172,6 +194,85 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
         <table class="rt">
           <thead><tr><th class="th-nome">Referência</th><th>Kg</th><th>Valor</th></tr></thead>
           <tbody id="tbody-refs"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DEMANDA INTERNA: composto consumido pela produção da própria Boaonda ── -->
+  <div class="stitle">Demanda interna — composto para a produção Boaonda</div>
+  <div class="ce-desc">
+    Todo calçado injetado em <strong>EVA</strong> consome composto produzido por este setor. Aqui a
+    programação de produção (em pares) é convertida em <strong>necessidade de composto (kg)</strong>,
+    usando o fator kg/par de cada referência. O que define se uma referência é EVA é o
+    <strong>material do cadastro técnico</strong> (Capacidade Fabril), não a linha comercial —
+    há modelos de linha CLASSIC que são injetados em EVA. Janela: a mesma da programação
+    (~2 meses). Estes números <strong>não</strong> incluem a venda externa mostrada acima.
+  </div>
+
+  <div class="ce-tools">
+    <button class="ce-btn" onclick="baixarFatores()">⬇ Baixar planilha de fatores (kg/par)</button>
+    <button class="ce-btn" onclick="document.getElementById('ce-file').click()">⬆ Importar planilha preenchida</button>
+    <input type="file" id="ce-file" accept=".xlsx" style="display:none" onchange="importarFatores(this)">
+    <span id="ce-status" style="font-size:10.5px;color:var(--txt-m)"></span>
+  </div>
+
+  <div id="ce-aviso" class="ce-aviso" style="display:none"></div>
+
+  <div id="ce-conteudo" style="display:none">
+    <div class="kpi-grid">
+      <div class="kpi destaque">
+        <div class="kpi-l">Necessidade de composto</div>
+        <div class="kpi-v verde" id="ce-kpi-kg">–</div>
+        <div class="kpi-s" id="ce-kpi-kg-sub">–</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Pares EVA programados</div>
+        <div class="kpi-v azul" id="ce-kpi-pares">–</div>
+        <div class="kpi-s" id="ce-kpi-pares-sub">–</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Cor que mais pesa</div>
+        <div class="kpi-v" id="ce-kpi-cor">–</div>
+        <div class="kpi-s" id="ce-kpi-cor-sub">–</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Cobertura do fator</div>
+        <div class="kpi-v" id="ce-kpi-cob">–</div>
+        <div class="kpi-s" id="ce-kpi-cob-sub">–</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="view-toggle">
+        <button class="view-btn active" id="ce-vb-semana" onclick="ceSetModo('semanas')">Por semana</button>
+        <button class="view-btn" id="ce-vb-mes" onclick="ceSetModo('meses')">Por mês</button>
+      </div>
+      <div class="chart-inner">
+        <canvas id="ce-chart"></canvas>
+      </div>
+      <div class="chart-hint">Clique numa barra para ver as cores daquele período</div>
+    </div>
+
+    <div class="tcard">
+      <div class="tcard-head">
+        <div class="tcard-titulo">
+          Necessidade por cor de injeção
+          <span class="ce-periodo-tag" id="ce-periodo-tag" style="display:none"></span>
+          <button class="ce-limpar" id="ce-limpar" style="display:none" onclick="ceLimparPeriodo()">limpar</button>
+        </div>
+      </div>
+      <div class="ce-desc" style="margin:0 0 10px">
+        Cor de injeção = primeira cor do combinado, acumulando <strong>todas as linhas e todas as
+        referências</strong> — é o total de composto daquela cor. Clique numa cor para ver quais
+        referências a compõem.
+      </div>
+      <div class="table-scroll">
+        <table class="rt">
+          <thead><tr>
+            <th class="th-nome">Cor de injeção</th><th>Kg</th><th>Pares</th><th>Participação</th>
+          </tr></thead>
+          <tbody id="ce-tbody-cores"></tbody>
         </table>
       </div>
     </div>
@@ -353,6 +454,207 @@ function render() {
     '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--txt-m)">Sem dados</td></tr>';
 }
 
+// ─── DEMANDA INTERNA (composto para a produção Boaonda) ──────────────
+// Lê dados_composto_demanda.json, gerado por processador_composto_eva.py a
+// partir da programação (pares) × fator kg/par. Independente do bloco de
+// venda externa acima — os dois nunca se somam.
+let DEM = null, ceModo = 'semanas', ceChart = null, cePeriodo = null, ceCorAberta = null;
+
+const ceSemLabel = k => {
+  const [y, m, d] = k.split('-');
+  return d + '/' + MESES_PT[parseInt(m) - 1];
+};
+const ceMesLabel = k => MESES_PT[parseInt(k.slice(5, 7)) - 1] + '/' + k.slice(2, 4);
+const ceLabel = k => (ceModo === 'semanas' ? ceSemLabel(k) : ceMesLabel(k));
+
+function ceSetModo(modo) {
+  ceModo = modo;
+  cePeriodo = null; ceCorAberta = null;
+  document.getElementById('ce-vb-semana').classList.toggle('active', modo === 'semanas');
+  document.getElementById('ce-vb-mes').classList.toggle('active', modo === 'meses');
+  renderDemanda();
+}
+function ceLimparPeriodo() { cePeriodo = null; ceCorAberta = null; renderDemanda(); }
+function ceToggleCor(cor) {
+  ceCorAberta = (ceCorAberta === cor) ? null : cor;
+  renderCores();
+}
+
+// Agrega as cores de vários períodos num só ranking — usado quando nenhum
+// período específico está selecionado (visão da janela inteira).
+function ceAgregarCores(chaves) {
+  const mapa = new Map();
+  chaves.forEach(k => {
+    const bloco = (DEM[ceModo] || {})[k];
+    if (!bloco) return;
+    (bloco.cores || []).forEach(c => {
+      if (!mapa.has(c.cor)) mapa.set(c.cor, { cor: c.cor, kg: 0, pares: 0, refs: new Map() });
+      const e = mapa.get(c.cor);
+      e.kg += c.kg; e.pares += c.pares;
+      (c.refs || []).forEach(r => {
+        const atual = e.refs.get(r.ref) || { ref: r.ref, kg: 0, pares: 0 };
+        atual.kg += r.kg; atual.pares += r.pares;
+        e.refs.set(r.ref, atual);
+      });
+    });
+  });
+  return [...mapa.values()]
+    .map(e => ({ ...e, refs: [...e.refs.values()].sort((a, b) => b.pares - a.pares) }))
+    .sort((a, b) => b.kg - a.kg);
+}
+
+function renderCores() {
+  const chaves = cePeriodo ? [cePeriodo] : Object.keys(DEM[ceModo] || {});
+  const cores = ceAgregarCores(chaves);
+  const total = cores.reduce((s, c) => s + c.kg, 0);
+
+  const tag = document.getElementById('ce-periodo-tag');
+  const btnLimpar = document.getElementById('ce-limpar');
+  if (cePeriodo) {
+    tag.textContent = ceLabel(cePeriodo); tag.style.display = '';
+    btnLimpar.style.display = '';
+  } else {
+    tag.style.display = 'none'; btnLimpar.style.display = 'none';
+  }
+
+  const html = cores.map(c => {
+    const pct = total ? c.kg / total * 100 : 0;
+    const aberta = ceCorAberta === c.cor;
+    const linha = `<tr class="ce-cor-row${aberta ? ' ativa' : ''}" onclick="ceToggleCor('${c.cor.replace(/'/g, "\\'")}')">
+      <td class="td-nome"><span class="ce-arrow">${aberta ? '▾' : '▸'}</span>${c.cor}</td>
+      <td class="td-kg">${fKg(c.kg)}</td>
+      <td>${(c.pares || 0).toLocaleString('pt-BR')}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">
+        <div class="ce-bar" style="width:${Math.max(pct, 1).toFixed(1)}%"></div>
+        <span style="font-size:10px;color:var(--txt-m)">${pct.toFixed(1)}%</span>
+      </div></td></tr>`;
+    if (!aberta) return linha;
+    const subs = c.refs.map(r => `<tr class="ce-sub">
+      <td>${r.ref}</td><td>${fKg(r.kg)}</td>
+      <td>${(r.pares || 0).toLocaleString('pt-BR')}</td><td></td></tr>`).join('');
+    return linha + subs;
+  }).join('');
+
+  document.getElementById('ce-tbody-cores').innerHTML = html ||
+    '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--txt-m)">Sem necessidade de composto neste período</td></tr>';
+}
+
+function renderDemanda() {
+  if (!DEM) return;
+  const blocos = DEM[ceModo] || {};
+  const chaves = Object.keys(blocos).sort();
+  const cob = DEM.cobertura || {};
+
+  // Sem nenhum fator cadastrado, os kg seriam todos zero — melhor explicar
+  // o que falta do que mostrar um gráfico vazio.
+  if (!cob.refs_com_fator_cadastrado) {
+    document.getElementById('ce-conteudo').style.display = 'none';
+    const av = document.getElementById('ce-aviso');
+    av.style.display = '';
+    av.innerHTML = '<strong>Falta cadastrar o fator kg/par.</strong><br>' +
+      'A programação tem <strong>' + (cob.pares_eva || 0).toLocaleString('pt-BR') +
+      ' pares</strong> de calçado EVA na janela atual, mas ainda não há como convertê-los em quilos. ' +
+      'Baixe a planilha acima (já vem com as referências EVA ordenadas por volume), preencha a coluna ' +
+      '<code>kg_par</code> e importe de volta — dá para preencher aos poucos, começando pelas de maior volume.';
+    return;
+  }
+  document.getElementById('ce-conteudo').style.display = '';
+
+  // Aviso parcial: parte do volume ainda sem fator (o total mostrado subestima)
+  const av = document.getElementById('ce-aviso');
+  const semFator = (cob.refs_sem_fator || []);
+  if (semFator.length) {
+    const paresSem = semFator.reduce((s, r) => s + r.pares, 0);
+    av.style.display = '';
+    av.innerHTML = '<strong>Cobertura parcial — os kg abaixo estão subestimados.</strong><br>' +
+      semFator.length + ' referência(s) EVA sem fator kg/par (' + paresSem.toLocaleString('pt-BR') +
+      ' pares não convertidos): ' + semFator.slice(0, 6).map(r => r.ref).join(', ') +
+      (semFator.length > 6 ? '…' : '') + '. Complete a planilha para fechar o número.';
+  } else {
+    av.style.display = 'none';
+  }
+
+  // KPIs — período selecionado, ou o período mais recente com necessidade
+  const alvo = cePeriodo || chaves[chaves.length - 1];
+  const bloco = blocos[alvo] || { kg: 0, pares: 0, cores: [] };
+  document.getElementById('ce-kpi-kg').textContent = fKg(bloco.kg);
+  document.getElementById('ce-kpi-kg-sub').textContent =
+    alvo ? (ceModo === 'semanas' ? 'semana de ' : '') + ceLabel(alvo) : '–';
+  document.getElementById('ce-kpi-pares').textContent = (bloco.pares || 0).toLocaleString('pt-BR');
+  document.getElementById('ce-kpi-pares-sub').textContent = 'pares de calçado EVA';
+  const corTop = (bloco.cores || [])[0];
+  document.getElementById('ce-kpi-cor').textContent = corTop ? corTop.cor : '–';
+  document.getElementById('ce-kpi-cor-sub').textContent = corTop ? fKg(corTop.kg) : '–';
+  document.getElementById('ce-kpi-cob').textContent = (cob.pct_com_fator || 0).toFixed(0) + '%';
+  document.getElementById('ce-kpi-cob-sub').textContent =
+    (cob.pares_com_fator || 0).toLocaleString('pt-BR') + ' de ' +
+    (cob.pares_eva || 0).toLocaleString('pt-BR') + ' pares';
+
+  if (ceChart) ceChart.destroy();
+  ceChart = new Chart(document.getElementById('ce-chart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: chaves.map(ceLabel),
+      datasets: [{
+        label: 'Necessidade (kg)', data: chaves.map(k => blocos[k].kg || 0),
+        backgroundColor: chaves.map(k => k === cePeriodo ? 'rgba(237,104,66,.95)' : 'rgba(73,148,199,.8)'),
+        hoverBackgroundColor: 'rgba(237,104,66,1)', borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 24 } },
+      onClick: (evt, els) => {
+        if (!els.length) return;
+        const k = chaves[els[0].index];
+        cePeriodo = (cePeriodo === k) ? null : k;
+        ceCorAberta = null;
+        renderDemanda();
+      },
+      onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ' ' + fKg(c.raw) } },
+      },
+      scales: {
+        x: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 }, callback: v => fKgShort(v) } },
+      }
+    }
+  });
+
+  renderCores();
+}
+
+function baixarFatores() { window.location.href = '/api/composto/exportar'; }
+
+async function importarFatores(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const st = document.getElementById('ce-status');
+  st.textContent = 'Importando...';
+  try {
+    const fd = new FormData();
+    fd.append('arquivo', f);
+    const r = await fetch('/api/composto/importar', { method: 'POST', body: fd });
+    const d = await r.json().catch(() => ({}));
+    if (d.status === 'ok') {
+      st.textContent = '✓ ' + d.fatores_importados + ' fator(es) importado(s) em ' +
+                       d.referencias + ' referência(s).';
+      const nd = await fetch('dados_composto_demanda.json?_=' + Date.now());
+      if (nd.ok) { DEM = await nd.json(); cePeriodo = null; ceCorAberta = null; renderDemanda(); }
+    } else {
+      st.textContent = '';
+      alert(d.mensagem || 'Não foi possível importar a planilha.');
+    }
+  } catch (e) {
+    st.textContent = '';
+    alert('Falha ao importar a planilha.');
+  } finally {
+    input.value = '';
+  }
+}
+
 fetch('dados_vendas_eva.json?_=' + Date.now())
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(d => {
@@ -363,6 +665,27 @@ fetch('dados_vendas_eva.json?_=' + Date.now())
   .catch(() => {
     document.querySelector('.main').innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Dados de Composto EVA não encontrados</div><div class="empty-sub">Execute o processador para gerar dados_vendas_eva.json e tente novamente.</div></div>';
   });
+
+// Demanda interna é opcional: se o JSON ainda não existe (processador não
+// rodou depois desta funcionalidade), a seção explica o que falta em vez de
+// quebrar a página de vendas.
+fetch('dados_composto_demanda.json?_=' + Date.now())
+  .then(r => r.ok ? r.json() : null)
+  .then(d => {
+    if (!d) {
+      const av = document.getElementById('ce-aviso');
+      if (av) {
+        av.style.display = '';
+        av.innerHTML = '<strong>Ainda não há dados de demanda interna.</strong><br>' +
+          'Atualize os dados do portal (upload do 3YS) para gerar o cruzamento com a programação. ' +
+          'Depois, baixe a planilha acima e cadastre o fator kg/par de cada referência EVA.';
+      }
+      return;
+    }
+    DEM = d;
+    renderDemanda();
+  })
+  .catch(() => {});
 </script>
 </body>
 </html>
