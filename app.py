@@ -37,7 +37,7 @@ DATA_FILES = (
     'boaonda_dados_completos.json', 'config_producao.json',
     'dados_capacidade.json', 'dados_ocupacao_semanal.json',
     'dados_faturamento.json', 'dados_fotos.json', 'dados_home.json',
-    'dados_metas.json',
+    'dados_metas.json', 'dados_composto_demanda.json',
 )
 
 # Arquivos JSON servidos publicamente (sem autenticação) para o catálogo público.
