@@ -23,6 +23,16 @@ from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 
 META_SEMANAL = 30000
+# Quantos meses de histórico o detalhe item-a-item da programação cobre
+# (dados_programacao_detalhe.json), contando do 1º dia do mês de N meses
+# atrás. Alimenta os drilldowns de linha/cor e cor de injeção na tela de
+# Programação. Fica em 1 de propósito: esse arquivo vai inteiro pro
+# navegador e cresce rápido (medido em 2026-08-06 na base real — 1 mês:
+# 2,3 MB; 6: 6,1 MB; 12: 14,5 MB; 24: 20,5 MB), então aumentar aqui pesa
+# direto no tempo de carregar a tela de Programação. A demanda de Composto
+# EVA NÃO depende disso — ela usa dados_composto_base.json, que cobre o
+# histórico inteiro de forma compacta. Ajustável por variável de ambiente.
+MESES_HISTORICO_DETALHE = int(os.environ.get('MESES_HISTORICO_DETALHE', '1'))
 LOCAIS_ESTOQUE = {'156','157','158','159','160','234','30','VI','199'}
 GRUPOS_OK = ['MERCADO INTERNO','ISENTO','ECOMMERCE','E-COMMERCE','EXPORTA','MOULD']
 
@@ -1011,14 +1021,16 @@ def processar_programacao(linhas, output_dir='.'):
     refs_prog = Counter()
     linhas_proc = 0
 
-    # Detalhe item-a-item (drilldown por semana) — cobre a partir do 1º dia
-    # do mês anterior ao atual, evitando exportar o histórico inteiro.
+    # Detalhe item-a-item (drilldown por semana) — cobre a partir do 1º dia do
+    # mês de N meses atrás. N vem de MESES_HISTORICO_DETALHE (ver constante no
+    # topo): era fixo em 1 (só o mês anterior), o que limitava demais as telas
+    # que dependem do detalhe — drilldown de linha/cor, cor de injeção e a
+    # demanda de Composto EVA só enxergavam ~2 meses.
     hoje = datetime.now()
-    if hoje.month == 1:
-        cutoff_detalhe = datetime(hoje.year - 1, 12, 1)
-    else:
-        cutoff_detalhe = datetime(hoje.year, hoje.month - 1, 1)
+    _abs = hoje.year * 12 + (hoje.month - 1) - MESES_HISTORICO_DETALHE
+    cutoff_detalhe = datetime(_abs // 12, _abs % 12 + 1, 1)
     detalhe_raw = defaultdict(lambda: defaultdict(int))
+    composto_base = defaultdict(lambda: defaultdict(int))
 
     for row in linhas:
         abr = g(row, IDX['abr_grp']).upper()
@@ -1110,6 +1122,16 @@ def processar_programacao(linhas, output_dir='.'):
         refs_prog[ref] += qtd
         refs_por_semana[sem_key][ref] += qtd
         refs_por_mes[mes_key][ref]    += qtd
+
+        # Base compacta do Composto EVA — HISTÓRICO INTEIRO, sem o cutoff do
+        # detalhe. Só (ref, linha, cor, linha de produto) por semana: sem
+        # cliente/pedido/plano ela fica ~12x menor que o detalhe completo
+        # (1,8 MB para 82 semanas, contra 20 MB), então dá pra cobrir todo o
+        # período sem pesar nada. Não é servida ao navegador — só alimenta
+        # processador_composto_eva.py no servidor.
+        _linha_grade_ce = _extrair_num_linha(g(row, IDX['descr'])) or '(sem linha)'
+        _cor_ce = _extrair_cor(corrigir_mojibake(g(row, IDX['forma']))) or '(sem cor)'
+        composto_base[sem_key][(ref, _linha_grade_ce, _cor_ce, ln)] += qtd
 
         if dt >= cutoff_detalhe:
             cliente_d = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40]
@@ -1212,6 +1234,20 @@ def processar_programacao(linhas, output_dir='.'):
             'semanas': detalhe_out,
         }, f_, ensure_ascii=False, default=str)
     print(f"    ✓ dados_programacao_detalhe.json gerado ({sum(len(v) for v in detalhe_out.values())} itens em {len(detalhe_out)} semanas)")
+
+    # *** GRAVAR dados_composto_base.json (histórico inteiro, compacto) ***
+    composto_out = {
+        sem_key: [{'ref': r, 'linha': lg, 'cor': cor, 'linha_prod': lp, 'pares': qtd}
+                  for (r, lg, cor, lp), qtd in itens.items()]
+        for sem_key, itens in composto_base.items()
+    }
+    with open(os.path.join(output_dir, 'dados_composto_base.json'), 'w', encoding='utf-8') as f_:
+        json.dump({
+            'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+            'semanas': composto_out,
+        }, f_, ensure_ascii=False, default=str)
+    print(f"    ✓ dados_composto_base.json gerado ({sum(len(v) for v in composto_out.values())} itens "
+          f"em {len(composto_out)} semanas — histórico completo)")
 
     dados_prog = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),

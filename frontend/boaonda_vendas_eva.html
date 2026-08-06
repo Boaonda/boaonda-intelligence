@@ -460,12 +460,30 @@ function render() {
 // venda externa acima — os dois nunca se somam.
 let DEM = null, ceModo = 'semanas', ceChart = null, cePeriodo = null, ceCorAberta = null;
 
-const ceSemLabel = k => {
+// Número ISO da semana (1–53): é assim que o pessoal de produção fala —
+// "semana 30", "semana 31" — então o eixo mostra S30 e a data fica de apoio.
+function ceSemanaISO(k) {
+  const [y, m, d] = k.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  // ISO: semana 1 é a que contém a primeira quinta-feira do ano. Joga a data
+  // pra quinta da própria semana e conta a partir do dia 1º de janeiro.
+  const diaSem = (dt.getUTCDay() + 6) % 7;          // 0 = segunda
+  dt.setUTCDate(dt.getUTCDate() - diaSem + 3);      // quinta desta semana
+  const primeiraQuinta = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+  const diaSemJan = (primeiraQuinta.getUTCDay() + 6) % 7;
+  primeiraQuinta.setUTCDate(primeiraQuinta.getUTCDate() - diaSemJan + 3);
+  return 1 + Math.round((dt - primeiraQuinta) / (7 * 24 * 3600 * 1000));
+}
+const ceSemLabel = k => 'S' + ceSemanaISO(k);
+// Rótulo completo (semana + data) — usado no tooltip e na tag de período,
+// onde há espaço para as duas informações.
+const ceSemLabelLongo = k => {
   const [y, m, d] = k.split('-');
-  return d + '/' + MESES_PT[parseInt(m) - 1];
+  return 'Semana ' + ceSemanaISO(k) + ' · ' + d + '/' + MESES_PT[parseInt(m) - 1] + '/' + y.slice(2);
 };
 const ceMesLabel = k => MESES_PT[parseInt(k.slice(5, 7)) - 1] + '/' + k.slice(2, 4);
 const ceLabel = k => (ceModo === 'semanas' ? ceSemLabel(k) : ceMesLabel(k));
+const ceLabelLongo = k => (ceModo === 'semanas' ? ceSemLabelLongo(k) : ceMesLabel(k));
 
 function ceSetModo(modo) {
   ceModo = modo;
@@ -511,7 +529,7 @@ function renderCores() {
   const tag = document.getElementById('ce-periodo-tag');
   const btnLimpar = document.getElementById('ce-limpar');
   if (cePeriodo) {
-    tag.textContent = ceLabel(cePeriodo); tag.style.display = '';
+    tag.textContent = ceLabelLongo(cePeriodo); tag.style.display = '';
     btnLimpar.style.display = '';
   } else {
     tag.style.display = 'none'; btnLimpar.style.display = 'none';
@@ -593,8 +611,7 @@ function renderDemanda() {
   const alvo = cePeriodo || chaves[chaves.length - 1];
   const bloco = blocos[alvo] || { kg: 0, pares: 0, cores: [] };
   document.getElementById('ce-kpi-kg').textContent = fKg(bloco.kg);
-  document.getElementById('ce-kpi-kg-sub').textContent =
-    alvo ? (ceModo === 'semanas' ? 'semana de ' : '') + ceLabel(alvo) : '–';
+  document.getElementById('ce-kpi-kg-sub').textContent = alvo ? ceLabelLongo(alvo) : '–';
   document.getElementById('ce-kpi-pares').textContent = (bloco.pares || 0).toLocaleString('pt-BR');
   document.getElementById('ce-kpi-pares-sub').textContent = 'pares de calçado EVA';
   const corTop = (bloco.cores || [])[0];
@@ -629,10 +646,13 @@ function renderDemanda() {
       onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: c => ' ' + fKg(c.raw) } },
+        tooltip: { callbacks: {
+          title: items => items.length ? ceLabelLongo(chaves[items[0].dataIndex]) : '',
+          label: c => ' ' + fKg(c.raw),
+        } },
       },
       scales: {
-        x: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 } } },
+        x: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 }, autoSkip: true, maxRotation: 0 } },
         y: { grid: { color: 'rgba(38,43,58,.8)' }, ticks: { font: { size: 10 }, callback: v => fKgShort(v) } },
       }
     }

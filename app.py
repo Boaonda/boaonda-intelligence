@@ -38,6 +38,10 @@ DATA_FILES = (
     'dados_capacidade.json', 'dados_ocupacao_semanal.json',
     'dados_faturamento.json', 'dados_fotos.json', 'dados_home.json',
     'dados_metas.json', 'dados_composto_demanda.json',
+    # Entrada do processador de Composto EVA (histórico completo, compacto).
+    # Está aqui para viver no volume e ser semeada no primeiro boot; nenhuma
+    # tela a busca — o navegador só recebe dados_composto_demanda.json.
+    'dados_composto_base.json',
 )
 
 # Arquivos JSON servidos publicamente (sem autenticação) para o catálogo público.
@@ -133,7 +137,8 @@ MODULOS = {
     'vendas_eva': {
         'label': 'Vendas Composto EVA',
         'htmls': ['boaonda_vendas_eva.html'],
-        'jsons': ['dados_vendas_eva.json', 'dados_composto_demanda.json'],
+        'jsons': ['dados_vendas_eva.json', 'dados_composto_demanda.json',
+                  'dados_composto_base.json'],
         'ia': ['vendas_eva'],
     },
     'carteira': {

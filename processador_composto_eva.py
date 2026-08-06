@@ -170,19 +170,33 @@ def processar_demanda_composto(detalhe_path, capacidade_path, fatores_path, outp
     """Converte a programação de calçado EVA (pares) em necessidade de
     composto (kg), por semana e por mês, com quebra por cor de injeção.
 
-    Importante sobre a janela: dados_programacao_detalhe.json é uma janela
-    ROLANTE de ~2 meses (a partir do dia 1º do mês anterior), não o histórico
-    inteiro — é a mesma limitação que já vale para os drilldowns de linha/cor
-    e de cor de injeção na tela de Programação.
+    Cobre o histórico INTEIRO da programação (via dados_composto_base.json),
+    diferente dos drilldowns da tela de Programação, que ficam limitados à
+    janela rolante de ~2 meses do detalhe item-a-item.
     """
     print("\n  Processando demanda interna de Composto EVA...")
 
-    if not os.path.exists(detalhe_path):
-        print("    ⚠ dados_programacao_detalhe.json não encontrado — pulando.")
+    # Fonte preferencial: dados_composto_base.json — histórico INTEIRO da
+    # programação, compacto (só ref/linha/cor/linha_prod por semana). O
+    # detalhe item-a-item serve de fallback, mas é uma janela rolante de
+    # ~2 meses: usá-lo cortaria a visão do período, que é justamente o que
+    # o setor precisa enxergar por completo.
+    base_path = os.path.join(os.path.dirname(detalhe_path) or '.', 'dados_composto_base.json')
+    origem_dados = None
+    if os.path.exists(base_path):
+        with open(base_path, encoding='utf-8') as f:
+            det = json.load(f)
+        origem_dados = 'base'
+    elif os.path.exists(detalhe_path):
+        with open(detalhe_path, encoding='utf-8') as f:
+            det = json.load(f)
+        origem_dados = 'detalhe'
+        print("    ⚠ dados_composto_base.json ausente — usando o detalhe da programação "
+              "(janela de ~2 meses). Reprocesse os dados para cobrir o histórico completo.")
+    else:
+        print("    ⚠ Nem dados_composto_base.json nem dados_programacao_detalhe.json "
+              "encontrados — pulando.")
         return None
-
-    with open(detalhe_path, encoding='utf-8') as f:
-        det = json.load(f)
 
     por_ref_linha, por_ref = carregar_material_map(capacidade_path)
     fatores = carregar_fatores(fatores_path)
@@ -276,6 +290,10 @@ def processar_demanda_composto(detalhe_path, capacidade_path, fatores_path, outp
     out = {
         'gerado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
         'cutoff': det.get('cutoff'),
+        # 'base' = histórico completo | 'detalhe' = janela rolante de ~2 meses.
+        # Não confundir com 'pares_por_origem_do_fator' abaixo, que fala de
+        # onde veio o kg/par (linha específica ou referência inteira).
+        'origem_dados': origem_dados,
         'semanas': {k: _serializa(v) for k, v in sorted(semanas.items())},
         'meses': {k: _serializa(v) for k, v in sorted(meses.items())},
         'cobertura': {
