@@ -33,10 +33,19 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .kpi{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--line2);border-radius:10px;padding:16px}
 .kpi.destaque{border-top-color:var(--verde)}
 .kpi.azul{border-top-color:var(--azul)}
+/* Bloco 3 (demanda interna) usa coral; Bloco 1 combina as duas cores */
+.kpi.coral{border-top-color:var(--coral)}
+/* Barra superior em degradê verde→coral (as duas origens somadas). Feita com
+   pseudo-elemento, não border-image, que pintaria os quatro lados do card. */
+.kpi.geral{position:relative;border-top-color:transparent}
+.kpi.geral::before{content:'';position:absolute;left:-1px;right:-1px;top:-2px;height:2px;
+                   background:linear-gradient(90deg,var(--verde),var(--coral));
+                   border-radius:10px 10px 0 0}
 .kpi-l{font-size:9px;color:var(--txt-s);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px}
 .kpi-v{font-size:1.6rem;font-weight:800;color:var(--txt);line-height:1}
 .kpi-v.verde{color:var(--verde)}
 .kpi-v.azul{color:var(--azul)}
+.kpi-v.coral{color:var(--coral)}
 .kpi-s{font-size:10px;color:var(--txt-m);margin-top:5px}
 
 .chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:28px}
@@ -92,7 +101,39 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 .empty-msg{font-size:13px;font-weight:600}
 .empty-sub{font-size:10px;text-align:center;max-width:340px;line-height:1.8}
 
+/* ── Cabeçalho dos 3 blocos (MIV: verde = venda externa, coral = interna) ── */
+.bloco-sec{display:flex;align-items:center;gap:14px;margin:38px 0 18px;padding:15px 20px;
+           background:var(--card);border:1px solid var(--line);border-radius:12px;
+           position:relative;overflow:hidden}
+.bloco-sec::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px}
+.b-geral::before{background:linear-gradient(180deg,var(--verde) 0%,var(--verde) 45%,
+                                             var(--coral) 55%,var(--coral) 100%)}
+.b-externa::before{background:var(--verde)}
+.b-interna::before{background:var(--coral)}
+.bloco-num{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;
+           justify-content:center;font-size:13px;font-weight:800;flex-shrink:0}
+.b-geral  .bloco-num{background:rgba(243,240,235,.07);color:var(--txt-s)}
+.b-externa .bloco-num{background:rgba(108,156,55,.14);color:var(--verde)}
+.b-interna .bloco-num{background:rgba(237,104,66,.14);color:var(--coral)}
+.bloco-titulo{font-size:14.5px;font-weight:800;color:var(--txt)}
+.bloco-sub{font-size:10.5px;color:var(--txt-m);margin-top:3px;line-height:1.55}
+.bloco-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+           padding:3px 9px;border-radius:10px;margin-left:auto;flex-shrink:0;white-space:nowrap}
+.b-externa .bloco-tag{background:rgba(108,156,55,.12);color:var(--verde)}
+.b-interna .bloco-tag{background:rgba(237,104,66,.12);color:var(--coral)}
+
+/* Legenda do gráfico combinado */
+.geral-leg{display:flex;gap:18px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.geral-leg-item{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--txt-s)}
+.geral-leg-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
 /* ── Demanda interna de composto (produção Boaonda) ── */
+.ce-toggles{display:flex;gap:6px 22px;flex-wrap:wrap;align-items:center}
+.ce-toggles .view-toggle{margin-bottom:14px}
+.view-toggle.coral .view-btn.active{background:rgba(237,104,66,.15);
+                                    border-color:var(--coral);color:var(--coral)}
+.ce-tog-label{font-size:9px;text-transform:uppercase;letter-spacing:.1em;
+              color:var(--txt-m);font-weight:700;margin:0 2px 14px 0}
 .ce-desc{font-size:11px;color:var(--txt-m);line-height:1.6;margin-bottom:14px}
 .ce-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
 .ce-btn{background:var(--card2,#1c2030);border:1px solid var(--line2,#333a4d);color:var(--txt-s);
@@ -128,6 +169,67 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 </div>
 
 <div class="main">
+
+  <!-- ══ BLOCO 1 — VISÃO GERAL DO SETOR (externa + interna) ══ -->
+  <div class="bloco-sec b-geral">
+    <div class="bloco-num">1</div>
+    <div>
+      <div class="bloco-titulo">Visão geral do setor</div>
+      <div class="bloco-sub">
+        Tudo que o Composto EVA precisa produzir: a venda externa a terceiros
+        (<span style="color:var(--verde);font-weight:700">verde</span>) somada ao consumo da própria
+        produção Boaonda (<span style="color:var(--coral);font-weight:700">laranja</span>).
+      </div>
+    </div>
+  </div>
+
+  <div id="geral-conteudo" style="display:none">
+    <div class="kpi-grid">
+      <div class="kpi geral">
+        <div class="kpi-l">Total do setor</div>
+        <div class="kpi-v" id="g-kpi-total">–</div>
+        <div class="kpi-s" id="g-kpi-total-sub">–</div>
+      </div>
+      <div class="kpi destaque">
+        <div class="kpi-l">Venda externa</div>
+        <div class="kpi-v verde" id="g-kpi-ext">–</div>
+        <div class="kpi-s" id="g-kpi-ext-sub">–</div>
+      </div>
+      <div class="kpi coral">
+        <div class="kpi-l">Demanda interna</div>
+        <div class="kpi-v coral" id="g-kpi-int">–</div>
+        <div class="kpi-s" id="g-kpi-int-sub">–</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Média mensal do setor</div>
+        <div class="kpi-v azul" id="g-kpi-media">–</div>
+        <div class="kpi-s" id="g-kpi-media-sub">–</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-inner">
+        <canvas id="geral-chart"></canvas>
+      </div>
+      <div class="geral-leg">
+        <span class="geral-leg-item"><span class="geral-leg-dot" style="background:var(--verde)"></span>Venda externa (terceiros)</span>
+        <span class="geral-leg-item"><span class="geral-leg-dot" style="background:var(--coral)"></span>Demanda interna (produção Boaonda)</span>
+      </div>
+      <div class="chart-hint" id="geral-hint"></div>
+    </div>
+  </div>
+
+  <div id="geral-vazio" class="ce-aviso" style="display:none"></div>
+
+  <!-- ══ BLOCO 2 — VENDA EXTERNA ══ -->
+  <div class="bloco-sec b-externa">
+    <div class="bloco-num">2</div>
+    <div>
+      <div class="bloco-titulo">Venda externa — composto faturado a terceiros</div>
+      <div class="bloco-sub">Matéria-prima vendida para outras marcas (Ramarim, M3, Kidy…) · identificado pela MARCA, sem filtro de cliente/espécie</div>
+    </div>
+    <span class="bloco-tag">Verde</span>
+  </div>
 
   <div class="stitle">Resumo — mês atual</div>
   <div class="kpi-grid">
@@ -199,15 +301,22 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     </div>
   </div>
 
-  <!-- ── DEMANDA INTERNA: composto consumido pela produção da própria Boaonda ── -->
-  <div class="stitle">Demanda interna — composto para a produção Boaonda</div>
+  <!-- ══ BLOCO 3 — DEMANDA INTERNA (produção da própria Boaonda) ══ -->
+  <div class="bloco-sec b-interna">
+    <div class="bloco-num">3</div>
+    <div>
+      <div class="bloco-titulo">Demanda interna — composto para a produção Boaonda</div>
+      <div class="bloco-sub">Composto consumido pelo próprio calçado injetado em EVA · convertido da programação de produção pelo fator kg/par</div>
+    </div>
+    <span class="bloco-tag">Laranja</span>
+  </div>
   <div class="ce-desc">
     Todo calçado injetado em <strong>EVA</strong> consome composto produzido por este setor. Aqui a
     programação de produção (em pares) é convertida em <strong>necessidade de composto (kg)</strong>,
     usando o fator kg/par de cada referência. O que define se uma referência é EVA é o
     <strong>material do cadastro técnico</strong> (Capacidade Fabril), não a linha comercial —
-    há modelos de linha CLASSIC que são injetados em EVA. Janela: a mesma da programação
-    (~2 meses). Estes números <strong>não</strong> incluem a venda externa mostrada acima.
+    há modelos de linha CLASSIC que são injetados em EVA. Cobre todo o histórico da
+    programação. Estes números <strong>não</strong> incluem a venda externa do Bloco 2.
   </div>
 
   <div class="ce-tools">
@@ -221,9 +330,9 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
 
   <div id="ce-conteudo" style="display:none">
     <div class="kpi-grid">
-      <div class="kpi destaque">
+      <div class="kpi coral">
         <div class="kpi-l">Necessidade de composto</div>
-        <div class="kpi-v verde" id="ce-kpi-kg">–</div>
+        <div class="kpi-v coral" id="ce-kpi-kg">–</div>
         <div class="kpi-s" id="ce-kpi-kg-sub">–</div>
       </div>
       <div class="kpi">
@@ -244,14 +353,22 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     </div>
 
     <div class="chart-wrap">
-      <div class="view-toggle">
-        <button class="view-btn active" id="ce-vb-semana" onclick="ceSetModo('semanas')">Por semana</button>
-        <button class="view-btn" id="ce-vb-mes" onclick="ceSetModo('meses')">Por mês</button>
+      <div class="ce-toggles">
+        <div class="view-toggle coral">
+          <button class="view-btn active" id="ce-vb-semana" onclick="ceSetModo('semanas')">Por semana</button>
+          <button class="view-btn" id="ce-vb-mes" onclick="ceSetModo('meses')">Por mês</button>
+        </div>
+        <span class="ce-tog-label" id="ce-janela-label">Período</span>
+        <div class="view-toggle coral" id="ce-janela">
+          <button class="view-btn active" id="ce-jb-tudo" onclick="ceSetJanela('tudo')">Tudo</button>
+          <button class="view-btn" id="ce-jb-hist" onclick="ceSetJanela('historico')">Histórico</button>
+          <button class="view-btn" id="ce-jb-fut" onclick="ceSetJanela('futuro')">Futuro</button>
+        </div>
       </div>
       <div class="chart-inner">
         <canvas id="ce-chart"></canvas>
       </div>
-      <div class="chart-hint">Clique numa barra para ver as cores daquele período</div>
+      <div class="chart-hint" id="ce-chart-hint">Clique numa barra para ver as cores daquele período</div>
     </div>
 
     <div class="tcard">
@@ -308,23 +425,34 @@ function mesLabel(k) { return MESES_PT[parseInt(k.slice(4,6))-1] + '/' + k.slice
 // Plugin: rótulo do total em cima de cada barra
 const evaTotalizerPlugin = {
   id: 'evaTotalizer',
+  // Soma TODAS as séries visíveis, não só a primeira — assim o rótulo do
+  // gráfico empilhado do Bloco 1 mostra o total do setor (externa + interna),
+  // e num gráfico de série única continua mostrando o próprio valor.
+  // O formatador vem por opção do gráfico; sem ele, cai no modo kg/R$ da
+  // tela de venda externa.
   afterDatasetsDraw(chart) {
+    const cfg = (chart.options.plugins || {}).evaTotalizer;
+    if (cfg === false) return;
+    const fmt = (cfg && cfg.format) || (v => (viewMode === 'kg' ? fKgShort(v) : fBRLShort(v)));
     const {ctx, scales: {y}, data} = chart;
-    const meta = chart.getDatasetMeta(0);
-    if (!meta) return;
-    data.datasets[0].data.forEach((val, i) => {
-      if (!val || !meta.data[i]) return;
-      const x = meta.data[i].x;
-      const yPx = y.getPixelForValue(val);
-      const txt = viewMode === 'kg' ? fKgShort(val) : fBRLShort(val);
+    const n = (data.labels || []).length;
+    for (let i = 0; i < n; i++) {
+      let total = 0, topo = null;
+      data.datasets.forEach((ds, di) => {
+        const meta = chart.getDatasetMeta(di);
+        if (!meta || meta.hidden || !meta.data[i]) return;
+        total += ds.data[i] || 0;
+        topo = meta.data[i];
+      });
+      if (!total || !topo) continue;
       ctx.save();
       ctx.fillStyle = '#b6b3ac';
       ctx.font = '700 9px Montserrat, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(txt, x, yPx - 6);
+      ctx.fillText(fmt(total), topo.x, y.getPixelForValue(total) - 6);
       ctx.restore();
-    });
+    }
   }
 };
 Chart.register(evaTotalizerPlugin);
@@ -459,6 +587,7 @@ function render() {
 // partir da programação (pares) × fator kg/par. Independente do bloco de
 // venda externa acima — os dois nunca se somam.
 let DEM = null, ceModo = 'semanas', ceChart = null, cePeriodo = null, ceCorAberta = null;
+let ceJanela = 'tudo';   // 'tudo' | 'historico' | 'futuro'
 
 // Número ISO da semana (1–53): é assim que o pessoal de produção fala —
 // "semana 30", "semana 31" — então o eixo mostra S30 e a data fica de apoio.
@@ -485,11 +614,56 @@ const ceMesLabel = k => MESES_PT[parseInt(k.slice(5, 7)) - 1] + '/' + k.slice(2,
 const ceLabel = k => (ceModo === 'semanas' ? ceSemLabel(k) : ceMesLabel(k));
 const ceLabelLongo = k => (ceModo === 'semanas' ? ceSemLabelLongo(k) : ceMesLabel(k));
 
+// Período que abre por padrão nos KPIs. NÃO pode ser o último da lista: a
+// programação vai meses à frente, então o "último" é uma semana futura quase
+// vazia — o KPI apareceria com um valor minúsculo, dando a impressão errada.
+// Usa o período corrente quando ele existe nos dados.
+function ceMesCorrente() {
+  const h = new Date();
+  return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0');
+}
+function ceSemanaCorrente() {
+  const h = new Date();
+  const seg = new Date(h);
+  seg.setDate(h.getDate() - ((h.getDay() + 6) % 7));   // segunda desta semana
+  return seg.getFullYear() + '-' + String(seg.getMonth() + 1).padStart(2, '0') +
+         '-' + String(seg.getDate()).padStart(2, '0');
+}
+function cePeriodoPadrao(chaves) {
+  if (!chaves.length) return null;
+  const atual = (ceModo === 'meses') ? ceMesCorrente() : ceSemanaCorrente();
+  if (chaves.includes(atual)) return atual;
+  // Sem o período corrente na base, cai no último que já começou (não futuro).
+  const passados = chaves.filter(k => k <= atual);
+  return passados.length ? passados[passados.length - 1] : chaves[chaves.length - 1];
+}
+
+// Chaves de período visíveis, já com o recorte Tudo/Histórico/Futuro. É a
+// fonte única para o gráfico, os KPIs e a tabela de cores — assim os três
+// nunca discordam sobre o que está sendo mostrado.
+function ceChaves() {
+  const chaves = Object.keys((DEM && DEM[ceModo]) || {}).sort();
+  if (ceJanela === 'tudo') return chaves;
+  // Corte pelo período CORRENTE: histórico = já encerrado; futuro = do
+  // período atual (inclusive) em diante, que é o que ainda dá pra planejar.
+  const atual = (ceModo === 'meses') ? ceMesCorrente() : ceSemanaCorrente();
+  return ceJanela === 'historico' ? chaves.filter(k => k < atual)
+                                  : chaves.filter(k => k >= atual);
+}
+
 function ceSetModo(modo) {
   ceModo = modo;
   cePeriodo = null; ceCorAberta = null;
   document.getElementById('ce-vb-semana').classList.toggle('active', modo === 'semanas');
   document.getElementById('ce-vb-mes').classList.toggle('active', modo === 'meses');
+  renderDemanda();
+}
+function ceSetJanela(j) {
+  ceJanela = j;
+  cePeriodo = null; ceCorAberta = null;
+  document.getElementById('ce-jb-tudo').classList.toggle('active', j === 'tudo');
+  document.getElementById('ce-jb-hist').classList.toggle('active', j === 'historico');
+  document.getElementById('ce-jb-fut').classList.toggle('active', j === 'futuro');
   renderDemanda();
 }
 function ceLimparPeriodo() { cePeriodo = null; ceCorAberta = null; renderDemanda(); }
@@ -522,7 +696,7 @@ function ceAgregarCores(chaves) {
 }
 
 function renderCores() {
-  const chaves = cePeriodo ? [cePeriodo] : Object.keys(DEM[ceModo] || {});
+  const chaves = cePeriodo ? [cePeriodo] : ceChaves();
   const cores = ceAgregarCores(chaves);
   const total = cores.reduce((s, c) => s + c.kg, 0);
 
@@ -560,7 +734,7 @@ function renderCores() {
 function renderDemanda() {
   if (!DEM) return;
   const blocos = DEM[ceModo] || {};
-  const chaves = Object.keys(blocos).sort();
+  const chaves = ceChaves();
   const cob = DEM.cobertura || {};
 
   // Sem nenhum fator cadastrado, os kg seriam todos zero — melhor explicar
@@ -607,8 +781,27 @@ function renderDemanda() {
     av.style.display = 'none';
   }
 
-  // KPIs — período selecionado, ou o período mais recente com necessidade
-  const alvo = cePeriodo || chaves[chaves.length - 1];
+  // O recorte Tudo/Histórico/Futuro só faz sentido por semana — por mês o
+  // grão é grosso demais pra separar passado de futuro de forma útil.
+  const togJanela = document.getElementById('ce-janela');
+  const togLabel = document.getElementById('ce-janela-label');
+  const mostraJanela = (ceModo === 'semanas');
+  if (togJanela) togJanela.style.display = mostraJanela ? '' : 'none';
+  if (togLabel) togLabel.style.display = mostraJanela ? '' : 'none';
+
+  const hint = document.getElementById('ce-chart-hint');
+  if (hint) {
+    hint.textContent = !chaves.length
+      ? (ceJanela === 'futuro'
+          ? 'Não há semanas programadas da semana atual em diante.'
+          : 'Nenhum período neste recorte.')
+      : 'Clique numa barra para ver as cores daquele período' +
+        (ceJanela === 'futuro' ? ' · da semana atual em diante'
+         : ceJanela === 'historico' ? ' · semanas já encerradas' : '');
+  }
+
+  // KPIs — período selecionado no gráfico, ou o corrente por padrão
+  const alvo = cePeriodo || cePeriodoPadrao(chaves);
   const bloco = blocos[alvo] || { kg: 0, pares: 0, cores: [] };
   document.getElementById('ce-kpi-kg').textContent = fKg(bloco.kg);
   document.getElementById('ce-kpi-kg-sub').textContent = alvo ? ceLabelLongo(alvo) : '–';
@@ -628,8 +821,10 @@ function renderDemanda() {
     data: {
       labels: chaves.map(ceLabel),
       datasets: [{
+        // Coral é a cor do Bloco 3 (demanda interna). O período selecionado
+        // fica cheio; os demais, translúcidos — destaque sem trocar de cor.
         label: 'Necessidade (kg)', data: chaves.map(k => blocos[k].kg || 0),
-        backgroundColor: chaves.map(k => k === cePeriodo ? 'rgba(237,104,66,.95)' : 'rgba(73,148,199,.8)'),
+        backgroundColor: chaves.map(k => k === cePeriodo ? 'rgba(237,104,66,1)' : 'rgba(237,104,66,.62)'),
         hoverBackgroundColor: 'rgba(237,104,66,1)', borderRadius: 3,
       }]
     },
@@ -646,6 +841,7 @@ function renderDemanda() {
       onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
       plugins: {
         legend: { display: false },
+        evaTotalizer: { format: fKgShort },   // sempre kg aqui, não segue o toggle da venda
         tooltip: { callbacks: {
           title: items => items.length ? ceLabelLongo(chaves[items[0].dataIndex]) : '',
           label: c => ' ' + fKg(c.raw),
@@ -659,6 +855,116 @@ function renderDemanda() {
   });
 
   renderCores();
+}
+
+// ─── BLOCO 1: visão geral do setor (externa + interna) ───────────────
+// Junta as duas fontes num total por mês. Elas têm bases diferentes — a
+// venda externa é por mês de ENTRADA do pedido, a demanda interna é pela
+// semana de PRODUÇÃO programada — então o total é a carga do setor, não um
+// fechamento contábil. Isso está dito na tela, embaixo do gráfico.
+let geralChart = null;
+
+// Venda externa usa chave 'AAAAMM'; a demanda interna usa 'AAAA-MM'.
+const normMes = k => (k.length === 6 ? k.slice(0, 4) + '-' + k.slice(4, 6) : k);
+
+function mesesCombinados() {
+  const ext = {}, int = {};
+  Object.entries((DATA && DATA.mensal_kg) || {}).forEach(([k, v]) => { ext[normMes(k)] = v || 0; });
+  Object.entries((DEM && DEM.meses) || {}).forEach(([k, v]) => { int[normMes(k)] = (v && v.kg) || 0; });
+  const chaves = [...new Set([...Object.keys(ext), ...Object.keys(int)])].sort();
+  return chaves.map(k => ({ mes: k, ext: ext[k] || 0, int: int[k] || 0 }));
+}
+
+function renderGeral() {
+  const box = document.getElementById('geral-conteudo');
+  const vazio = document.getElementById('geral-vazio');
+  if (!box) return;
+
+  const linhas = mesesCombinados();
+  const temInterna = linhas.some(l => l.int > 0);
+  if (!linhas.length) {
+    box.style.display = 'none';
+    vazio.style.display = '';
+    vazio.innerHTML = '<strong>Sem dados para a visão geral.</strong><br>Atualize os dados do portal para montar o total do setor.';
+    return;
+  }
+  box.style.display = '';
+  // Sem fator kg/par cadastrado a parte interna fica zerada — o total viraria
+  // só a venda externa, o que induziria a erro. Melhor avisar do que fingir.
+  if (!temInterna) {
+    vazio.style.display = '';
+    vazio.innerHTML = '<strong>O total abaixo ainda é só a venda externa.</strong><br>' +
+      'A demanda interna aparece aqui assim que o fator kg/par for cadastrado (Bloco 3).';
+  } else {
+    vazio.style.display = 'none';
+  }
+
+  // Mês de referência dos KPIs: o corrente. Pegar o último da lista mostraria
+  // um mês futuro da programação, quase vazio.
+  const mesAtual = ceMesCorrente();
+  const ref = linhas.find(l => l.mes === mesAtual)
+           || [...linhas].reverse().find(l => l.mes <= mesAtual)
+           || linhas[linhas.length - 1];
+  const totalRef = ref.ext + ref.int;
+  const pct = (v) => totalRef ? (v / totalRef * 100).toFixed(0) + '% do total' : '–';
+
+  document.getElementById('g-kpi-total').textContent = fKg(totalRef);
+  document.getElementById('g-kpi-total-sub').textContent = ceMesLabel(ref.mes);
+  document.getElementById('g-kpi-ext').textContent = fKg(ref.ext);
+  document.getElementById('g-kpi-ext-sub').textContent = pct(ref.ext);
+  document.getElementById('g-kpi-int').textContent = fKg(ref.int);
+  document.getElementById('g-kpi-int-sub').textContent = pct(ref.int);
+
+  // Média mensal só sobre meses FECHADOS (anteriores ao corrente) — incluir o
+  // mês em curso ou meses futuros da programação distorceria a média.
+  const fechados = linhas.filter(l => l.mes < mesAtual);
+  const media = fechados.length
+    ? fechados.reduce((s, l) => s + l.ext + l.int, 0) / fechados.length : 0;
+  document.getElementById('g-kpi-media').textContent = fKg(media);
+  document.getElementById('g-kpi-media-sub').textContent =
+    fechados.length ? fechados.length + ' meses fechados' : 'sem histórico fechado';
+
+  document.getElementById('geral-hint').textContent =
+    'Venda externa por mês de entrada do pedido · demanda interna pela semana de produção programada';
+
+  if (geralChart) geralChart.destroy();
+  geralChart = new Chart(document.getElementById('geral-chart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: linhas.map(l => ceMesLabel(l.mes)),
+      datasets: [
+        { label: 'Venda externa', data: linhas.map(l => l.ext),
+          backgroundColor: 'rgba(108,156,55,.85)', hoverBackgroundColor: 'rgba(108,156,55,1)',
+          borderRadius: 3, stack: 'setor' },
+        { label: 'Demanda interna', data: linhas.map(l => l.int),
+          backgroundColor: 'rgba(237,104,66,.85)', hoverBackgroundColor: 'rgba(237,104,66,1)',
+          borderRadius: 3, stack: 'setor' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 24 } },
+      plugins: {
+        legend: { display: false },
+        evaTotalizer: { format: fKgShort },
+        tooltip: {
+          callbacks: {
+            label: c => ' ' + c.dataset.label + ': ' + fKg(c.raw),
+            footer: items => {
+              const t = items.reduce((s, i) => s + (i.raw || 0), 0);
+              return 'Total do setor: ' + fKg(t);
+            },
+          }
+        },
+      },
+      scales: {
+        x: { stacked: true, grid: { color: 'rgba(38,43,58,.8)' },
+             ticks: { font: { size: 10 }, autoSkip: true, maxRotation: 0 } },
+        y: { stacked: true, grid: { color: 'rgba(38,43,58,.8)' },
+             ticks: { font: { size: 10 }, callback: v => fKgShort(v) } },
+      }
+    }
+  });
 }
 
 function baixarFatores() { window.location.href = '/api/composto/exportar'; }
@@ -677,7 +983,12 @@ async function importarFatores(input) {
       st.textContent = '✓ ' + d.fatores_importados + ' fator(es) importado(s) em ' +
                        d.referencias + ' referência(s).';
       const nd = await fetch('dados_composto_demanda.json?_=' + Date.now());
-      if (nd.ok) { DEM = await nd.json(); cePeriodo = null; ceCorAberta = null; renderDemanda(); }
+      if (nd.ok) {
+        DEM = await nd.json();
+        cePeriodo = null; ceCorAberta = null;
+        renderDemanda();
+        renderGeral();   // o total do setor muda junto — Bloco 1 acompanha
+      }
     } else {
       st.textContent = '';
       alert(d.mensagem || 'Não foi possível importar a planilha.');
@@ -690,37 +1001,45 @@ async function importarFatores(input) {
   }
 }
 
-fetch('dados_vendas_eva.json?_=' + Date.now())
-  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(d => {
-    DATA = d;
-    document.getElementById('hdr-data').textContent = d.gerado_em || '–';
-    render();
-  })
-  .catch(() => {
-    document.querySelector('.main').innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Dados de Composto EVA não encontrados</div><div class="empty-sub">Execute o processador para gerar dados_vendas_eva.json e tente novamente.</div></div>';
-  });
+// Os dois blocos carregam em paralelo. A demanda interna é opcional (pode
+// não existir ainda), mas a visão geral do Bloco 1 só é montada depois que
+// as duas respostas chegam — senão o total apareceria pela metade.
+Promise.all([
+  fetch('dados_vendas_eva.json?_=' + Date.now())
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(d => {
+      DATA = d;
+      document.getElementById('hdr-data').textContent = d.gerado_em || '–';
+      render();
+      return true;
+    })
+    .catch(() => {
+      document.querySelector('.main').innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">Dados de Composto EVA não encontrados</div><div class="empty-sub">Execute o processador para gerar dados_vendas_eva.json e tente novamente.</div></div>';
+      return false;
+    }),
 
-// Demanda interna é opcional: se o JSON ainda não existe (processador não
-// rodou depois desta funcionalidade), a seção explica o que falta em vez de
-// quebrar a página de vendas.
-fetch('dados_composto_demanda.json?_=' + Date.now())
-  .then(r => r.ok ? r.json() : null)
-  .then(d => {
-    if (!d) {
-      const av = document.getElementById('ce-aviso');
-      if (av) {
-        av.style.display = '';
-        av.innerHTML = '<strong>Ainda não há dados de demanda interna.</strong><br>' +
-          'Atualize os dados do portal (upload do 3YS) para gerar o cruzamento com a programação. ' +
-          'Depois, baixe a planilha acima e cadastre o fator kg/par de cada referência EVA.';
+  fetch('dados_composto_demanda.json?_=' + Date.now())
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (!d) {
+        const av = document.getElementById('ce-aviso');
+        if (av) {
+          av.style.display = '';
+          av.innerHTML = '<strong>Ainda não há dados de demanda interna.</strong><br>' +
+            'Atualize os dados do portal (upload do 3YS) para gerar o cruzamento com a programação. ' +
+            'Depois, baixe a planilha acima e cadastre o fator kg/par de cada referência EVA.';
+        }
+        return false;
       }
-      return;
-    }
-    DEM = d;
-    renderDemanda();
-  })
-  .catch(() => {});
+      DEM = d;
+      renderDemanda();
+      return true;
+    })
+    .catch(() => false),
+]).then(([okVendas]) => {
+  // Sem a venda externa a página inteira virou tela de erro — não há o que montar.
+  if (okVendas) renderGeral();
+});
 </script>
 </body>
 </html>
