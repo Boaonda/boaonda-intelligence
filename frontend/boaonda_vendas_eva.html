@@ -433,7 +433,15 @@ const evaTotalizerPlugin = {
   afterDatasetsDraw(chart) {
     const cfg = (chart.options.plugins || {}).evaTotalizer;
     if (cfg === false) return;
-    const fmt = (cfg && cfg.format) || (v => (viewMode === 'kg' ? fKgShort(v) : fBRLShort(v)));
+    // NUNCA guardar função dentro de options.plugins: o Chart.js trata
+    // qualquer opção que seja função como "scriptable" e a INVOCA ao
+    // resolver, passando um objeto de contexto. Foi o que quebrou os
+    // gráficos aqui — o formatador recebia um objeto em vez de número e
+    // estourava "Cannot convert object to primitive value", deixando o
+    // canvas em branco. Por isso a unidade vem como string.
+    const fmt = (cfg && cfg.unidade === 'kg')
+      ? fKgShort
+      : (v => (viewMode === 'kg' ? fKgShort(v) : fBRLShort(v)));
     const {ctx, scales: {y}, data} = chart;
     const n = (data.labels || []).length;
     for (let i = 0; i < n; i++) {
@@ -841,7 +849,7 @@ function renderDemanda() {
       onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
       plugins: {
         legend: { display: false },
-        evaTotalizer: { format: fKgShort },   // sempre kg aqui, não segue o toggle da venda
+        evaTotalizer: { unidade: 'kg' },   // sempre kg aqui, não segue o toggle da venda
         tooltip: { callbacks: {
           title: items => items.length ? ceLabelLongo(chaves[items[0].dataIndex]) : '',
           label: c => ' ' + fKg(c.raw),
@@ -946,7 +954,7 @@ function renderGeral() {
       layout: { padding: { top: 24 } },
       plugins: {
         legend: { display: false },
-        evaTotalizer: { format: fKgShort },
+        evaTotalizer: { unidade: 'kg' },
         tooltip: {
           callbacks: {
             label: c => ' ' + c.dataset.label + ': ' + fKg(c.raw),
@@ -1039,6 +1047,29 @@ Promise.all([
 ]).then(([okVendas]) => {
   // Sem a venda externa a página inteira virou tela de erro — não há o que montar.
   if (okVendas) renderGeral();
+});
+
+// Rede de segurança: se a montagem de um bloco falhar, ele passa a explicar
+// o que houve em vez de deixar uma caixa vazia sem explicação nenhuma — foi
+// exatamente assim que o bug do formatador escondeu dois gráficos.
+['renderGeral', 'renderDemanda', 'render'].forEach(nome => {
+  const original = window[nome];
+  if (typeof original !== 'function') return;
+  window[nome] = function () {
+    try {
+      return original.apply(this, arguments);
+    } catch (err) {
+      console.error('[Composto EVA] falha em ' + nome + ':', err);
+      const alvo = nome === 'renderGeral' ? 'geral-vazio' : 'ce-aviso';
+      const el = document.getElementById(alvo);
+      if (el) {
+        el.style.display = '';
+        el.innerHTML = '<strong>Não foi possível montar este bloco.</strong><br>' +
+          'Detalhe técnico: ' + (err && err.message ? err.message : err) +
+          '. Recarregue a página (Ctrl+F5); se persistir, avise para corrigirmos.';
+      }
+    }
+  };
 });
 </script>
 </body>
