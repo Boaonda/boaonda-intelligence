@@ -518,6 +518,15 @@ body{background:var(--bg);color:var(--txt);min-height:100vh}
     mas não compõem os totais de faturamento, o resumo por grupo nem as pendências retroativas.
     A <strong>espécie 132</strong> (remessa de troca de e-commerce) também é excluída pelo mesmo
     critério, por não ser venda.
+    <br><br>
+    <strong>Venda equiparada (exportação indireta):</strong> as CFOPs
+    <span class="cfop-cod">5501</span>/<span class="cfop-cod">6501</span> (remessa com fim
+    específico de exportação, via trading no Brasil — conta
+    <strong>VENDAS EQUIPARADAS</strong>) entram normalmente no faturamento, mas
+    <strong>sem conversão de câmbio</strong>: o 3YS já traz esses valores em reais, porque a
+    operação é interna. Elas aparecem como sub-linha da Exportação e, no resumo por Conta
+    Contábil, na própria conta. O identificador é a CFOP, não a espécie — há venda equiparada
+    lançada com espécie 1 (Programado).
   </div>
 
 </div>
@@ -629,14 +638,21 @@ function calcMes(mes, key) {
   const miReal  = miProg + miPe + miMista;
   const miRealQ = miProgQ + miPeQ + miMistaQ;
 
-  let meUSD=0, mePrevUSD=0, meRealQ=0, mePrevQ=0;
+  // Exportação = ME direto (USD, converte) + venda equiparada (já em BRL).
+  // A equiparada entra no mesmo canal 'ME' dos filtros, mas sem câmbio.
+  const MEQ_k = mes.ME_EQ || {};
+  let meUSD=0, mePrevUSD=0, meRealQ=0, mePrevQ=0, meqReal=0, meqPrev=0;
   if (canal === 'TODOS' || canal === 'ME') {
     meUSD   = ME.REALIZADO_USD   || 0;
     meRealQ = ME.REALIZADO_PARES || 0;
+    meqReal = MEQ_k.REALIZADO       || 0;
+    meRealQ += MEQ_k.REALIZADO_PARES || 0;
     if (sp) { mePrevUSD = ME.PREVISTO_USD   || 0;
-              mePrevQ   = ME.PREVISTO_PARES || 0; }
+              mePrevQ   = ME.PREVISTO_PARES || 0;
+              meqPrev   = MEQ_k.PREVISTO       || 0;
+              mePrevQ  += MEQ_k.PREVISTO_PARES || 0; }
   }
-  const meBRL = meUSD * CAMBIO, mePrevBRL = mePrevUSD * CAMBIO;
+  const meBRL = meUSD * CAMBIO + meqReal, mePrevBRL = mePrevUSD * CAMBIO + meqPrev;
 
   let ecReal=0, ecPrev=0, ecRealQ=0, ecPrevQ=0;
   if (canal === 'TODOS' || canal === 'EC') {
@@ -811,6 +827,7 @@ function renderResumo() {
   const MA   = mesAtual();
   const mes  = (DATA.dados || {})[key] || {};
   const MI   = mes.MI || {}, ME = mes.ME || {}, EC = mes.EC || {}, EVA = mes.EVA || {};
+  const MEQ  = mes.ME_EQ || {};   // venda equiparada — já em BRL, não converte
   const sp   = key >= MA;
   const gerado = DATA.gerado_em || '';
 
@@ -832,6 +849,12 @@ function renderResumo() {
   const meV = { rQ: ME.REALIZADO_PARES||0, rV: (ME.REALIZADO_USD||0)*CAMBIO,
                 pQ: sp ? ME.PREVISTO_PARES||0            : 0,
                 pV: sp ? (ME.PREVISTO_USD||0)*CAMBIO     : 0 };
+  // Equiparada NÃO multiplica por CAMBIO: o 3YS já traz em reais (operação
+  // interna, CFOP 5501/6501, conta 'VENDAS EQUIPARADAS ...'). Antes ela caía
+  // junto do ME em dólar e era convertida, inflando o valor em 5x.
+  const meqV = { rQ: MEQ.REALIZADO_PARES||0, rV: MEQ.REALIZADO||0,
+                 pQ: sp ? MEQ.PREVISTO_PARES||0 : 0,
+                 pV: sp ? MEQ.PREVISTO||0       : 0 };
   const ecV = { rQ: EC.REALIZADO_PARES||0, rV: EC.REALIZADO||0,
                 pQ: sp ? EC.PREVISTO_PARES||0 : 0,
                 pV: sp ? EC.PREVISTO||0       : 0 };
@@ -843,10 +866,10 @@ function renderResumo() {
   // Qtd. (pares) do Total Geral soma só MI+ME+EC — Composto EVA é kg
   // (unidade diferente), mas o valor R$ do EVA entra na soma financeira.
   const gt = {
-    rQ: mprog.rQ+mpe.rQ+mmist.rQ+meV.rQ+ecV.rQ,
-    rV: mprog.rV+mpe.rV+mmist.rV+meV.rV+ecV.rV+evaV.rV,
-    pQ: mprog.pQ+mpe.pQ+mmist.pQ+meV.pQ+ecV.pQ,
-    pV: mprog.pV+mpe.pV+mmist.pV+meV.pV+ecV.pV+evaV.pV,
+    rQ: mprog.rQ+mpe.rQ+mmist.rQ+meV.rQ+meqV.rQ+ecV.rQ,
+    rV: mprog.rV+mpe.rV+mmist.rV+meV.rV+meqV.rV+ecV.rV+evaV.rV,
+    pQ: mprog.pQ+mpe.pQ+mmist.pQ+meV.pQ+meqV.pQ+ecV.pQ,
+    pV: mprog.pV+mpe.pV+mmist.pV+meV.pV+meqV.pV+ecV.pV+evaV.pV,
   };
   const totR = gt.rV, totT = gt.rV + gt.pV;
 
@@ -885,12 +908,17 @@ function renderResumo() {
   function rowDrillClientes(canal, mesKey) {
     const lista = ((DATA.dados_clientes || {})[mesKey] || {})[canal] || [];
     const isEva = canal === 'EVA';
+    // Equiparada é BRL como o EVA (valor direto, sem câmbio) — só ME direto
+    // vem em dólar e precisa de conversão.
+    const emBRL = isEva || canal === 'ME_EQ';
     const fmtQ = isEva ? fKg1 : fPar;
-    const vReal = e => isEva ? (e.REALIZADO || 0) : (e.REALIZADO_USD || 0) * CAMBIO;
-    const vPrev = e => isEva ? (e.PREVISTO || 0) : (e.PREVISTO_USD || 0) * CAMBIO;
+    const vReal = e => emBRL ? (e.REALIZADO || 0) : (e.REALIZADO_USD || 0) * CAMBIO;
+    const vPrev = e => emBRL ? (e.PREVISTO || 0) : (e.PREVISTO_USD || 0) * CAMBIO;
     const qReal = e => isEva ? (e.REALIZADO_KG || 0) : (e.REALIZADO_PARES || 0);
     const qPrev = e => isEva ? (e.PREVISTO_KG || 0) : (e.PREVISTO_PARES || 0);
-    const titulo = (isEva ? 'Clientes — Composto EVA' : 'Clientes — ME') + ' · ' + mesLong(mesKey);
+    const titulo = (isEva ? 'Clientes — Composto EVA'
+                    : canal === 'ME_EQ' ? 'Clientes — ME Venda equiparada'
+                    : 'Clientes — ME') + ' · ' + mesLong(mesKey);
     if (!lista.length) {
       return `<tr class="tr-clientes"><td colspan="12"><div class="drill-clientes">
         <div class="drill-clientes-title">${titulo}</div>
@@ -1176,12 +1204,36 @@ function renderResumo() {
     </tr>`;
   }
 
+  // Sub-linha da exportação com drilldown de clientes (a rowSubDrill existente
+  // abre pedidos de MI, não serve aqui).
+  function rowSubDrillClientes(label, d, canalDrill) {
+    const tQ = d.rQ + d.pQ, tV = d.rV + d.pV;
+    const dash = sp ? '' : '—';
+    const cls = ' tr-drill' + (drillAberto === canalDrill ? ' aberto' : '');
+    return `<tr class="tr-sub${cls}" onclick="toggleDrillCliente('${canalDrill}')">
+      <td class="td-grupo">↳ ${label}</td>
+      <td class="td-sep"></td>
+      <td class="td-r-q">${d.rQ ? fPar(d.rQ) : '–'}</td>
+      <td class="td-r-v">${d.rV ? fBRL(d.rV) : '–'}</td>
+      <td class="td-r-p">${d.rV ? pct(d.rV, totR) : '–'}</td>
+      <td class="td-sep"></td>
+      <td class="td-p-q">${sp ? (d.pQ ? fPar(d.pQ) : '–') : dash}</td>
+      <td class="td-p-v">${sp ? (d.pV ? fBRL(d.pV) : '–') : dash}</td>
+      <td class="td-sep"></td>
+      <td class="td-t-q">${tQ ? fPar(tQ) : '–'}</td>
+      <td class="td-t-v">${tV ? fBRL(tV) : '–'}</td>
+      <td class="td-t-p">${tV ? pct(tV, totT) : '–'}</td>
+    </tr>` + (drillAberto === canalDrill ? rowDrillClientes(canalDrill, key) : '');
+  }
+
   document.getElementById('resumo-tbody').innerHTML =
     rowGroup('Faturamento MI', miTotal, fPar, null, 'MI') +
     rowSub('MI Programado', mprog) +
     (mpe.rV || mpe.pV ? rowSubDrill('MI Pronta Entrega', mpe, 'PE') : rowSub('MI Pronta Entrega', mpe)) +
     (mmist.rV || mmist.pV ? rowSubDrill('MI Venda Mista', mmist, 'MISTA') : '') +
     rowGroup('Faturamento ME (BRL @ R$' + CAMBIO.toFixed(2) + ')', meV, fPar, 'ME', 'ME') +
+    (meqV.rV || meqV.pV
+      ? rowSubDrillClientes('ME Venda equiparada (R$ — sem conversão)', meqV, 'ME_EQ') : '') +
     rowGroup('Faturamento E-commerce', ecV, fPar, 'EC', 'EC') +
     (evaV.rV || evaV.pV ? rowGroup('Faturamento Composto EVA', evaV, fKg1, 'EVA', 'EVA') : '');
 

@@ -1575,7 +1575,34 @@ CFOPS_FORA_DO_GERAL = {'5910', '5916', '6916', '7949', '5949', '6949'}
 #         apareça com outro CFOP no futuro).
 ESPECIES_FORA_DO_GERAL = {'132'}
 
-def classifica_faturamento(cod, abr, marca=''):
+# CFOP de "remessa com fim específico de exportação" — é a exportação
+# INDIRETA (venda equiparada), feita através de uma trading no Brasil
+# (ex.: TRANSERV, CARRUBBA, GOLDEN PHOENIX). 5501/6501 = produção do próprio
+# estabelecimento; 5502/6502 = mercadoria adquirida de terceiros.
+#
+# Diferente da exportação direta, o 3YS traz esses valores em REAIS, porque
+# a operação é interna (a saída do país é feita pela trading). Tratá-los no
+# canal ME, que é dolarizado, fazia a tela multiplicar tudo pela taxa de
+# câmbio e inflar o valor em 5x (reportado pelo Cássio em 2026-08-06:
+# R$156.162 no lugar de R$31.232,40, cliente TRANSERV).
+#
+# Auditoria de 2026-08-06 na base real: o CFOP é o discriminador confiável —
+# bate 100% com a conta contábil 'VENDAS EQUIPARADAS ...' (zero divergências
+# nos dois sentidos). Já o cod_esp_ent_sai NÃO serve: apesar de existir a
+# espécie 10 = 'Venda Equiparada', 21 das 72 linhas equiparadas vêm com
+# espécie 1 (Programado) — inclusive as da TRANSERV que originaram o
+# relato. A conta contábil entra como reforço, caso o CFOP venha vazio.
+CFOP_VENDA_EQUIPARADA = {'5501', '6501', '5502', '6502'}
+CONTA_VENDA_EQUIPARADA_PREFIXO = 'VENDAS EQUIPARADAS'
+
+
+def eh_venda_equiparada(cfop, conta):
+    """Exportação indireta (venda equiparada): valor já em BRL, nunca converter."""
+    return (str(cfop or '').strip() in CFOP_VENDA_EQUIPARADA
+            or str(conta or '').strip().upper().startswith(CONTA_VENDA_EQUIPARADA_PREFIXO))
+
+
+def classifica_faturamento(cod, abr, marca='', cfop='', conta=''):
     """Retorna (canal, tipo) para a área de Faturamento.
 
     EVA      → marca=='COMPOSTOS EVA' (checado primeiro, sem filtro de
@@ -1601,7 +1628,12 @@ def classifica_faturamento(cod, abr, marca=''):
     is_mi_abr  = ('MERCADO INTERNO' in abr or 'ISENTO' in abr) and 'EXPORTA' not in abr
 
     if cod == '32' or is_ec_abr:        return 'EC', 'EC'
-    if is_exporta:                      return 'ME', 'ME'
+    if is_exporta:
+        # Exportação indireta sai em canal próprio, em BRL — ver
+        # CFOP_VENDA_EQUIPARADA acima para o porquê e para a auditoria.
+        if eh_venda_equiparada(cfop, conta):
+            return 'ME_EQ', 'EQUIPARADA'
+        return 'ME', 'ME'
     if is_mi_abr:
         if cod == '1':  return 'MI', 'PROG'
         if cod == '22': return 'MI', 'PE'
@@ -1613,6 +1645,7 @@ RETRO_CANAL_LABELS = {
     'MI_PE':    ('MI Pronta Entrega','BRL', 'pares'),
     'MI_MISTA': ('MI Venda Mista',   'BRL', 'pares'),
     'ME':       ('Mercado Externo',  'USD', 'pares'),
+    'ME_EQ':    ('ME Venda Equiparada', 'BRL', 'pares'),
     'EC':       ('E-Commerce',       'BRL', 'pares'),
     'EVA':      ('Composto EVA',     'BRL', 'kg'),
 }
@@ -1629,6 +1662,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         return {
             'MI': {'PROG':[0.0,0.0,0,0],'PE':[0.0,0.0,0,0],'MISTA':[0.0,0.0,0,0]},
             'ME': [0.0,0.0,0,0],
+            'ME_EQ': [0.0,0.0,0,0],   # venda equiparada — BRL, nunca convertida
             'EC': [0.0,0.0,0,0],
             'EVA': [0.0,0.0,0.0,0.0],  # kg (float, não pares) nos índices 2/3
         }
@@ -1647,6 +1681,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
     # mensal por grupo. MI/EC não têm volume de clientes que justifique o
     # drilldown (muito mais pulverizado) e não foram solicitados.
     dados_clientes = defaultdict(lambda: {'ME': defaultdict(lambda: [0.0, 0.0, 0, 0]),
+                                           'ME_EQ': defaultdict(lambda: [0.0, 0.0, 0, 0]),
                                            'EVA': defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])})
     # dados_pedidos_eva[mes_ref][cliente][pedido] = [fat_vlr, prev_vlr, fat_kg, prev_kg]
     # 2º nível do drilldown de Composto EVA — só EVA, conforme solicitado.
@@ -1695,7 +1730,12 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
         cod = g(row, IDX['cod_esp'])
         if cod in ESPECIES_ORCAMENTO_ME: continue   # orçamento ME — jamais faturado
         marca = g(row, IDX['marca'])
-        canal, tipo = classifica_faturamento(cod, abr, marca)
+        # CFOP e conta são lidos aqui (e não só mais abaixo) porque a
+        # classificação do canal depende deles: é o que separa a exportação
+        # indireta (BRL) da direta (USD).
+        cfop_code = g(row, IDX['cfop'])
+        conta_code_raw = g(row, IDX['conta_contabil']).strip()
+        canal, tipo = classifica_faturamento(cod, abr, marca, cfop_code, conta_code_raw)
         if not canal: continue
 
         try: qtd_raw = float(g(row, IDX['qtd']).replace(',','.'))
@@ -1735,7 +1775,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             sem_data_count += 1
             continue
 
-        cfop_code = g(row, IDX['cfop'])
+        # (cfop_code já foi lido acima, junto com a conta, para classificar o canal)
         # "Fora do geral": não compõe resumo por grupo/totais/retroativo (mas
         # fica visível em CFOP/Conta com "não soma"). Vale por CFOP
         # (conserto/reparo, bonificação, outras saídas) OU por espécie
@@ -1775,12 +1815,14 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 m['MI'][tipo][vi] += vlr; m['MI'][tipo][qi] += qtd
             elif canal == 'ME':
                 m['ME'][vi] += vlr; m['ME'][qi] += qtd     # USD
+            elif canal == 'ME_EQ':
+                m['ME_EQ'][vi] += vlr; m['ME_EQ'][qi] += qtd   # BRL (não converte)
             elif canal == 'EVA':
                 m['EVA'][vi] += vlr; m['EVA'][qi] += qtd   # kg
             else:
                 m['EC'][vi] += vlr; m['EC'][qi] += qtd
 
-            if canal in ('ME', 'EVA'):
+            if canal in ('ME', 'ME_EQ', 'EVA'):
                 cliente = corrigir_mojibake(g(row, IDX['nomeholder']) or g(row, IDX['razao']))[:40] or '(sem nome)'
                 dc_cli = dados_clientes[mes_ref][canal][cliente]
                 dc_cli[vi] += vlr; dc_cli[qi] += qtd
@@ -1878,6 +1920,10 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
             'MI': mi,
             'ME': {'REALIZADO_USD': round(m['ME'][0], 2), 'PREVISTO_USD': round(m['ME'][1], 2),
                    'REALIZADO_PARES': int(m['ME'][2]), 'PREVISTO_PARES': int(m['ME'][3])},
+            # Equiparada já vem em BRL do 3YS — chaves sem sufixo _USD de
+            # propósito, pra nenhuma tela aplicar câmbio em cima.
+            'ME_EQ': {'REALIZADO': round(m['ME_EQ'][0], 2), 'PREVISTO': round(m['ME_EQ'][1], 2),
+                      'REALIZADO_PARES': int(m['ME_EQ'][2]), 'PREVISTO_PARES': int(m['ME_EQ'][3])},
             'EC': {'REALIZADO': round(m['EC'][0], 2), 'PREVISTO': round(m['EC'][1], 2),
                    'REALIZADO_PARES': int(m['EC'][2]), 'PREVISTO_PARES': int(m['EC'][3])},
             'EVA': {'REALIZADO': round(m['EVA'][0], 2), 'PREVISTO': round(m['EVA'][1], 2),
@@ -1991,7 +2037,7 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
 
     def build_clientes_mes(mc, mes_ref):
         out = {}
-        for canal in ('ME', 'EVA'):
+        for canal in ('ME', 'ME_EQ', 'EVA'):
             entries = []
             for cliente, (rv, pv, rq, pq) in mc[canal].items():
                 if not any([rv, pv, rq, pq]):
@@ -1999,6 +2045,11 @@ def processar_faturamento(linhas, output_dir='.', taxa_cambio_me=5.0):
                 if canal == 'ME':
                     entries.append({'cliente': cliente, 'REALIZADO_USD': round(rv, 2),
                                      'PREVISTO_USD': round(pv, 2),
+                                     'REALIZADO_PARES': int(rq), 'PREVISTO_PARES': int(pq)})
+                elif canal == 'ME_EQ':
+                    # BRL: chaves sem _USD, pra a tela não converter.
+                    entries.append({'cliente': cliente, 'REALIZADO': round(rv, 2),
+                                     'PREVISTO': round(pv, 2),
                                      'REALIZADO_PARES': int(rq), 'PREVISTO_PARES': int(pq)})
                 else:
                     entry = {'cliente': cliente, 'REALIZADO': round(rv, 2),

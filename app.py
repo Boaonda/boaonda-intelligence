@@ -3078,8 +3078,8 @@ def api_faturamento_detalhe():
         return bloqueio
     canal = (request.args.get('canal') or '').upper()
     mes   = (request.args.get('mes') or '').strip()
-    if canal not in ('MI', 'ME', 'EC', 'EVA') or not (mes.isdigit() and len(mes) == 6):
-        return jsonify({'erro': 'Parâmetros inválidos (canal MI/ME/EC/EVA e mes AAAAMM).'}), 400
+    if canal not in ('MI', 'ME', 'ME_EQ', 'EC', 'EVA') or not (mes.isdigit() and len(mes) == 6):
+        return jsonify({'erro': 'Parâmetros inválidos (canal MI/ME/ME_EQ/EC/EVA e mes AAAAMM).'}), 400
     arq = DATA_DIR / f'dados_faturamento_det_{mes}.json'
     if not arq.exists():
         return jsonify({'erro': 'Detalhe indisponível para este mês. Reprocesse os dados '
